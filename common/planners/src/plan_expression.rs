@@ -132,12 +132,16 @@ impl Expression {
                 func.return_type(&arg_types)
             }
             Expression::AggregateFunction { op, args } => {
-                let mut fields = Vec::with_capacity(args.len());
-                for arg in args {
-                    fields.push(arg.to_data_field(input_schema)?);
+                if op == "count" && args.len() == 1 && args[0] == Expression::Wildcard {
+                    Ok(DataType::UInt64)
+                } else {
+                    let mut fields = Vec::with_capacity(args.len());
+                    for arg in args {
+                        fields.push(arg.to_data_field(input_schema)?);
+                    }
+                    let func = AggregateFunctionFactory::get(op, fields)?;
+                    func.return_type()
                 }
-                let func = AggregateFunctionFactory::get(op, fields)?;
-                func.return_type()
             }
             Expression::Wildcard => Result::Err(ErrorCodes::IllegalDataType(
                 "Wildcard expressions are not valid to get return type",
@@ -154,8 +158,13 @@ impl Expression {
         match self {
             Expression::AggregateFunction { op, args } => {
                 let mut fields = Vec::with_capacity(args.len());
-                for arg in args.iter() {
-                    fields.push(arg.to_data_field(schema)?);
+                if op == "count" && args.len() == 1 && args[0] == Expression::Wildcard {
+                    let data_field = DataField::new(&self.column_name(), DataType::UInt64, false);
+                    fields.push(data_field);
+                } else {
+                    for arg in args.iter() {
+                        fields.push(arg.to_data_field(schema)?);
+                    }
                 }
                 AggregateFunctionFactory::get(op, fields)
             }

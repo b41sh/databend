@@ -65,8 +65,12 @@ impl PlanBuilder {
         let mut projection_exprs = vec![];
         exprs.iter().for_each(|v| match v {
             Expression::Wildcard => {
-                for i in 0..input_schema.fields().len() {
-                    projection_exprs.push(col(input_schema.fields()[i].name()))
+                if desc == "Before GroupBy" {
+                    projection_exprs.push(col(input_schema.fields()[0].name()))
+                } else {
+                    for i in 0..input_schema.fields().len() {
+                        projection_exprs.push(col(input_schema.fields()[i].name()))
+                    }
                 }
             }
             _ => projection_exprs.push(v.clone()),
