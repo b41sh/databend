@@ -96,10 +96,9 @@ checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 
 [[package]]
 name = "arrow"
-version = "4.2.0"
-source = "git+https://github.com/apache/arrow-rs?tag=4.2.0#cd95d7ce13c349da8e76a781a28ec7161ed4165a"
+version = "5.0.0-SNAPSHOT"
+source = "git+https://github.com/apache/arrow-rs?rev=0a165748c924b3752cc00ff86e56917427985872#0a165748c924b3752cc00ff86e56917427985872"
 dependencies = [
- "cfg_aliases",
  "chrono",
  "csv",
  "flatbuffers",
@@ -118,8 +117,8 @@ dependencies = [
 
 [[package]]
 name = "arrow-flight"
-version = "4.2.0"
-source = "git+https://github.com/apache/arrow-rs?tag=4.2.0#cd95d7ce13c349da8e76a781a28ec7161ed4165a"
+version = "5.0.0-SNAPSHOT"
+source = "git+https://github.com/apache/arrow-rs?rev=0a165748c924b3752cc00ff86e56917427985872#0a165748c924b3752cc00ff86e56917427985872"
 dependencies = [
  "arrow",
  "bytes 1.0.1",
@@ -475,12 +474,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "cfg_aliases"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
-
-[[package]]
 name = "chrono"
 version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -656,6 +649,7 @@ dependencies = [
  "anyhow",
  "common-arrow",
  "common-exception",
+ "ordered-float 2.5.1",
  "paste",
  "pretty_assertions",
  "serde",
@@ -2333,8 +2327,8 @@ dependencies = [
 
 [[package]]
 name = "msql-srv"
-version = "0.9.3"
-source = "git+https://github.com/datafuse-extras/msql-srv?rev=76b8ae3#76b8ae360080942127805ea469f322552ed53177"
+version = "0.9.5"
+source = "git+https://github.com/datafuse-extras/msql-srv?rev=5a7ae3d#5a7ae3d6ce9da91427a7ddd2ac029108f5eca990"
 dependencies = [
  "byteorder",
  "chrono",
@@ -2672,8 +2666,8 @@ dependencies = [
 
 [[package]]
 name = "parquet"
-version = "4.2.0"
-source = "git+https://github.com/apache/arrow-rs?tag=4.2.0#cd95d7ce13c349da8e76a781a28ec7161ed4165a"
+version = "5.0.0-SNAPSHOT"
+source = "git+https://github.com/apache/arrow-rs?rev=0a165748c924b3752cc00ff86e56917427985872#0a165748c924b3752cc00ff86e56917427985872"
 dependencies = [
  "arrow",
  "base64 0.13.0",
@@ -3654,9 +3648,8 @@ dependencies = [
 
 [[package]]
 name = "sqlparser"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fa863a2dfc4879a35647c51dadf495a2ad53745eaf3723fda27006e745fb0ba"
+version = "0.9.1-alpha.0"
+source = "git+https://github.com/datafuse-extras/sqlparser-rs?rev=35ef0ee#35ef0eee3857c59827b2587bc813218a00dce264"
 dependencies = [
  "log 0.4.14",
 ]
