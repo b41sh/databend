@@ -24,12 +24,44 @@ impl<'a> Injector for MetadataMapInjector<'a> {
     /// Set a key and value in the MetadataMap.  Does nothing if the key or value are not valid inputs
     fn set(&mut self, key: &str, value: String) {
         if let Ok(key) = tonic::metadata::MetadataKey::from_bytes(key.as_bytes()) {
-            if let Ok(val) = tonic::metadata::MetadataValue::from_str(&value) {
+            if let Ok(val) =
+                tonic::metadata::MetadataValue::<tonic::metadata::Ascii>::from_str(&value)
+            {
                 self.0.insert(key, val);
             }
         }
     }
 }
+
+/**
+impl FromStr for MetadataValue<Ascii> {
+    type Err = InvalidMetadataValue;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<MetadataValue<Ascii>, Self::Err> {
+        HeaderValue::from_str(s)
+            .map(|value| MetadataValue {
+                inner: value,
+                phantom: PhantomData,
+            })
+            .map_err(|_| InvalidMetadataValue::new())
+    }
+}
+
+
+impl MetadataValue<Ascii> {
+    #[allow(clippy::should_implement_trait)]
+    #[deprecated = "Use TryFrom or FromStr instead"]
+    #[inline]
+    pub fn from_str(src: &str) -> Result<Self, InvalidMetadataValue> {
+        src.parse()
+    }
+
+*/
+
+
+
+
 
 /// Extract tracing info from tonic request meta.
 struct MetadataMapExtractor<'a>(&'a tonic::metadata::MetadataMap);
