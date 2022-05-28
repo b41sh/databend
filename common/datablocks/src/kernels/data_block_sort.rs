@@ -23,7 +23,7 @@ use common_arrow::arrow::array::ArrayRef;
 use common_arrow::arrow::compute::merge_sort::*;
 use common_arrow::arrow::compute::sort as arrow_sort;
 use common_arrow::arrow::datatypes::DataType as ArrowType;
-use common_arrow::arrow::error::ArrowError;
+use common_arrow::arrow::error::Error as ArrowError;
 use common_arrow::arrow::error::Result as ArrowResult;
 use common_datavalues::prelude::*;
 use common_exception::ErrorCode;
@@ -214,7 +214,7 @@ fn compare_variant(left: &dyn Array, right: &dyn Array) -> ArrowResult<DynCompar
     let right = VariantColumn::from_arrow_array(right);
 
     Ok(Box::new(move |i, j| {
-        left.get_data(i).cmp(&right.get_data(j))
+        left.get_data(i).cmp(right.get_data(j))
     }))
 }
 
@@ -232,7 +232,7 @@ fn build_compare(left: &dyn Array, right: &dyn Array) -> ArrowResult<DynComparat
         ArrowType::LargeList(_) => compare_array(left, right),
         ArrowType::Extension(name, _, _) => {
             if name == "Variant" || name == "VariantArray" || name == "VariantObject" {
-                return compare_variant(left, right);
+                compare_variant(left, right)
             } else {
                 return Err(ArrowError::NotYetImplemented(format!(
                     "Sort not supported for data type {:?}",

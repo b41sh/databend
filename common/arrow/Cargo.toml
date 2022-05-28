@@ -28,13 +28,13 @@ simd = ["arrow/simd"]
 # Workspace dependencies
 
 # Github dependencies
-arrow = { package = "arrow2", git = "https://github.com/b41sh/arrow2", default-features = false, features = [
+arrow = { package = "arrow2", git = "https://github.com/datafuse-extras/arrow2", default-features = false, features = [
     "io_parquet",
     "io_parquet_compression",
-], rev = "2a30c6f" }
+], rev = "93bdde8" }
 
 # Crates.io dependencies
-arrow-format = { version = "0.4.0", features = ["flight-data", "flight-service", "ipc"] }
+arrow-format = { version = "0.6.0", features = ["flight-data", "flight-service", "ipc"] }
 futures = "0.3.21"
 parquet2 = { version = "0.12", default_features = false }
 

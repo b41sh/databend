@@ -63,10 +63,13 @@ pub fn serialize_data_blocks(
         .map(|b| Chunk::try_from(b.clone()))
         .collect::<Result<Vec<_>>>()?;
 
-    let encodings: Vec<_> = arrow_schema
+    let encodings = arrow_schema
         .fields
         .iter()
-        .map(|f| col_encoding(&f.data_type))
+        .map(|x| match x.data_type() {
+            ArrowDataType::Dictionary(..) => vec![Encoding::RleDictionary],
+            _ => vec![Encoding::Plain],
+        })
         .collect();
 
     let row_groups = RowGroupIterator::try_new(
@@ -86,18 +89,4 @@ pub fn serialize_data_blocks(
         Ok(result) => Ok(result),
         Err(cause) => Err(ErrorCode::ParquetError(cause.to_string())),
     }
-}
-
-fn col_encoding(_data_type: &ArrowDataType) -> Encoding {
-    // Although encoding does work, parquet2 has not implemented decoding of DeltaLengthByteArray yet, we fallback to Plain
-    // From parquet2: Decoding "DeltaLengthByteArray"-encoded required V2 pages is not yet implemented for Binary.
-    //
-    //match data_type {
-    //    ArrowDataType::Binary
-    //    | ArrowDataType::LargeBinary
-    //    | ArrowDataType::Utf8
-    //    | ArrowDataType::LargeUtf8 => Encoding::DeltaLengthByteArray,
-    //    _ => Encoding::Plain,
-    //}
-    Encoding::Plain
 }
