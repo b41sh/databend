@@ -132,7 +132,7 @@ dependencies = [
 [[package]]
 name = "arrow2"
 version = "0.11.2"
-source = "git+https://github.com/datafuse-extras/arrow2?rev=93bdde8#93bdde80d16e38dcb8707ed5dd80b6c30f783fcc"
+source = "git+https://github.com/datafuse-extras/arrow2?rev=588e74f#588e74f0697cd8a8af8bf85344f08b9b3426fc47"
 dependencies = [
  "ahash",
  "arrow-format",
@@ -977,6 +977,8 @@ dependencies = [
  "common-io",
  "pretty_assertions",
  "regex",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
