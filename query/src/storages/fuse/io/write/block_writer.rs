@@ -15,6 +15,7 @@
 
 use common_arrow::arrow::chunk::Chunk;
 use common_arrow::arrow::datatypes::DataType as ArrowDataType;
+use common_arrow::arrow::io::parquet::write::transverse;
 use common_arrow::arrow::io::parquet::write::RowGroupIterator;
 use common_arrow::arrow::io::parquet::write::WriteOptions;
 use common_arrow::parquet::compression::CompressionOptions;
@@ -59,7 +60,7 @@ impl<'a> BlockWriter<'a> {
         let block_size = block.memory_size() as u64;
         let col_stats = accumulator::columns_statistics(&block)?;
         let (file_size, file_meta_data) = write_block(block, data_accessor, &location).await?;
-        let col_metas = util::column_metas(&file_meta_data)?;
+        let (col_metas, col_path) = util::column_metas(&file_meta_data)?;
         let cluster_stats = None; // TODO confirm this with zhyass
         let location = (location, DataBlock::VERSION);
         let block_meta = BlockMeta::new(
@@ -68,6 +69,7 @@ impl<'a> BlockWriter<'a> {
             file_size,
             col_stats,
             col_metas,
+            col_path,
             cluster_stats,
             location,
         );
@@ -124,14 +126,28 @@ pub fn serialize_data_blocks(
         .map(|b| Chunk::try_from(b.clone()))
         .collect::<Result<Vec<_>>>()?;
 
+    /**
+        let encodings: Vec<Vec<_>> = arrow_schema
+            .fields
+            .iter()
+            .map(|f| match f.data_type() {
+                ArrowDataType::Dictionary(..) => vec![Encoding::RleDictionary],
+                ArrowDataType::Struct(inner_fields) =>
+                    inner_fields.iter().map(|f2| col_encoding(f2.data_type())).collect(),
+                _ => vec![col_encoding(f.data_type())],
+            })
+            .collect();
+    */
+    let encoding_map = |data_type: &ArrowDataType| match data_type {
+        ArrowDataType::Dictionary(..) => Encoding::RleDictionary,
+        _ => Encoding::Plain,
+    };
+
     let encodings: Vec<Vec<_>> = arrow_schema
         .fields
         .iter()
-        .map(|f| match f.data_type() {
-            ArrowDataType::Dictionary(..) => vec![Encoding::RleDictionary],
-            _ => vec![col_encoding(f.data_type())],
-        })
-        .collect();
+        .map(|f| transverse(&f.data_type, encoding_map))
+        .collect::<Vec<_>>();
 
     let row_groups = RowGroupIterator::try_new(
         batches.iter().map(|c| Ok(c.clone())),

@@ -49,6 +49,7 @@ pub struct BlockMeta {
     pub file_size: u64,
     pub col_stats: HashMap<ColumnId, ColumnStatistics>,
     pub col_metas: HashMap<ColumnId, ColumnMeta>,
+    pub col_path: Option<HashMap<Vec<String>, ColumnId>>,
     pub cluster_stats: Option<ClusterStatistics>,
     pub location: Location,
 
@@ -68,6 +69,7 @@ impl BlockMeta {
         file_size: u64,
         col_stats: HashMap<ColumnId, ColumnStatistics>,
         col_metas: HashMap<ColumnId, ColumnMeta>,
+        col_path: Option<HashMap<Vec<String>, ColumnId>>,
         cluster_stats: Option<ClusterStatistics>,
         location: Location,
     ) -> Self {
@@ -77,6 +79,7 @@ impl BlockMeta {
             file_size,
             col_stats,
             col_metas,
+            col_path,
             cluster_stats,
             location,
             compression: Compression::Lz4Raw,
@@ -122,6 +125,7 @@ impl From<v0::BlockMeta> for BlockMeta {
             file_size: s.file_size,
             col_stats: s.col_stats,
             col_metas: s.col_metas,
+            col_path: None,
             cluster_stats: None,
             location: (s.location.path, DataBlock::VERSION),
             compression: Compression::Lz4,

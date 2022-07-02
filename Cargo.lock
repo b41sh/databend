@@ -6340,7 +6340,7 @@ dependencies = [
 [[package]]
 name = "sqlparser"
 version = "0.13.1-alpha.0"
-source = "git+https://github.com/datafuse-extras/sqlparser-rs?rev=d44a8e1#d44a8e16ab1bef5789558fa6b96de83de4858447"
+source = "git+https://github.com/b41sh/sqlparser-rs?rev=72cca0b#72cca0b2a66ef61d8900029b703df5585679872a"
 dependencies = [
  "hashbrown 0.12.1",
  "log",

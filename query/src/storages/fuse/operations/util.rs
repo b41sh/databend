@@ -21,7 +21,14 @@ use common_exception::Result;
 use crate::storages::fuse::meta::ColumnId;
 use crate::storages::fuse::meta::ColumnMeta;
 
-pub fn column_metas(file_meta: &FileMetaData) -> Result<HashMap<ColumnId, ColumnMeta>> {
+pub fn column_metas(
+    file_meta: &FileMetaData,
+) -> Result<(
+    HashMap<ColumnId, ColumnMeta>,
+    Option<HashMap<Vec<String>, ColumnId>>,
+)> {
+    println!("file_meta={:#?}", file_meta);
+
     // currently we use one group only
     let num_row_groups = file_meta.row_groups.len();
     if num_row_groups != 1 {
@@ -32,6 +39,7 @@ pub fn column_metas(file_meta: &FileMetaData) -> Result<HashMap<ColumnId, Column
     }
     let row_group = &file_meta.row_groups[0];
     let mut col_metas = HashMap::with_capacity(row_group.columns.len());
+    let mut col_path = HashMap::with_capacity(row_group.columns.len());
     for (idx, col_chunk) in row_group.columns.iter().enumerate() {
         match &col_chunk.meta_data {
             Some(chunk_meta) => {
@@ -52,6 +60,9 @@ pub fn column_metas(file_meta: &FileMetaData) -> Result<HashMap<ColumnId, Column
                     num_values,
                 };
                 col_metas.insert(idx as u32, res);
+
+                let path_in_schema = chunk_meta.path_in_schema.clone();
+                col_path.insert(path_in_schema, idx as u32);
             }
             None => {
                 return Err(ErrorCode::ParquetError(format!(
@@ -61,5 +72,5 @@ pub fn column_metas(file_meta: &FileMetaData) -> Result<HashMap<ColumnId, Column
             }
         }
     }
-    Ok(col_metas)
+    Ok((col_metas, Some(col_path)))
 }

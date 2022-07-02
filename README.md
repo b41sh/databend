@@ -208,3 +208,1038 @@ Databend is licensed under [Apache 2.0](LICENSE).
 - The [documentation website](https://databend.rs) hosted by [Vercel](https://vercel.com/?utm_source=databend&utm_campaign=oss).
 - Thanks to [Mergify](https://mergify.com/) for sponsoring advanced features like Batch Merge.
 - Thanks to [QingCloud](https://qingcloud.com) for sponsoring CI resources.
+
+
+
+
+
+
+
+
+
+file_meta=FileMetaData {
+    version: 2,
+    schema: [
+        SchemaElement {
+            type_: None,
+            type_length: None,
+            repetition_type: None,
+            name: "root",
+            num_children: Some(
+                2,
+            ),
+            converted_type: None,
+            scale: None,
+            precision: None,
+            field_id: None,
+            logical_type: None,
+        },
+        SchemaElement {
+            type_: Some(
+                Type(
+                    1,
+                ),
+            ),
+            type_length: None,
+            repetition_type: Some(
+                FieldRepetitionType(
+                    0,
+                ),
+            ),
+            name: "id",
+            num_children: None,
+            converted_type: None,
+            scale: None,
+            precision: None,
+            field_id: None,
+            logical_type: None,
+        },
+        SchemaElement {
+            type_: None,
+            type_length: None,
+            repetition_type: Some(
+                FieldRepetitionType(
+                    0,
+                ),
+            ),
+            name: "v",
+            num_children: Some(
+                2,
+            ),
+            converted_type: None,
+            scale: None,
+            precision: None,
+            field_id: None,
+            logical_type: None,
+        },
+        SchemaElement {
+            type_: Some(
+                Type(
+                    1,
+                ),
+            ),
+            type_length: None,
+            repetition_type: Some(
+                FieldRepetitionType(
+                    0,
+                ),
+            ),
+            name: "a",
+            num_children: None,
+            converted_type: Some(
+                ConvertedType(
+                    15,
+                ),
+            ),
+            scale: None,
+            precision: None,
+            field_id: None,
+            logical_type: Some(
+                INTEGER(
+                    IntType {
+                        bit_width: 8,
+                        is_signed: true,
+                    },
+                ),
+            ),
+        },
+        SchemaElement {
+            type_: Some(
+                Type(
+                    6,
+                ),
+            ),
+            type_length: None,
+            repetition_type: Some(
+                FieldRepetitionType(
+                    0,
+                ),
+            ),
+            name: "b",
+            num_children: None,
+            converted_type: None,
+            scale: None,
+            precision: None,
+            field_id: None,
+            logical_type: None,
+        },
+    ],
+    num_rows: 2,
+    row_groups: [
+        RowGroup {
+            columns: [
+                ColumnChunk {
+                    file_path: None,
+                    file_offset: 35,
+                    meta_data: Some(
+                        ColumnMetaData {
+                            type_: Type(
+                                1,
+                            ),
+                            encodings: [
+                                Encoding(
+                                    0,
+                                ),
+                                Encoding(
+                                    3,
+                                ),
+                            ],
+                            path_in_schema: [
+                                "id",
+                            ],
+                            codec: CompressionCodec(
+                                7,
+                            ),
+                            num_values: 2,
+                            total_uncompressed_size: 30,
+                            total_compressed_size: 31,
+                            key_value_metadata: None,
+                            data_page_offset: 4,
+                            index_page_offset: None,
+                            dictionary_page_offset: None,
+                            statistics: None,
+                            encoding_stats: None,
+                            bloom_filter_offset: None,
+                        },
+                    ),
+                    offset_index_offset: Some(
+                        172,
+                    ),
+                    offset_index_length: Some(
+                        10,
+                    ),
+                    column_index_offset: None,
+                    column_index_length: None,
+                    crypto_metadata: None,
+                    encrypted_column_metadata: None,
+                },
+                ColumnChunk {
+                    file_path: None,
+                    file_offset: 88,
+                    meta_data: Some(
+                        ColumnMetaData {
+                            type_: Type(
+                                1,
+                            ),
+                            encodings: [
+                                Encoding(
+                                    0,
+                                ),
+                                Encoding(
+                                    3,
+                                ),
+                            ],
+                            path_in_schema: [
+                                "v",
+                                "a",
+                            ],
+                            codec: CompressionCodec(
+                                7,
+                            ),
+                            num_values: 2,
+                            total_uncompressed_size: 30,
+                            total_compressed_size: 31,
+                            key_value_metadata: None,
+                            data_page_offset: 57,
+                            index_page_offset: None,
+                            dictionary_page_offset: None,
+                            statistics: None,
+                            encoding_stats: None,
+                            bloom_filter_offset: None,
+                        },
+                    ),
+                    offset_index_offset: Some(
+                        182,
+                    ),
+                    offset_index_length: Some(
+                        10,
+                    ),
+                    column_index_offset: None,
+                    column_index_length: None,
+                    crypto_metadata: None,
+                    encrypted_column_metadata: None,
+                },
+                ColumnChunk {
+                    file_path: None,
+                    file_offset: 148,
+                    meta_data: Some(
+                        ColumnMetaData {
+                            type_: Type(
+                                6,
+                            ),
+                            encodings: [
+                                Encoding(
+                                    0,
+                                ),
+                                Encoding(
+                                    3,
+                                ),
+                            ],
+                            path_in_schema: [
+                                "v",
+                                "b",
+                            ],
+                            codec: CompressionCodec(
+                                7,
+                            ),
+                            num_values: 2,
+                            total_uncompressed_size: 36,
+                            total_compressed_size: 37,
+                            key_value_metadata: None,
+                            data_page_offset: 111,
+                            index_page_offset: None,
+                            dictionary_page_offset: None,
+                            statistics: None,
+                            encoding_stats: None,
+                            bloom_filter_offset: None,
+                        },
+                    ),
+                    offset_index_offset: Some(
+                        192,
+                    ),
+                    offset_index_length: Some(
+                        11,
+                    ),
+                    column_index_offset: None,
+                    column_index_length: None,
+                    crypto_metadata: None,
+                    encrypted_column_metadata: None,
+                },
+            ],
+            total_byte_size: 96,
+            num_rows: 2,
+            sorting_columns: None,
+            file_offset: Some(
+                4,
+            ),
+            total_compressed_size: Some(
+                99,
+            ),
+            ordinal: Some(
+                0,
+            ),
+        },
+    ],
+    key_value_metadata: None,
+    created_by: Some(
+        "Arrow2 - Native Rust implementation of Arrow",
+    ),
+    column_orders: None,
+    encryption_algorithm: None,
+    footer_signing_key_metadata: None,
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+parquet_schema_descriptor=SchemaDescriptor {
+    name: "root",
+    fields: [
+        PrimitiveType(
+            PrimitiveType {
+                field_info: FieldInfo {
+                    name: "id",
+                    repetition: Required,
+                    id: None,
+                },
+                logical_type: None,
+                converted_type: None,
+                physical_type: Int32,
+            },
+        ),
+        GroupType {
+            field_info: FieldInfo {
+                name: "v",
+                repetition: Required,
+                id: None,
+            },
+            logical_type: None,
+            converted_type: None,
+            fields: [
+                PrimitiveType(
+                    PrimitiveType {
+                        field_info: FieldInfo {
+                            name: "a",
+                            repetition: Required,
+                            id: None,
+                        },
+                        logical_type: Some(
+                            Integer(
+                                Int8,
+                            ),
+                        ),
+                        converted_type: Some(
+                            Int8,
+                        ),
+                        physical_type: Int32,
+                    },
+                ),
+                PrimitiveType(
+                    PrimitiveType {
+                        field_info: FieldInfo {
+                            name: "b",
+                            repetition: Required,
+                            id: None,
+                        },
+                        logical_type: None,
+                        converted_type: None,
+                        physical_type: ByteArray,
+                    },
+                ),
+            ],
+        },
+    ],
+    leaves: [
+        ColumnDescriptor {
+            descriptor: Descriptor {
+                primitive_type: PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "id",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    physical_type: Int32,
+                },
+                max_def_level: 0,
+                max_rep_level: 0,
+            },
+            path_in_schema: [
+                "id",
+            ],
+            base_type: PrimitiveType(
+                PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "id",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    physical_type: Int32,
+                },
+            ),
+        },
+        ColumnDescriptor {
+            descriptor: Descriptor {
+                primitive_type: PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "a",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: Some(
+                        Integer(
+                            Int8,
+                        ),
+                    ),
+                    converted_type: Some(
+                        Int8,
+                    ),
+                    physical_type: Int32,
+                },
+                max_def_level: 0,
+                max_rep_level: 0,
+            },
+            path_in_schema: [
+                "v",
+                "a",
+            ],
+            base_type: GroupType {
+                field_info: FieldInfo {
+                    name: "v",
+                    repetition: Required,
+                    id: None,
+                },
+                logical_type: None,
+                converted_type: None,
+                fields: [
+                    PrimitiveType(
+                        PrimitiveType {
+                            field_info: FieldInfo {
+                                name: "a",
+                                repetition: Required,
+                                id: None,
+                            },
+                            logical_type: Some(
+                                Integer(
+                                    Int8,
+                                ),
+                            ),
+                            converted_type: Some(
+                                Int8,
+                            ),
+                            physical_type: Int32,
+                        },
+                    ),
+                    PrimitiveType(
+                        PrimitiveType {
+                            field_info: FieldInfo {
+                                name: "b",
+                                repetition: Required,
+                                id: None,
+                            },
+                            logical_type: None,
+                            converted_type: None,
+                            physical_type: ByteArray,
+                        },
+                    ),
+                ],
+            },
+        },
+        ColumnDescriptor {
+            descriptor: Descriptor {
+                primitive_type: PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "b",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    physical_type: ByteArray,
+                },
+                max_def_level: 0,
+                max_rep_level: 0,
+            },
+            path_in_schema: [
+                "v",
+                "b",
+            ],
+            base_type: GroupType {
+                field_info: FieldInfo {
+                    name: "v",
+                    repetition: Required,
+                    id: None,
+                },
+                logical_type: None,
+                converted_type: None,
+                fields: [
+                    PrimitiveType(
+                        PrimitiveType {
+                            field_info: FieldInfo {
+                                name: "a",
+                                repetition: Required,
+                                id: None,
+                            },
+                            logical_type: Some(
+                                Integer(
+                                    Int8,
+                                ),
+                            ),
+                            converted_type: Some(
+                                Int8,
+                            ),
+                            physical_type: Int32,
+                        },
+                    ),
+                    PrimitiveType(
+                        PrimitiveType {
+                            field_info: FieldInfo {
+                                name: "b",
+                                repetition: Required,
+                                id: None,
+                            },
+                            logical_type: None,
+                            converted_type: None,
+                            physical_type: ByteArray,
+                        },
+                    ),
+                ],
+            },
+        },
+    ],
+}
+
+
+projection=[
+    0,
+    1,
+]
+
+
+
+
+
+
+
+
+
+
+
+
+parquet_schema_descriptor=SchemaDescriptor {
+    name: "root",
+    fields: [
+        PrimitiveType(
+            PrimitiveType {
+                field_info: FieldInfo {
+                    name: "a",
+                    repetition: Required,
+                    id: None,
+                },
+                logical_type: Some(
+                    Integer(
+                        Int8,
+                    ),
+                ),
+                converted_type: Some(
+                    Int8,
+                ),
+                physical_type: Int32,
+            },
+        ),
+        PrimitiveType(
+            PrimitiveType {
+                field_info: FieldInfo {
+                    name: "b",
+                    repetition: Required,
+                    id: None,
+                },
+                logical_type: None,
+                converted_type: None,
+                physical_type: ByteArray,
+            },
+        ),
+    ],
+    leaves: [
+        ColumnDescriptor {
+            descriptor: Descriptor {
+                primitive_type: PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "a",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: Some(
+                        Integer(
+                            Int8,
+                        ),
+                    ),
+                    converted_type: Some(
+                        Int8,
+                    ),
+                    physical_type: Int32,
+                },
+                max_def_level: 0,
+                max_rep_level: 0,
+            },
+            path_in_schema: [
+                "a",
+            ],
+            base_type: PrimitiveType(
+                PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "a",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: Some(
+                        Integer(
+                            Int8,
+                        ),
+                    ),
+                    converted_type: Some(
+                        Int8,
+                    ),
+                    physical_type: Int32,
+                },
+            ),
+        },
+        ColumnDescriptor {
+            descriptor: Descriptor {
+                primitive_type: PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "b",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    physical_type: ByteArray,
+                },
+                max_def_level: 0,
+                max_rep_level: 0,
+            },
+            path_in_schema: [
+                "b",
+            ],
+            base_type: PrimitiveType(
+                PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "b",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    physical_type: ByteArray,
+                },
+            ),
+        },
+    ],
+}
+
+
+
+
+
+
+
+
+
+
+
+
+parquet_schema_descriptor=SchemaDescriptor {
+    name: "root",
+    fields: [
+        PrimitiveType(
+            PrimitiveType {
+                field_info: FieldInfo {
+                    name: "id",
+                    repetition: Required,
+                    id: None,
+                },
+                logical_type: None,
+                converted_type: None,
+                physical_type: Int32,
+            },
+        ),
+        GroupType {
+            field_info: FieldInfo {
+                name: "v",
+                repetition: Required,
+                id: None,
+            },
+            logical_type: None,
+            converted_type: None,
+            fields: [
+                PrimitiveType(
+                    PrimitiveType {
+                        field_info: FieldInfo {
+                            name: "a",
+                            repetition: Required,
+                            id: None,
+                        },
+                        logical_type: Some(
+                            Integer(
+                                Int8,
+                            ),
+                        ),
+                        converted_type: Some(
+                            Int8,
+                        ),
+                        physical_type: Int32,
+                    },
+                ),
+                PrimitiveType(
+                    PrimitiveType {
+                        field_info: FieldInfo {
+                            name: "b",
+                            repetition: Required,
+                            id: None,
+                        },
+                        logical_type: None,
+                        converted_type: None,
+                        physical_type: ByteArray,
+                    },
+                ),
+            ],
+        },
+        GroupType {
+            field_info: FieldInfo {
+                name: "z",
+                repetition: Required,
+                id: None,
+            },
+            logical_type: None,
+            converted_type: None,
+            fields: [
+                PrimitiveType(
+                    PrimitiveType {
+                        field_info: FieldInfo {
+                            name: "c",
+                            repetition: Required,
+                            id: None,
+                        },
+                        logical_type: None,
+                        converted_type: None,
+                        physical_type: Int32,
+                    },
+                ),
+                PrimitiveType(
+                    PrimitiveType {
+                        field_info: FieldInfo {
+                            name: "d",
+                            repetition: Required,
+                            id: None,
+                        },
+                        logical_type: None,
+                        converted_type: None,
+                        physical_type: ByteArray,
+                    },
+                ),
+            ],
+        },
+    ],
+    leaves: [
+        ColumnDescriptor {
+            descriptor: Descriptor {
+                primitive_type: PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "id",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    physical_type: Int32,
+                },
+                max_def_level: 0,
+                max_rep_level: 0,
+            },
+            path_in_schema: [
+                "id",
+            ],
+            base_type: PrimitiveType(
+                PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "id",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    physical_type: Int32,
+                },
+            ),
+        },
+        ColumnDescriptor {
+            descriptor: Descriptor {
+                primitive_type: PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "a",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: Some(
+                        Integer(
+                            Int8,
+                        ),
+                    ),
+                    converted_type: Some(
+                        Int8,
+                    ),
+                    physical_type: Int32,
+                },
+                max_def_level: 0,
+                max_rep_level: 0,
+            },
+            path_in_schema: [
+                "v",
+                "a",
+            ],
+            base_type: GroupType {
+                field_info: FieldInfo {
+                    name: "v",
+                    repetition: Required,
+                    id: None,
+                },
+                logical_type: None,
+                converted_type: None,
+                fields: [
+                    PrimitiveType(
+                        PrimitiveType {
+                            field_info: FieldInfo {
+                                name: "a",
+                                repetition: Required,
+                                id: None,
+                            },
+                            logical_type: Some(
+                                Integer(
+                                    Int8,
+                                ),
+                            ),
+                            converted_type: Some(
+                                Int8,
+                            ),
+                            physical_type: Int32,
+                        },
+                    ),
+                    PrimitiveType(
+                        PrimitiveType {
+                            field_info: FieldInfo {
+                                name: "b",
+                                repetition: Required,
+                                id: None,
+                            },
+                            logical_type: None,
+                            converted_type: None,
+                            physical_type: ByteArray,
+                        },
+                    ),
+                ],
+            },
+        },
+        ColumnDescriptor {
+            descriptor: Descriptor {
+                primitive_type: PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "b",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    physical_type: ByteArray,
+                },
+                max_def_level: 0,
+                max_rep_level: 0,
+            },
+            path_in_schema: [
+                "v",
+                "b",
+            ],
+            base_type: GroupType {
+                field_info: FieldInfo {
+                    name: "v",
+                    repetition: Required,
+                    id: None,
+                },
+                logical_type: None,
+                converted_type: None,
+                fields: [
+                    PrimitiveType(
+                        PrimitiveType {
+                            field_info: FieldInfo {
+                                name: "a",
+                                repetition: Required,
+                                id: None,
+                            },
+                            logical_type: Some(
+                                Integer(
+                                    Int8,
+                                ),
+                            ),
+                            converted_type: Some(
+                                Int8,
+                            ),
+                            physical_type: Int32,
+                        },
+                    ),
+                    PrimitiveType(
+                        PrimitiveType {
+                            field_info: FieldInfo {
+                                name: "b",
+                                repetition: Required,
+                                id: None,
+                            },
+                            logical_type: None,
+                            converted_type: None,
+                            physical_type: ByteArray,
+                        },
+                    ),
+                ],
+            },
+        },
+        ColumnDescriptor {
+            descriptor: Descriptor {
+                primitive_type: PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "c",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    physical_type: Int32,
+                },
+                max_def_level: 0,
+                max_rep_level: 0,
+            },
+            path_in_schema: [
+                "z",
+                "c",
+            ],
+            base_type: GroupType {
+                field_info: FieldInfo {
+                    name: "z",
+                    repetition: Required,
+                    id: None,
+                },
+                logical_type: None,
+                converted_type: None,
+                fields: [
+                    PrimitiveType(
+                        PrimitiveType {
+                            field_info: FieldInfo {
+                                name: "c",
+                                repetition: Required,
+                                id: None,
+                            },
+                            logical_type: None,
+                            converted_type: None,
+                            physical_type: Int32,
+                        },
+                    ),
+                    PrimitiveType(
+                        PrimitiveType {
+                            field_info: FieldInfo {
+                                name: "d",
+                                repetition: Required,
+                                id: None,
+                            },
+                            logical_type: None,
+                            converted_type: None,
+                            physical_type: ByteArray,
+                        },
+                    ),
+                ],
+            },
+        },
+        ColumnDescriptor {
+            descriptor: Descriptor {
+                primitive_type: PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "d",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    physical_type: ByteArray,
+                },
+                max_def_level: 0,
+                max_rep_level: 0,
+            },
+            path_in_schema: [
+                "z",
+                "d",
+            ],
+            base_type: GroupType {
+                field_info: FieldInfo {
+                    name: "z",
+                    repetition: Required,
+                    id: None,
+                },
+                logical_type: None,
+                converted_type: None,
+                fields: [
+                    PrimitiveType(
+                        PrimitiveType {
+                            field_info: FieldInfo {
+                                name: "c",
+                                repetition: Required,
+                                id: None,
+                            },
+                            logical_type: None,
+                            converted_type: None,
+                            physical_type: Int32,
+                        },
+                    ),
+                    PrimitiveType(
+                        PrimitiveType {
+                            field_info: FieldInfo {
+                                name: "d",
+                                repetition: Required,
+                                id: None,
+                            },
+                            logical_type: None,
+                            converted_type: None,
+                            physical_type: ByteArray,
+                        },
+                    ),
+                ],
+            },
+        },
+    ],
+}
+
+

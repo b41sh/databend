@@ -84,7 +84,7 @@ impl StatisticsAccumulator {
         let block_size = statistics.block_bytes_size;
         let col_stats = statistics.block_column_statistics.clone();
         let location = (statistics.block_file_location, DataBlock::VERSION);
-        let col_metas = column_metas(&meta)?;
+        let (col_metas, col_path) = column_metas(&meta)?;
         let cluster_stats = statistics.block_cluster_statistics;
 
         self.blocks_metas.push(BlockMeta::new(
@@ -93,6 +93,7 @@ impl StatisticsAccumulator {
             file_size,
             col_stats,
             col_metas,
+            col_path,
             cluster_stats,
             location,
         ));
@@ -119,6 +120,7 @@ impl PartiallyAccumulated {
         file_size: u64,
         location: String,
         col_metas: HashMap<ColumnId, ColumnMeta>,
+        col_path: Option<HashMap<Vec<String>, ColumnId>>,
     ) -> StatisticsAccumulator {
         let mut stats = &mut self.accumulator;
         stats.file_size += file_size;
@@ -135,6 +137,7 @@ impl PartiallyAccumulated {
             file_size,
             col_stats,
             col_metas,
+            col_path,
             cluster_stats,
             location,
         );

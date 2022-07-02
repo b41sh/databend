@@ -69,6 +69,19 @@ impl SQLCommon {
                 let inner_data_type = Self::make_data_type(sql_type)?;
                 Ok(ArrayType::new_impl(inner_data_type))
             }
+            SQLDataType::Struct(names, sql_types) => {
+                let mut inner_data_types = Vec::with_capacity(sql_types.len());
+                for sql_type in sql_types {
+                    let inner_data_type = Self::make_data_type(sql_type)?;
+                    inner_data_types.push(inner_data_type);
+                }
+                let mut inner_names = Vec::with_capacity(sql_types.len());
+                for name in names {
+                    inner_names.push(name.to_string());
+                }
+
+                Ok(StructType::new_impl(inner_names, inner_data_types))
+            }
 
             // Custom types for databend:
             // Custom(ObjectName([Ident { value: "uint8", quote_style: None }])

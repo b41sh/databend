@@ -26,6 +26,7 @@ use common_arrow::parquet::metadata::SchemaDescriptor;
 use common_arrow::parquet::read::BasicDecompressor;
 use common_arrow::parquet::read::PageMetaData;
 use common_arrow::parquet::read::PageReader;
+use common_arrow::parquet::schema::types::ParquetType;
 use common_datablocks::DataBlock;
 use common_datavalues::DataSchemaRef;
 use common_exception::ErrorCode;
@@ -67,6 +68,11 @@ impl BlockReader {
 
         let arrow_schema = schema.to_arrow();
         let parquet_schema_descriptor = to_parquet_schema(&arrow_schema)?;
+
+        println!("arrow_schema={:#?}", arrow_schema);
+        println!("parquet_schema_descriptor={:#?}", parquet_schema_descriptor);
+        println!("projection={:#?}", projection);
+
         Ok(Arc::new(BlockReader {
             operator,
             projection,
@@ -125,7 +131,92 @@ impl BlockReader {
         let num_cols = self.projection.len();
         let mut column_chunk_futs = Vec::with_capacity(num_cols);
         let mut col_idx = Vec::with_capacity(num_cols);
+        // column meta 记录位置，从 parquet 中直接读出
+
+        let parquet_fields = self.parquet_schema_descriptor.fields();
         for index in &self.projection {
+            let column_metas = match meta.col_path {
+                Some(col_path) => {
+                    let parquet_field = parquet_fields.get(*index).ok_or_else(|| {
+                        ErrorCode::LogicalError(format!("index out of bound {}", index))
+                    })?;
+
+                    let pathes = Self::transverse_path(parquet_field);
+
+                    pathes
+                        .iter()
+                        .map(|path| {
+                            col_path
+                                .get(&path)
+                                .and_then(|index| {
+                                    meta.col_metas.get(&(*index as u32)).ok_or_else(|| {
+                                        ErrorCode::LogicalError(format!(
+                                            "index out of bound {}",
+                                            index
+                                        ))
+                                    })?
+                                })
+                                .ok_or_else(|| {
+                                    ErrorCode::LogicalError(format!("path out of bound {}", path))
+                                })?
+                        })
+                        .collect::<Vec<_>>()
+                }
+                None => meta
+                    .col_metas
+                    .get(&(*index as u32))
+                    .ok_or_else(|| {
+                        ErrorCode::LogicalError(format!("index out of bound {}", index))
+                    })?
+                    .collect::<Vec<_>>(),
+            };
+
+            println!("column_metas={:?}", column_metas);
+
+            /**
+            pub enum ParquetType {
+                PrimitiveType(PrimitiveType),
+                GroupType {
+                    field_info: FieldInfo,
+                    logical_type: Option<GroupLogicalType>,
+                    converted_type: Option<GroupConvertedType>,
+                    fields: Vec<ParquetType>,
+                },
+            }
+
+
+            /// The complete description of a parquet column
+            #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+            pub struct PrimitiveType {
+                /// The fields' generic information
+                pub field_info: FieldInfo,
+                /// The optional logical type
+                pub logical_type: Option<PrimitiveLogicalType>,
+                /// The optional converted type
+                pub converted_type: Option<PrimitiveConvertedType>,
+                /// The physical type
+                pub physical_type: PhysicalType,
+            }
+
+
+
+            /// Common type information.
+            #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+            pub struct FieldInfo {
+                /// The field name
+                pub name: String,
+                /// The repetition
+                pub repetition: Repetition,
+                /// the optional id, to select fields by id
+                pub id: Option<i32>,
+            }
+
+
+                /// The schemas' fields.
+                pub fn fields(&self) -> &[ParquetType] {
+                    &self.fields
+                }
+            */
             let column_meta = meta
                 .col_metas
                 .get(&(*index as u32))
@@ -142,6 +233,7 @@ impl BlockReader {
             col_idx.push(index);
         }
 
+        // 用这些 chunk 组成 chunks
         let chunks = futures::stream::iter(column_chunk_futs)
             .buffered(std::cmp::min(10, num_cols))
             .try_collect::<Vec<_>>()
@@ -321,5 +413,27 @@ impl BlockReader {
             Compression::Lz4 => ParquetCompression::Lz4,
             Compression::Lz4Raw => ParquetCompression::Lz4Raw,
         }
+    }
+
+    fn transverse_path(parquet_type: &ParquetType) -> Vec<Vec<String>> {
+        let mut pathes = ![];
+        match parquet_type {
+            ParquetType::PrimitiveType(primitive) => {
+                let path = vec![primitive.field_info.name];
+                pathes.push(path);
+            }
+            ParquetType::GroupType {
+                field_info, fields, ..
+            } => {
+                fields.iter().map(|field| {
+                    Self::transverse_path(field).iter().map(|sub_path| {
+                        let mut path = vec![field_info.name];
+                        path.extend_from_slice(&sub_path);
+                        pathes.push(path);
+                    });
+                });
+            }
+        }
+        pathes
     }
 }
