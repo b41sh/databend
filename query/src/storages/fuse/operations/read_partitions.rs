@@ -96,6 +96,11 @@ impl FuseTable {
         (statistics, partitions)
     }
 
+
+
+
+
+
     fn is_exact(push_downs: &Option<Extras>) -> bool {
         match push_downs {
             None => true,
@@ -113,6 +118,9 @@ impl FuseTable {
         if limit == 0 {
             return (statistics, partitions);
         }
+
+        println!("all_columns_partitions======");
+
 
         let mut remaining = limit;
 
@@ -147,6 +155,12 @@ impl FuseTable {
         if limit == 0 {
             return (statistics, partitions);
         }
+
+        println!("projection_partitions---------");
+        println!("indices={:?}", indices);
+
+
+
 
         let mut remaining = limit;
 
@@ -188,11 +202,28 @@ impl FuseTable {
         let rows_count = meta.row_count;
         let location = meta.location.0.clone();
         let format_version = meta.location.1;
+
+        let columns_path = match &meta.col_path {
+            Some(col_path) => {
+                let mut columns_path = HashMap::with_capacity(col_path.len());
+                for (path, idx) in col_path {
+                    columns_path.insert(path.clone(), *idx as usize);
+                }
+                Some(columns_path)
+            }
+            None => None,
+        };
+
+        println!("all columns_meta={:?}", columns_meta);
+        println!("all columns_path={:?}", columns_path);
+
+
         FusePartInfo::create(
             location,
             format_version,
             rows_count,
             columns_meta,
+            columns_path,
             meta.compression(),
         )
     }
@@ -209,9 +240,35 @@ impl FuseTable {
             );
         }
 
+        for (idx, column_meta) in &meta.col_metas {
+            columns_meta.insert(
+                *idx as usize,
+                ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
+            );
+        }
+
         let rows_count = meta.row_count;
         let location = meta.location.0.clone();
         let format_version = meta.location.1;
+
+
+        let columns_path = match &meta.col_path {
+            Some(col_path) => {
+                let mut columns_path = HashMap::with_capacity(col_path.len());
+                for (path, idx) in col_path {
+                    columns_path.insert(path.clone(), *idx as usize);
+                }
+                Some(columns_path)
+            }
+            None => None,
+        };
+
+
+        println!("part columns_meta={:?}", columns_meta);
+        println!("part columns_path={:?}", columns_path);
+
+
+
         // TODO
         // row_count should be a hint value of  LIMIT,
         // not the count the rows in this partition
@@ -220,6 +277,7 @@ impl FuseTable {
             format_version,
             rows_count,
             columns_meta,
+            columns_path,
             meta.compression(),
         )
     }

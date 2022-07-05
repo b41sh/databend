@@ -120,7 +120,7 @@ impl PartiallyAccumulated {
         file_size: u64,
         location: String,
         col_metas: HashMap<ColumnId, ColumnMeta>,
-        col_path: Option<HashMap<Vec<String>, ColumnId>>,
+        col_path: Option<HashMap<String, ColumnId>>,
     ) -> StatisticsAccumulator {
         let mut stats = &mut self.accumulator;
         stats.file_size += file_size;

@@ -48,6 +48,7 @@ pub struct FusePartInfo {
     pub format_version: u64,
     pub nums_rows: usize,
     pub columns_meta: HashMap<usize, ColumnMeta>,
+    pub columns_path: Option<HashMap<String, usize>>,
     pub compression: Compression,
 }
 
@@ -71,12 +72,14 @@ impl FusePartInfo {
         format_version: u64,
         rows_count: u64,
         columns_meta: HashMap<usize, ColumnMeta>,
+        columns_path: Option<HashMap<String, usize>>,
         compression: Compression,
     ) -> Arc<Box<dyn PartInfo>> {
         Arc::new(Box::new(FusePartInfo {
             location,
             format_version,
             columns_meta,
+            columns_path,
             nums_rows: rows_count as usize,
             compression,
         }))

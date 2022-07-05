@@ -133,9 +133,10 @@ impl BlockReader {
         let mut col_idx = Vec::with_capacity(num_cols);
         // column meta 记录位置，从 parquet 中直接读出
 
+        let mut column_metas = Vec::new();
         let parquet_fields = self.parquet_schema_descriptor.fields();
         for index in &self.projection {
-            let column_metas = match meta.col_path {
+            match &meta.col_path {
                 Some(col_path) => {
                     let parquet_field = parquet_fields.get(*index).ok_or_else(|| {
                         ErrorCode::LogicalError(format!("index out of bound {}", index))
@@ -145,33 +146,36 @@ impl BlockReader {
                     let pathes = Self::transverse_path(parquet_field);
                     println!("pathes={:?}", pathes);
 
-                    pathes
-                        .iter()
-                        .map(|path| {
-                            col_path
-                                .get(path)
-                                .ok_or_else(|| {
-                                    ErrorCode::LogicalError(format!("path {:?} not exist", path))
-                                })?
-                                .and_then(|index| {
-                                    meta.col_metas.get(&(*index as u32)).ok_or_else(|| {
-                                        ErrorCode::LogicalError(format!(
-                                            "index out of bound {}",
-                                            index
-                                        ))
-                                    })?
-                                })
-                        })
-                        .collect::<Vec<_>>()
+                    for path in pathes.iter() {
+                        match col_path.get(path) {
+                            Some(index) => match meta.col_metas.get(&(*index as u32)) {
+                                Some(col_meta) => column_metas.push(col_meta),
+                                None => {
+                                    return Err(ErrorCode::LogicalError(format!(
+                                        "index out of bound {}",
+                                        index
+                                    )))
+                                }
+                            },
+                            None => {
+                                return Err(ErrorCode::LogicalError(format!(
+                                    "path {:?} not exist",
+                                    path
+                                )))
+                            }
+                        }
+                    }
                 }
-                None => meta
-                    .col_metas
-                    .get(&(*index as u32))
-                    .ok_or_else(|| {
-                        ErrorCode::LogicalError(format!("index out of bound {}", index))
-                    })?
-                    .collect::<Vec<_>>(),
-            };
+                None => match meta.col_metas.get(&(*index as u32)) {
+                    Some(col_meta) => column_metas.push(col_meta),
+                    None => {
+                        return Err(ErrorCode::LogicalError(format!(
+                            "index out of bound {}",
+                            index
+                        )))
+                    }
+                },
+            }
 
             println!("column_metas={:?}", column_metas);
 
@@ -266,7 +270,64 @@ impl BlockReader {
     }
 
     async fn read_columns(&self, part: PartInfoPtr) -> Result<(usize, Vec<ArrayIter<'static>>)> {
+
+        println!("========read_columns---------------");
+
         let part = FusePartInfo::from_part(&part)?;
+
+        let mut column_metas = Vec::new();
+        let parquet_fields = self.parquet_schema_descriptor.fields();
+        for index in &self.projection {
+            match &part.columns_path {
+                Some(col_path) => {
+                    let parquet_field = parquet_fields.get(*index).ok_or_else(|| {
+                        ErrorCode::LogicalError(format!("index out of bound {}", index))
+                    })?;
+                    println!("index={:?} parquet_field={:?}", index, parquet_field);
+
+                    let pathes = Self::transverse_path(parquet_field);
+                    println!("pathes={:?}", pathes);
+
+                    for path in pathes.iter() {
+                        match col_path.get(path) {
+                            Some(index) => match part.columns_meta.get(&(*index as usize)) {
+                                Some(col_meta) => column_metas.push(col_meta),
+                                None => {
+                                    return Err(ErrorCode::LogicalError(format!(
+                                        "index out of bound {}",
+                                        index
+                                    )))
+                                }
+                            },
+                            None => {
+                                return Err(ErrorCode::LogicalError(format!(
+                                    "path {:?} not exist",
+                                    path
+                                )))
+                            }
+                        }
+                    }
+                }
+                None => match part.columns_meta.get(&(*index as usize)) {
+                    Some(col_meta) => column_metas.push(col_meta),
+                    None => {
+                        return Err(ErrorCode::LogicalError(format!(
+                            "index out of bound {}",
+                            index
+                        )))
+                    }
+                },
+            }
+
+            println!("column_metas={:?}", column_metas);
+        }
+
+
+
+
+
+
+
 
         let rows = part.nums_rows;
         // TODO: add prefetch column data.
@@ -417,11 +478,11 @@ impl BlockReader {
         }
     }
 
-    fn transverse_path(parquet_type: &ParquetType) -> Vec<Vec<String>> {
+    fn transverse_path(parquet_type: &ParquetType) -> Vec<String> {
         let mut pathes = Vec::new();
         match parquet_type {
             ParquetType::PrimitiveType(primitive) => {
-                let path = vec![primitive.field_info.name];
+                let path = primitive.field_info.name.clone();
                 pathes.push(path);
             }
             ParquetType::GroupType {
@@ -429,8 +490,7 @@ impl BlockReader {
             } => {
                 fields.iter().map(|field| {
                     Self::transverse_path(field).iter().map(|sub_path| {
-                        let mut path = vec![field_info.name];
-                        path.extend_from_slice(&sub_path);
+                        let path = format!("{}:{}", field_info.name, sub_path);
                         pathes.push(path);
                     });
                 });

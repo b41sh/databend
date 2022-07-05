@@ -25,7 +25,7 @@ pub fn column_metas(
     file_meta: &FileMetaData,
 ) -> Result<(
     HashMap<ColumnId, ColumnMeta>,
-    Option<HashMap<Vec<String>, ColumnId>>,
+    Option<HashMap<String, ColumnId>>,
 )> {
     println!("file_meta={:#?}", file_meta);
 
@@ -61,7 +61,7 @@ pub fn column_metas(
                 };
                 col_metas.insert(idx as u32, res);
 
-                let path_in_schema = chunk_meta.path_in_schema.clone();
+                let path_in_schema = chunk_meta.path_in_schema.join(":");
                 col_path.insert(path_in_schema, idx as u32);
             }
             None => {
