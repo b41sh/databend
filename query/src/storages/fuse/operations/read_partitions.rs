@@ -190,32 +190,65 @@ impl FuseTable {
     }
 
     pub(crate) fn all_columns_part(meta: &BlockMeta) -> PartInfoPtr {
-        let mut columns_meta = HashMap::with_capacity(meta.col_metas.len());
+        let mut columns_meta: HashMap<usize, ColumnMeta> = HashMap::with_capacity(meta.col_metas.len());
+        let mut proj_map: HashMap<usize, Vec<usize>> = HashMap::with_capacity(meta.col_metas.len());
 
-        for (idx, column_meta) in &meta.col_metas {
-            columns_meta.insert(
-                *idx as usize,
-                ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
-            );
+
+        if let Some(root_schema) = &meta.col_schema {
+            let col_schemas = root_schema.children.as_ref().unwrap();
+            for idx in 0..col_schemas.len() {
+                let col_schema = col_schemas.get(idx).unwrap();
+
+                let mut column_ids = Vec::new();
+                let mut stack = Vec::new();
+                stack.push(col_schema);
+                loop {
+                    if stack.is_empty() {
+                        break;
+                    }
+                    let curr_col_schema = stack.pop().unwrap();
+                    //match &curr_col_schema.children {
+                    match curr_col_schema.children {
+                        Some(children) => {
+                            for child in children.iter().rev() {
+                                stack.push(child);
+                            }
+                        }
+                        None => {
+                            let column_id = curr_col_schema.column_id.unwrap();
+                            column_ids.push(column_id);
+                            let column_meta = &meta.col_metas[&column_id];
+                            columns_meta.insert(
+                                (column_id as usize),
+                                ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
+                            );
+                        }
+                    }
+                }
+                proj_map.insert(
+                    idx,
+                    column_ids,
+                );
+            }
+        } else {
+            for (idx, column_meta) in &meta.col_metas {
+                columns_meta.insert(
+                    *idx,
+                    ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
+                );
+                proj_map.insert(
+                    *idx,
+                    vec![*idx],
+                );
+            }
         }
 
         let rows_count = meta.row_count;
         let location = meta.location.0.clone();
         let format_version = meta.location.1;
 
-        let columns_path = match &meta.col_path {
-            Some(col_path) => {
-                let mut columns_path = HashMap::with_capacity(col_path.len());
-                for (path, idx) in col_path {
-                    columns_path.insert(path.clone(), *idx as usize);
-                }
-                Some(columns_path)
-            }
-            None => None,
-        };
-
         println!("all columns_meta={:?}", columns_meta);
-        println!("all columns_path={:?}", columns_path);
+        println!("all meta.col_schema={:?}", meta.col_schema);
 
 
         FusePartInfo::create(
@@ -223,28 +256,63 @@ impl FuseTable {
             format_version,
             rows_count,
             columns_meta,
-            columns_path,
+            proj_map,
             meta.compression(),
         )
     }
 
     fn projection_part(meta: &BlockMeta, projections: &[usize]) -> PartInfoPtr {
-        let mut columns_meta = HashMap::with_capacity(projections.len());
+        let mut columns_meta: HashMap<usize, ColumnMeta> = HashMap::with_capacity(meta.col_metas.len());
+        let mut proj_map: HashMap<usize, Vec<usize>> = HashMap::with_capacity(meta.col_metas.len());
 
-        for projection in projections {
-            let column_meta = &meta.col_metas[&(*projection as u32)];
+        if let Some(root_schema) = &meta.col_schema {
+            let col_schemas = root_schema.children.as_ref().unwrap();
+            for projection in projections {
+                let col_schema = col_schemas.get(*projection).unwrap();
 
-            columns_meta.insert(
-                *projection,
-                ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
-            );
-        }
+                let mut column_ids = Vec::new();
+                let mut stack = Vec::new();
+                stack.push(col_schema);
+                loop {
+                    if stack.is_empty() {
+                        break;
+                    }
+                    let curr_col_schema = stack.pop().unwrap();
+                    match &curr_col_schema.children {
+                        Some(children) => {
+                            for child in children.iter().rev() {
+                                stack.push(child);
+                            }
+                        }
+                        None => {
+                            let column_id = curr_col_schema.column_id.unwrap();
+                            column_ids.push(column_id);
+                            let column_meta = &meta.col_metas[&column_id];
+                            columns_meta.insert(
+                                (column_id as usize),
+                                ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
+                            );
+                        }
+                    }
+                }
+                proj_map.insert(
+                    projection,
+                    column_ids,
+                );
+            }
+        } else {
+            for projection in projections {
+                let column_meta = &meta.col_metas[&(*projection as u32)];
 
-        for (idx, column_meta) in &meta.col_metas {
-            columns_meta.insert(
-                *idx as usize,
-                ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
-            );
+                columns_meta.insert(
+                    *projection,
+                    ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
+                );
+                proj_map.insert(
+                    *projection,
+                    vec![*projection],
+                );
+            }
         }
 
         let rows_count = meta.row_count;
@@ -252,20 +320,8 @@ impl FuseTable {
         let format_version = meta.location.1;
 
 
-        let columns_path = match &meta.col_path {
-            Some(col_path) => {
-                let mut columns_path = HashMap::with_capacity(col_path.len());
-                for (path, idx) in col_path {
-                    columns_path.insert(path.clone(), *idx as usize);
-                }
-                Some(columns_path)
-            }
-            None => None,
-        };
-
-
         println!("part columns_meta={:?}", columns_meta);
-        println!("part columns_path={:?}", columns_path);
+        println!("part meta.col_schema={:?}", meta.col_schema);
 
 
 
@@ -277,7 +333,7 @@ impl FuseTable {
             format_version,
             rows_count,
             columns_meta,
-            columns_path,
+            proj_map,
             meta.compression(),
         )
     }

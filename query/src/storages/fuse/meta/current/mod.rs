@@ -14,6 +14,7 @@
 
 pub use v0::ColumnMeta;
 pub use v1::BlockMeta;
+pub use v1::ColumnSchema;
 pub use v1::SegmentInfo;
 pub use v1::TableSnapshot;
 

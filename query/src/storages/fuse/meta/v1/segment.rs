@@ -40,6 +40,49 @@ pub struct SegmentInfo {
     pub summary: Statistics,
 }
 
+/**
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ColumnInfo {
+    /// The field id
+    pub field_id: u32,
+    /// The column name
+    pub name: String,
+    ///
+    pub path: Option<Vec<String>>,
+    /// The optional child ids, used by Struct column and Variant column with sub column
+    pub child_ids: Option<Vec<ColumnInfo>>,
+    /// The optional leaves id, to select column from parquet
+    pub leaves_id: Option<u32>,
+}
+*/
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+pub struct ColumnSchema {
+    pub name: String,
+    pub column_id: Option<u32>,
+    pub children: Option<Vec<ColumnSchema>>,
+}
+
+impl ColumnSchema {
+    pub fn new(name: String, column_id: Option<u32>) -> ColumnSchema {
+        return ColumnSchema {
+            name,
+            column_id,
+            children: None,
+        };
+    }
+
+    pub fn add_child(&mut self, child: ColumnSchema) {
+        if let Some(ref mut children) = self.children {
+            children.push(child);
+        } else {
+            self.children = Some(vec![child]);
+        }
+    }
+}
+
+
+
 /// Meta information of a block
 /// Part of and kept inside the [SegmentInfo]
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -49,7 +92,7 @@ pub struct BlockMeta {
     pub file_size: u64,
     pub col_stats: HashMap<ColumnId, ColumnStatistics>,
     pub col_metas: HashMap<ColumnId, ColumnMeta>,
-    pub col_path: Option<HashMap<String, ColumnId>>,
+    pub col_schema: Option<ColumnSchema>,
     pub cluster_stats: Option<ClusterStatistics>,
     pub location: Location,
 
@@ -69,7 +112,7 @@ impl BlockMeta {
         file_size: u64,
         col_stats: HashMap<ColumnId, ColumnStatistics>,
         col_metas: HashMap<ColumnId, ColumnMeta>,
-        col_path: Option<HashMap<String, ColumnId>>,
+        col_schema: Option<ColumnSchema>,
         cluster_stats: Option<ClusterStatistics>,
         location: Location,
     ) -> Self {
@@ -79,7 +122,7 @@ impl BlockMeta {
             file_size,
             col_stats,
             col_metas,
-            col_path,
+            col_schema,
             cluster_stats,
             location,
             compression: Compression::Lz4Raw,
@@ -125,7 +168,7 @@ impl From<v0::BlockMeta> for BlockMeta {
             file_size: s.file_size,
             col_stats: s.col_stats,
             col_metas: s.col_metas,
-            col_path: None,
+            col_schema: None,
             cluster_stats: None,
             location: (s.location.path, DataBlock::VERSION),
             compression: Compression::Lz4,

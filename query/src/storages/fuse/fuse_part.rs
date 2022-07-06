@@ -21,9 +21,10 @@ use common_exception::Result;
 use common_planners::PartInfo;
 use common_planners::PartInfoPtr;
 
+use crate::storages::fuse::meta::ColumnSchema;
 use crate::storages::fuse::meta::Compression;
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug)]
 pub struct ColumnMeta {
     pub offset: u64,
     pub length: u64,
@@ -40,6 +41,38 @@ impl ColumnMeta {
     }
 }
 
+/**
+//1. 在 fields 里列的编号
+//2. 在 parquet 里列的编号
+//columns_info 的 key 用来表示在 fields 里的编号，value 里的 id 用来表示在 parquet 里的编号
+//pushdowns 传下来的是 filed 的位置
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug)]
+pub struct ColumnInfo {
+    /// The id
+    pub field_id: u32,
+    /// The column name
+    pub name: String,
+    ///
+    pub path: Option<Vec<String>>,
+    /// The optional child ids, used by Struct column and Variant column with sub column
+    pub child_ids: Option<Vec<u32>>,
+    /// The optional leaves id, to select column from parquet
+    pub leaves_id: Option<u32>,
+}
+
+impl ColumnInfo {
+    pub fn create(field_id: u32, name: String, path: Option<Vec<String>>, child_ids: Option<Vec<u32>>, leaves_id: Option<u32>) -> ColumnInfo {
+        ColumnInfo {
+            field_id,
+            name,
+            path,
+            child_ids,
+            leaves_id,
+        }
+    }
+}
+*/
+
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub struct FusePartInfo {
     pub location: String,
@@ -48,7 +81,7 @@ pub struct FusePartInfo {
     pub format_version: u64,
     pub nums_rows: usize,
     pub columns_meta: HashMap<usize, ColumnMeta>,
-    pub columns_path: Option<HashMap<String, usize>>,
+    pub proj_map: HashMap<usize, Vec<usize>>,
     pub compression: Compression,
 }
 
@@ -72,14 +105,14 @@ impl FusePartInfo {
         format_version: u64,
         rows_count: u64,
         columns_meta: HashMap<usize, ColumnMeta>,
-        columns_path: Option<HashMap<String, usize>>,
+        proj_map: HashMap<u32, Vec<u32>>,
         compression: Compression,
     ) -> Arc<Box<dyn PartInfo>> {
         Arc::new(Box::new(FusePartInfo {
             location,
             format_version,
             columns_meta,
-            columns_path,
+            proj_map,
             nums_rows: rows_count as usize,
             compression,
         }))

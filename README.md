@@ -1243,3 +1243,837 @@ parquet_schema_descriptor=SchemaDescriptor {
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+projection_partitions---------
+indices=[0, 1]
+part columns_meta={0: ColumnMeta { offset: 4, length: 31, num_values: 2 }, 1: ColumnMeta { offset: 57, length: 31, num_values: 2 }}
+part columns_path=Some({"id": 0, "s:b": 3, "s:a:c": 1, "s:a:d": 2})
+arrow_schema=Schema {
+    fields: [
+        Field {
+            name: "id",
+            data_type: Int32,
+            is_nullable: false,
+            metadata: {},
+        },
+        Field {
+            name: "s",
+            data_type: Struct(
+                [
+                    Field {
+                        name: "a",
+                        data_type: Struct(
+                            [
+                                Field {
+                                    name: "c",
+                                    data_type: Int32,
+                                    is_nullable: false,
+                                    metadata: {},
+                                },
+                                Field {
+                                    name: "d",
+                                    data_type: Int32,
+                                    is_nullable: false,
+                                    metadata: {},
+                                },
+                            ],
+                        ),
+                        is_nullable: false,
+                        metadata: {},
+                    },
+                    Field {
+                        name: "b",
+                        data_type: Int32,
+                        is_nullable: false,
+                        metadata: {},
+                    },
+                ],
+            ),
+            is_nullable: false,
+            metadata: {},
+        },
+    ],
+    metadata: {},
+}
+parquet_schema_descriptor=SchemaDescriptor {
+    name: "root",
+    fields: [
+        PrimitiveType(
+            PrimitiveType {
+                field_info: FieldInfo {
+                    name: "id",
+                    repetition: Required,
+                    id: None,
+                },
+                logical_type: None,
+                converted_type: None,
+                physical_type: Int32,
+            },
+        ),
+        GroupType {
+            field_info: FieldInfo {
+                name: "s",
+                repetition: Required,
+                id: None,
+            },
+            logical_type: None,
+            converted_type: None,
+            fields: [
+                GroupType {
+                    field_info: FieldInfo {
+                        name: "a",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    fields: [
+                        PrimitiveType(
+                            PrimitiveType {
+                                field_info: FieldInfo {
+                                    name: "c",
+                                    repetition: Required,
+                                    id: None,
+                                },
+                                logical_type: None,
+                                converted_type: None,
+                                physical_type: Int32,
+                            },
+                        ),
+                        PrimitiveType(
+                            PrimitiveType {
+                                field_info: FieldInfo {
+                                    name: "d",
+                                    repetition: Required,
+                                    id: None,
+                                },
+                                logical_type: None,
+                                converted_type: None,
+                                physical_type: Int32,
+                            },
+                        ),
+                    ],
+                },
+                PrimitiveType(
+                    PrimitiveType {
+                        field_info: FieldInfo {
+                            name: "b",
+                            repetition: Required,
+                            id: None,
+                        },
+                        logical_type: None,
+                        converted_type: None,
+                        physical_type: Int32,
+                    },
+                ),
+            ],
+        },
+    ],
+    leaves: [
+        ColumnDescriptor {
+            descriptor: Descriptor {
+                primitive_type: PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "id",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    physical_type: Int32,
+                },
+                max_def_level: 0,
+                max_rep_level: 0,
+            },
+            path_in_schema: [
+                "id",
+            ],
+            base_type: PrimitiveType(
+                PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "id",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    physical_type: Int32,
+                },
+            ),
+        },
+        ColumnDescriptor {
+            descriptor: Descriptor {
+                primitive_type: PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "c",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    physical_type: Int32,
+                },
+                max_def_level: 0,
+                max_rep_level: 0,
+            },
+            path_in_schema: [
+                "s",
+                "a",
+                "c",
+            ],
+            base_type: GroupType {
+                field_info: FieldInfo {
+                    name: "s",
+                    repetition: Required,
+                    id: None,
+                },
+                logical_type: None,
+                converted_type: None,
+                fields: [
+                    GroupType {
+                        field_info: FieldInfo {
+                            name: "a",
+                            repetition: Required,
+                            id: None,
+                        },
+                        logical_type: None,
+                        converted_type: None,
+                        fields: [
+                            PrimitiveType(
+                                PrimitiveType {
+                                    field_info: FieldInfo {
+                                        name: "c",
+                                        repetition: Required,
+                                        id: None,
+                                    },
+                                    logical_type: None,
+                                    converted_type: None,
+                                    physical_type: Int32,
+                                },
+                            ),
+                            PrimitiveType(
+                                PrimitiveType {
+                                    field_info: FieldInfo {
+                                        name: "d",
+                                        repetition: Required,
+                                        id: None,
+                                    },
+                                    logical_type: None,
+                                    converted_type: None,
+                                    physical_type: Int32,
+                                },
+                            ),
+                        ],
+                    },
+                    PrimitiveType(
+                        PrimitiveType {
+                            field_info: FieldInfo {
+                                name: "b",
+                                repetition: Required,
+                                id: None,
+                            },
+                            logical_type: None,
+                            converted_type: None,
+                            physical_type: Int32,
+                        },
+                    ),
+                ],
+            },
+        },
+        ColumnDescriptor {
+            descriptor: Descriptor {
+                primitive_type: PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "d",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    physical_type: Int32,
+                },
+                max_def_level: 0,
+                max_rep_level: 0,
+            },
+            path_in_schema: [
+                "s",
+                "a",
+                "d",
+            ],
+            base_type: GroupType {
+                field_info: FieldInfo {
+                    name: "s",
+                    repetition: Required,
+                    id: None,
+                },
+                logical_type: None,
+                converted_type: None,
+                fields: [
+                    GroupType {
+                        field_info: FieldInfo {
+                            name: "a",
+                            repetition: Required,
+                            id: None,
+                        },
+                        logical_type: None,
+                        converted_type: None,
+                        fields: [
+                            PrimitiveType(
+                                PrimitiveType {
+                                    field_info: FieldInfo {
+                                        name: "c",
+                                        repetition: Required,
+                                        id: None,
+                                    },
+                                    logical_type: None,
+                                    converted_type: None,
+                                    physical_type: Int32,
+                                },
+                            ),
+                            PrimitiveType(
+                                PrimitiveType {
+                                    field_info: FieldInfo {
+                                        name: "d",
+                                        repetition: Required,
+                                        id: None,
+                                    },
+                                    logical_type: None,
+                                    converted_type: None,
+                                    physical_type: Int32,
+                                },
+                            ),
+                        ],
+                    },
+                    PrimitiveType(
+                        PrimitiveType {
+                            field_info: FieldInfo {
+                                name: "b",
+                                repetition: Required,
+                                id: None,
+                            },
+                            logical_type: None,
+                            converted_type: None,
+                            physical_type: Int32,
+                        },
+                    ),
+                ],
+            },
+        },
+        ColumnDescriptor {
+            descriptor: Descriptor {
+                primitive_type: PrimitiveType {
+                    field_info: FieldInfo {
+                        name: "b",
+                        repetition: Required,
+                        id: None,
+                    },
+                    logical_type: None,
+                    converted_type: None,
+                    physical_type: Int32,
+                },
+                max_def_level: 0,
+                max_rep_level: 0,
+            },
+            path_in_schema: [
+                "s",
+                "b",
+            ],
+            base_type: GroupType {
+                field_info: FieldInfo {
+                    name: "s",
+                    repetition: Required,
+                    id: None,
+                },
+                logical_type: None,
+                converted_type: None,
+                fields: [
+                    GroupType {
+                        field_info: FieldInfo {
+                            name: "a",
+                            repetition: Required,
+                            id: None,
+                        },
+                        logical_type: None,
+                        converted_type: None,
+                        fields: [
+                            PrimitiveType(
+                                PrimitiveType {
+                                    field_info: FieldInfo {
+                                        name: "c",
+                                        repetition: Required,
+                                        id: None,
+                                    },
+                                    logical_type: None,
+                                    converted_type: None,
+                                    physical_type: Int32,
+                                },
+                            ),
+                            PrimitiveType(
+                                PrimitiveType {
+                                    field_info: FieldInfo {
+                                        name: "d",
+                                        repetition: Required,
+                                        id: None,
+                                    },
+                                    logical_type: None,
+                                    converted_type: None,
+                                    physical_type: Int32,
+                                },
+                            ),
+                        ],
+                    },
+                    PrimitiveType(
+                        PrimitiveType {
+                            field_info: FieldInfo {
+                                name: "b",
+                                repetition: Required,
+                                id: None,
+                            },
+                            logical_type: None,
+                            converted_type: None,
+                            physical_type: Int32,
+                        },
+                    ),
+                ],
+            },
+        },
+    ],
+}
+projection=[
+    0,
+    1,
+]
+columns.len()=1
+types.len()=1
+n==1
+n==2
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+file_meta=FileMetaData {
+    version: 2,
+    schema: [
+        SchemaElement {
+            type_: None,
+            type_length: None,
+            repetition_type: None,
+            name: "root",
+            num_children: Some(
+                2,
+            ),
+            converted_type: None,
+            scale: None,
+            precision: None,
+            field_id: None,
+            logical_type: None,
+        },
+        SchemaElement {
+            type_: Some(
+                Type(
+                    1,
+                ),
+            ),
+            type_length: None,
+            repetition_type: Some(
+                FieldRepetitionType(
+                    0,
+                ),
+            ),
+            name: "id",
+            num_children: None,
+            converted_type: None,
+            scale: None,
+            precision: None,
+            field_id: None,
+            logical_type: None,
+        },
+        SchemaElement {
+            type_: None,
+            type_length: None,
+            repetition_type: Some(
+                FieldRepetitionType(
+                    0,
+                ),
+            ),
+            name: "s",
+            num_children: Some(
+                2,
+            ),
+            converted_type: None,
+            scale: None,
+            precision: None,
+            field_id: None,
+            logical_type: None,
+        },
+        SchemaElement {
+            type_: None,
+            type_length: None,
+            repetition_type: Some(
+                FieldRepetitionType(
+                    0,
+                ),
+            ),
+            name: "a",
+            num_children: Some(
+                2,
+            ),
+            converted_type: None,
+            scale: None,
+            precision: None,
+            field_id: None,
+            logical_type: None,
+        },
+        SchemaElement {
+            type_: Some(
+                Type(
+                    1,
+                ),
+            ),
+            type_length: None,
+            repetition_type: Some(
+                FieldRepetitionType(
+                    0,
+                ),
+            ),
+            name: "c",
+            num_children: None,
+            converted_type: None,
+            scale: None,
+            precision: None,
+            field_id: None,
+            logical_type: None,
+        },
+        SchemaElement {
+            type_: Some(
+                Type(
+                    1,
+                ),
+            ),
+            type_length: None,
+            repetition_type: Some(
+                FieldRepetitionType(
+                    0,
+                ),
+            ),
+            name: "d",
+            num_children: None,
+            converted_type: None,
+            scale: None,
+            precision: None,
+            field_id: None,
+            logical_type: None,
+        },
+        SchemaElement {
+            type_: Some(
+                Type(
+                    1,
+                ),
+            ),
+            type_length: None,
+            repetition_type: Some(
+                FieldRepetitionType(
+                    0,
+                ),
+            ),
+            name: "b",
+            num_children: None,
+            converted_type: None,
+            scale: None,
+            precision: None,
+            field_id: None,
+            logical_type: None,
+        },
+    ],
+    num_rows: 2,
+    row_groups: [
+        RowGroup {
+            columns: [
+                ColumnChunk {
+                    file_path: None,
+                    file_offset: 35,
+                    meta_data: Some(
+                        ColumnMetaData {
+                            type_: Type(
+                                1,
+                            ),
+                            encodings: [
+                                Encoding(
+                                    0,
+                                ),
+                                Encoding(
+                                    3,
+                                ),
+                            ],
+                            path_in_schema: [
+                                "id",
+                            ],
+                            codec: CompressionCodec(
+                                7,
+                            ),
+                            num_values: 2,
+                            total_uncompressed_size: 30,
+                            total_compressed_size: 31,
+                            key_value_metadata: None,
+                            data_page_offset: 4,
+                            index_page_offset: None,
+                            dictionary_page_offset: None,
+                            statistics: None,
+                            encoding_stats: None,
+                            bloom_filter_offset: None,
+                        },
+                    ),
+                    offset_index_offset: Some(
+                        225,
+                    ),
+                    offset_index_length: Some(
+                        10,
+                    ),
+                    column_index_offset: None,
+                    column_index_length: None,
+                    crypto_metadata: None,
+                    encrypted_column_metadata: None,
+                },
+                ColumnChunk {
+                    file_path: None,
+                    file_offset: 88,
+                    meta_data: Some(
+                        ColumnMetaData {
+                            type_: Type(
+                                1,
+                            ),
+                            encodings: [
+                                Encoding(
+                                    0,
+                                ),
+                                Encoding(
+                                    3,
+                                ),
+                            ],
+                            path_in_schema: [
+                                "s",
+                                "a",
+                                "c",
+                            ],
+                            codec: CompressionCodec(
+                                7,
+                            ),
+                            num_values: 2,
+                            total_uncompressed_size: 30,
+                            total_compressed_size: 31,
+                            key_value_metadata: None,
+                            data_page_offset: 57,
+                            index_page_offset: None,
+                            dictionary_page_offset: None,
+                            statistics: None,
+                            encoding_stats: None,
+                            bloom_filter_offset: None,
+                        },
+                    ),
+                    offset_index_offset: Some(
+                        235,
+                    ),
+                    offset_index_length: Some(
+                        10,
+                    ),
+                    column_index_offset: None,
+                    column_index_length: None,
+                    crypto_metadata: None,
+                    encrypted_column_metadata: None,
+                },
+                ColumnChunk {
+                    file_path: None,
+                    file_offset: 144,
+                    meta_data: Some(
+                        ColumnMetaData {
+                            type_: Type(
+                                1,
+                            ),
+                            encodings: [
+                                Encoding(
+                                    0,
+                                ),
+                                Encoding(
+                                    3,
+                                ),
+                            ],
+                            path_in_schema: [
+                                "s",
+                                "a",
+                                "d",
+                            ],
+                            codec: CompressionCodec(
+                                7,
+                            ),
+                            num_values: 2,
+                            total_uncompressed_size: 30,
+                            total_compressed_size: 31,
+                            key_value_metadata: None,
+                            data_page_offset: 113,
+                            index_page_offset: None,
+                            dictionary_page_offset: None,
+                            statistics: None,
+                            encoding_stats: None,
+                            bloom_filter_offset: None,
+                        },
+                    ),
+                    offset_index_offset: Some(
+                        245,
+                    ),
+                    offset_index_length: Some(
+                        11,
+                    ),
+                    column_index_offset: None,
+                    column_index_length: None,
+                    crypto_metadata: None,
+                    encrypted_column_metadata: None,
+                },
+                ColumnChunk {
+                    file_path: None,
+                    file_offset: 201,
+                    meta_data: Some(
+                        ColumnMetaData {
+                            type_: Type(
+                                1,
+                            ),
+                            encodings: [
+                                Encoding(
+                                    0,
+                                ),
+                                Encoding(
+                                    3,
+                                ),
+                            ],
+                            path_in_schema: [
+                                "s",
+                                "b",
+                            ],
+                            codec: CompressionCodec(
+                                7,
+                            ),
+                            num_values: 2,
+                            total_uncompressed_size: 30,
+                            total_compressed_size: 31,
+                            key_value_metadata: None,
+                            data_page_offset: 170,
+                            index_page_offset: None,
+                            dictionary_page_offset: None,
+                            statistics: None,
+                            encoding_stats: None,
+                            bloom_filter_offset: None,
+                        },
+                    ),
+                    offset_index_offset: Some(
+                        256,
+                    ),
+                    offset_index_length: Some(
+                        11,
+                    ),
+                    column_index_offset: None,
+                    column_index_length: None,
+                    crypto_metadata: None,
+                    encrypted_column_metadata: None,
+                },
+            ],
+            total_byte_size: 120,
+            num_rows: 2,
+            sorting_columns: None,
+            file_offset: Some(
+                4,
+            ),
+            total_compressed_size: Some(
+                124,
+            ),
+            ordinal: Some(
+                0,
+            ),
+        },
+    ],
+    key_value_metadata: None,
+    created_by: Some(
+        "Arrow2 - Native Rust implementation of Arrow",
+    ),
+    column_orders: None,
+    encryption_algorithm: None,
+    footer_signing_key_metadata: None,
+}
+
+
+
+
+
+      1
+    /   \
+   2     7
+  / \   / \
+ 3   6 8   9
+/ \
+4  5
+
+
+
+
+
+
+
+
+node_stack=[ColumnSchema { name: "root", column_id: None, children: None }]
+
+node_stack=[ColumnSchema { name: "root", column_id: None, children: Some([ColumnSchema { name: "id", column_id: Some(0), children: None }]) }]
+
+node_stack=[ColumnSchema { name: "root", column_id: None, children: Some([ColumnSchema { name: "id", column_id: Some(0), children: None }, ColumnSchema { name: "s", column_id: None, children: None }]) }, ColumnSchema { name: "s", column_id: None, children: None }]
+
+node_stack=[ColumnSchema { name: "root", column_id: None, children: Some([ColumnSchema { name: "id", column_id: Some(0), children: None }, ColumnSchema { name: "s", column_id: None, children: None }]) }, ColumnSchema { name: "s", column_id: None, children: Some([ColumnSchema { name: "a", column_id: None, children: None }]) }, ColumnSchema { name: "a", column_id: None, children: None }]
+
+node_stack=[ColumnSchema { name: "root", column_id: None, children: Some([ColumnSchema { name: "id", column_id: Some(0), children: None }, ColumnSchema { name: "s", column_id: None, children: None }]) }, ColumnSchema { name: "s", column_id: None, children: Some([ColumnSchema { name: "a", column_id: None, children: None }]) }, ColumnSchema { name: "a", column_id: None, children: Some([ColumnSchema { name: "c", column_id: Some(1), children: None }]) }]
+
+node_stack=[ColumnSchema { name: "root", column_id: None, children: Some([ColumnSchema { name: "id", column_id: Some(0), children: None }, ColumnSchema { name: "s", column_id: None, children: None }]) }, ColumnSchema { name: "s", column_id: None, children: Some([ColumnSchema { name: "a", column_id: None, children: None }]) }, ColumnSchema { name: "a", column_id: None, children: Some([ColumnSchema { name: "c", column_id: Some(1), children: None }, ColumnSchema { name: "d", column_id: Some(2), children: None }]) }]
+
+node_stack=[ColumnSchema { name: "root", column_id: None, children: Some([ColumnSchema { name: "id", column_id: Some(0), children: None }, ColumnSchema { name: "s", column_id: None, children: None }]) }, ColumnSchema { name: "s", column_id: None, children: Some([ColumnSchema { name: "a", column_id: None, children: None }]) }]
+
+
+
+
+
+part columns_meta={
+    1: ColumnMeta { offset: 170, length: 31, num_values: 2 },
+    0: ColumnMeta { offset: 4, length: 31, num_values: 2 }
+}
+
+
+
+
+
+
