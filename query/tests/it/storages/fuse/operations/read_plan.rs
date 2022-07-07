@@ -71,6 +71,7 @@ fn test_to_partitions() -> Result<()> {
         0,
         cols_stats.clone(),
         cols_metas,
+        None,
         cluster_stats,
         location,
     );

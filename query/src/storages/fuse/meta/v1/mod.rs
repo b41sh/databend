@@ -16,5 +16,6 @@ mod segment;
 mod snapshot;
 
 pub use segment::BlockMeta;
+pub use segment::ColumnSchema;
 pub use segment::SegmentInfo;
 pub use snapshot::TableSnapshot;

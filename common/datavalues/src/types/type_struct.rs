@@ -78,6 +78,24 @@ impl DataType for StructType {
         type_name
     }
 
+    fn sql_name(&self) -> String {
+        let mut sql_name = String::new();
+        sql_name.push_str("TUPLE(");
+        let mut first = true;
+        for (name, ty) in self.names.iter().zip(self.types.iter()) {
+            if !first {
+                sql_name.push_str(", ");
+            }
+            first = false;
+            sql_name.push_str(name);
+            sql_name.push(' ');
+            sql_name.push_str(&ty.sql_name());
+        }
+        sql_name.push(')');
+
+        sql_name
+    }
+
     fn can_inside_nullable(&self) -> bool {
         false
     }
