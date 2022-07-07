@@ -40,23 +40,7 @@ pub struct SegmentInfo {
     pub summary: Statistics,
 }
 
-/**
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ColumnInfo {
-    /// The field id
-    pub field_id: u32,
-    /// The column name
-    pub name: String,
-    ///
-    pub path: Option<Vec<String>>,
-    /// The optional child ids, used by Struct column and Variant column with sub column
-    pub child_ids: Option<Vec<ColumnInfo>>,
-    /// The optional leaves id, to select column from parquet
-    pub leaves_id: Option<u32>,
-}
-*/
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ColumnSchema {
     pub name: String,
     pub column_id: Option<u32>,

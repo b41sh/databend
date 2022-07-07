@@ -22,39 +22,9 @@ use crate::storages::fuse::meta::ColumnId;
 use crate::storages::fuse::meta::ColumnMeta;
 use crate::storages::fuse::meta::ColumnSchema;
 
-/**
-#[derive(PartialEq)]
-struct TreeNode {
-    element: SchemaElement,
-    name: String,
-    column_id: Option<u32>,
-    children: Option<Vec<TreeNode>>,
-}
-
-impl TreeNode {
-    fn new(element: SchemaElement, name: String, column_id: Option<u32>) -> TreeNode {
-        return TreeNode {
-            element,
-            column_id,
-            children: None,
-        };
-    }
-
-    fn add_child(&mut self, node: TreeNode) {
-        if let Some(ref mut children) = self.children {
-            children.push(node);
-        } else {
-            self.children = Some(vec![node]);
-        }
-    }
-}
-*/
-
 pub fn column_metas(
     file_meta: &ThriftFileMetaData,
 ) -> Result<(HashMap<ColumnId, ColumnMeta>, Option<ColumnSchema>)> {
-    println!("file_meta={:#?}", file_meta);
-
     // currently we use one group only
     let num_row_groups = file_meta.row_groups.len();
     if num_row_groups != 1 {
@@ -64,47 +34,9 @@ pub fn column_metas(
         )));
     }
 
-    /**
-        let mut column_id = 0;
-        let mut node_stack: std::vec::Vec<ColumnSchema> = Vec::new();
-        let mut num_stack = Vec::new();
-        // build tree struct from schema
-        for element in file_meta.schema.iter() {
-            let curr_column_id = match element.num_children {
-                Some(_) => None,
-                None => Some(column_id),
-            };
-            let node = ColumnSchema::new(element.name.clone(), curr_column_id);
-            let len = node_stack.len();
-            if len > 0 {
-                let pnode = node_stack.get_mut(len - 1).unwrap();
-                pnode.add_child(node.clone());
-                let num = num_stack.pop().unwrap();
-                if num > 0 {
-                    num_stack.push(num-1);
-                } else {
-                    // keep root node in stack
-                    if len > 1 {
-                        node_stack.pop();
-                    }
-                }
-            }
-            if let Some(num_children) = element.num_children {
-                node_stack.push(node);
-                num_stack.push(num_children);
-            } else {
-                column_id += 1;
-            }
-
-            println!("node_stack={:?}", node_stack);
-            println!("num_stack={:?}", num_stack);
-        }
-        let col_schema = node_stack.pop().unwrap();
-    */
     let mut column_id = 0;
     let mut node_stack = Vec::new();
     let mut num_stack = Vec::new();
-    // build tree struct from schema
     for element in file_meta.schema.iter() {
         let (curr_column_id, num_children) = match element.num_children {
             Some(num_children) => (None, num_children),
@@ -132,16 +64,8 @@ pub fn column_metas(
             }
         }
         node_stack2.push(node);
-
-        println!("node_stack={:?}", node_stack);
-        println!("num_stack={:?}", num_stack);
-
-        println!("node_stack2={:?}", node_stack2);
-        println!("-----------------------------------");
     }
-
     let col_schema = node_stack2.pop().unwrap();
-    println!("col_schema={:?}", col_schema);
 
     let row_group = &file_meta.row_groups[0];
     let mut col_metas = HashMap::with_capacity(row_group.columns.len());

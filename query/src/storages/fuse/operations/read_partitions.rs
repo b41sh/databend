@@ -114,8 +114,6 @@ impl FuseTable {
             return (statistics, partitions);
         }
 
-        println!("all_columns_partitions======");
-
         let mut remaining = limit;
 
         for block_meta in metas {
@@ -149,9 +147,6 @@ impl FuseTable {
         if limit == 0 {
             return (statistics, partitions);
         }
-
-        println!("projection_partitions---------");
-        println!("indices={:?}", indices);
 
         let mut remaining = limit;
 
@@ -198,7 +193,6 @@ impl FuseTable {
                         break;
                     }
                     let curr_col_schema = stack.pop().unwrap();
-                    //match &curr_col_schema.children {
                     match &curr_col_schema.children {
                         Some(children) => {
                             for child in children.iter().rev() {
@@ -235,9 +229,6 @@ impl FuseTable {
         let rows_count = meta.row_count;
         let location = meta.location.0.clone();
         let format_version = meta.location.1;
-
-        println!("all columns_meta={:?}", columns_meta);
-        println!("all meta.col_schema={:?}", meta.col_schema);
 
         FusePartInfo::create(
             location,
@@ -305,9 +296,6 @@ impl FuseTable {
         let rows_count = meta.row_count;
         let location = meta.location.0.clone();
         let format_version = meta.location.1;
-
-        println!("part columns_meta={:?}", columns_meta);
-        println!("part meta.col_schema={:?}", meta.col_schema);
 
         // TODO
         // row_count should be a hint value of  LIMIT,

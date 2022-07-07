@@ -27,7 +27,6 @@ use common_arrow::parquet::metadata::SchemaDescriptor;
 use common_arrow::parquet::read::BasicDecompressor;
 use common_arrow::parquet::read::PageMetaData;
 use common_arrow::parquet::read::PageReader;
-use common_arrow::parquet::schema::types::ParquetType;
 use common_datablocks::DataBlock;
 use common_datavalues::DataSchemaRef;
 use common_exception::ErrorCode;
@@ -84,37 +83,6 @@ impl BlockReader {
     }
 
     fn to_array_iter(
-        meta: &ColumnMeta,
-        chunk: Vec<u8>,
-        rows: usize,
-        column_descriptor: &ColumnDescriptor,
-        field: Field,
-        compression: &Compression,
-    ) -> Result<ArrayIter<'static>> {
-        let page_meta_data = PageMetaData {
-            column_start: meta.offset,
-            num_values: meta.num_values as i64,
-            compression: Self::to_parquet_compression(compression),
-            descriptor: column_descriptor.descriptor.clone(),
-        };
-        let pages = PageReader::new_with_page_meta(
-            std::io::Cursor::new(chunk),
-            page_meta_data,
-            Arc::new(|_, _| true),
-            vec![],
-        );
-
-        let primitive_type = &column_descriptor.descriptor.primitive_type;
-        let decompressor = BasicDecompressor::new(pages, vec![]);
-        Ok(column_iter_to_arrays(
-            vec![decompressor],
-            vec![primitive_type],
-            field,
-            Some(rows),
-        )?)
-    }
-
-    fn to_array_iter2(
         metas: Vec<&ColumnMeta>,
         chunks: Vec<Vec<u8>>,
         rows: usize,
@@ -164,119 +132,78 @@ impl BlockReader {
         &self,
         meta: &BlockMeta,
     ) -> Result<(usize, Vec<ArrayIter<'static>>)> {
-        let rows = meta.row_count as usize;
+        let num_rows = meta.row_count as usize;
         let num_cols = self.projection.len();
         let mut column_chunk_futs = Vec::with_capacity(num_cols);
-        let mut col_idx = Vec::with_capacity(num_cols);
-        // column meta 记录位置，从 parquet 中直接读出
 
-        //let mut column_metas = Vec::new();
-        //let parquet_fields = self.parquet_schema_descriptor.fields();
-        for index in &self.projection {
-            /**
-                        match &meta.col_path {
-                            Some(col_path) => {
-                                let parquet_field = parquet_fields.get(*index).ok_or_else(|| {
-                                    ErrorCode::LogicalError(format!("index out of bound {}", index))
-                                })?;
-                                println!("index={:?} parquet_field={:?}", index, parquet_field);
+        let mut columns_meta: HashMap<usize, ColumnMeta> =
+            HashMap::with_capacity(meta.col_metas.len());
+        let mut proj_map: HashMap<usize, Vec<usize>> = HashMap::with_capacity(meta.col_metas.len());
 
-                                let pathes = Self::transverse_path(parquet_field);
-                                println!("pathes={:?}", pathes);
+        for proj in &self.projection {
+            let mut column_ids = Vec::new();
+            if let Some(root_schema) = &meta.col_schema {
+                let col_schemas = root_schema.children.as_ref().unwrap();
+                let col_schema = col_schemas.get(*proj).unwrap();
 
-                                for path in pathes.iter() {
-                                    match col_path.get(path) {
-                                        Some(index) => match meta.col_metas.get(&(*index as u32)) {
-                                            Some(col_meta) => column_metas.push(col_meta),
-                                            None => {
-                                                return Err(ErrorCode::LogicalError(format!(
-                                                    "index out of bound {}",
-                                                    index
-                                                )))
-                                            }
-                                        },
-                                        None => {
-                                            return Err(ErrorCode::LogicalError(format!(
-                                                "path {:?} not exist",
-                                                path
-                                            )))
-                                        }
-                                    }
-                                }
+                let mut stack = Vec::new();
+                stack.push(col_schema);
+                loop {
+                    if stack.is_empty() {
+                        break;
+                    }
+                    let curr_col_schema = stack.pop().unwrap();
+                    match &curr_col_schema.children {
+                        Some(children) => {
+                            for child in children.iter().rev() {
+                                stack.push(child);
                             }
-                            None => match meta.col_metas.get(&(*index as u32)) {
-                                Some(col_meta) => column_metas.push(col_meta),
-                                None => {
-                                    return Err(ErrorCode::LogicalError(format!(
-                                        "index out of bound {}",
-                                        index
-                                    )))
-                                }
-                            },
                         }
-
-                        println!("column_metas={:?}", column_metas);
-            */
-
-            /**
-            pub enum ParquetType {
-                PrimitiveType(PrimitiveType),
-                GroupType {
-                    field_info: FieldInfo,
-                    logical_type: Option<GroupLogicalType>,
-                    converted_type: Option<GroupConvertedType>,
-                    fields: Vec<ParquetType>,
-                },
-            }
-
-
-            /// The complete description of a parquet column
-            #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-            pub struct PrimitiveType {
-                /// The fields' generic information
-                pub field_info: FieldInfo,
-                /// The optional logical type
-                pub logical_type: Option<PrimitiveLogicalType>,
-                /// The optional converted type
-                pub converted_type: Option<PrimitiveConvertedType>,
-                /// The physical type
-                pub physical_type: PhysicalType,
-            }
-
-
-
-            /// Common type information.
-            #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-            pub struct FieldInfo {
-                /// The field name
-                pub name: String,
-                /// The repetition
-                pub repetition: Repetition,
-                /// the optional id, to select fields by id
-                pub id: Option<i32>,
-            }
-
-
-                /// The schemas' fields.
-                pub fn fields(&self) -> &[ParquetType] {
-                    &self.fields
+                        None => {
+                            let column_id = curr_col_schema.column_id.unwrap();
+                            column_ids.push(column_id as usize);
+                            let column_meta = &meta.col_metas[&column_id];
+                            columns_meta.insert(
+                                column_id as usize,
+                                ColumnMeta::create(
+                                    column_meta.offset,
+                                    column_meta.len,
+                                    column_meta.num_values,
+                                ),
+                            );
+                        }
+                    }
                 }
-            */
-            let column_meta = meta
-                .col_metas
-                .get(&(*index as u32))
-                .ok_or_else(|| ErrorCode::LogicalError(format!("index out of bound {}", index)))?;
+                proj_map.insert(*proj, column_ids);
+            } else {
+                let column_meta = &meta.col_metas[&(*proj as u32)];
+
+                columns_meta.insert(
+                    *proj,
+                    ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
+                );
+                proj_map.insert(*proj, vec![*proj]);
+            }
+        }
+        /**
+                    let column_meta = meta
+                        .col_metas
+                        .get(&(*index as u32))
+                        .ok_or_else(|| ErrorCode::LogicalError(format!("index out of bound {}", index)))?;
+        */
+        for (index, column_meta) in columns_meta.clone().into_iter() {
             let column_reader = self.operator.object(&meta.location.0);
             let fut = async move {
                 let column_chunk = column_reader
-                    .range_read(column_meta.offset..column_meta.offset + column_meta.len)
+                    .range_read(column_meta.offset..column_meta.offset + column_meta.length)
                     .await?;
-                Ok::<_, ErrorCode>(column_chunk)
+                Ok::<_, ErrorCode>((index, column_chunk))
             }
             .instrument(debug_span!("read_col_chunk"));
             column_chunk_futs.push(fut);
-            col_idx.push(index);
         }
+
+        let num_cols = columns_meta.len();
 
         // 用这些 chunk 组成 chunks
         let chunks = futures::stream::iter(column_chunk_futs)
@@ -284,125 +211,100 @@ impl BlockReader {
             .try_collect::<Vec<_>>()
             .await?;
 
+        let mut chunk_map: HashMap<usize, Vec<u8>> = chunks.into_iter().collect();
+
         let mut columns_array_iter = Vec::with_capacity(num_cols);
-        for (i, column_chunk) in chunks.into_iter().enumerate() {
-            let idx = *col_idx[i];
-            let field = self.arrow_schema.fields[idx].clone();
-            let column_descriptor = &self.parquet_schema_descriptor.columns()[idx];
-            let column_meta = &meta
-                .col_metas
-                .get(&(i as u32))
-                .ok_or_else(|| ErrorCode::LogicalError(format!("index out of bound {}", i)))?;
-            let part_col_meta =
-                ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values);
+        for proj in &self.projection {
+            let field = self.arrow_schema.fields[*proj].clone();
+
+            let indices = proj_map.get(proj).unwrap();
+            let mut column_metas = Vec::with_capacity(indices.len());
+            let mut column_chunks = Vec::with_capacity(indices.len());
+            let mut column_descriptors = Vec::with_capacity(indices.len());
+
+            for index in indices {
+                let column_meta = &columns_meta[&index];
+                let column_descriptor = &self.parquet_schema_descriptor.columns()[*index];
+                let column_chunk = chunk_map.remove(index).unwrap();
+                column_metas.push(column_meta);
+                column_descriptors.push(column_descriptor);
+                column_chunks.push(column_chunk);
+            }
             columns_array_iter.push(Self::to_array_iter(
-                &part_col_meta,
-                column_chunk,
-                rows,
-                column_descriptor,
+                column_metas,
+                column_chunks,
+                num_rows,
+                column_descriptors,
                 field,
                 &meta.compression(),
             )?);
         }
 
-        Ok((rows, columns_array_iter))
+        Ok((num_rows, columns_array_iter))
     }
 
     async fn read_columns(&self, part: PartInfoPtr) -> Result<(usize, Vec<ArrayIter<'static>>)> {
-        println!("========read_columns---------------");
-
         let part = FusePartInfo::from_part(&part)?;
 
-        /**
-                let mut column_metas = Vec::new();
-                let parquet_fields = self.parquet_schema_descriptor.fields();
-                for index in &self.projection {
-                    match &part.columns_path {
-                        Some(col_path) => {
-                            let parquet_field = parquet_fields.get(*index).ok_or_else(|| {
-                                ErrorCode::LogicalError(format!("index out of bound {}", index))
-                            })?;
-                            println!("index={:?} parquet_field={:?}", index, parquet_field);
-
-                            let pathes = Self::transverse_path(parquet_field);
-                            println!("pathes={:?}", pathes);
-
-                            for path in pathes.iter() {
-                                match col_path.get(path) {
-                                    Some(index) => match part.columns_meta.get(&(*index as usize)) {
-                                        Some(col_meta) => column_metas.push(col_meta),
-                                        None => {
-                                            return Err(ErrorCode::LogicalError(format!(
-                                                "index out of bound {}",
-                                                index
-                                            )))
-                                        }
-                                    },
-                                    None => {
-                                        return Err(ErrorCode::LogicalError(format!(
-                                            "path {:?} not exist",
-                                            path
-                                        )))
-                                    }
-                                }
-                            }
-                        }
-                        None => match part.columns_meta.get(&(*index as usize)) {
-                            Some(col_meta) => column_metas.push(col_meta),
-                            None => {
-                                return Err(ErrorCode::LogicalError(format!(
-                                    "index out of bound {}",
-                                    index
-                                )))
-                            }
-                        },
-                    }
-
-                    println!("column_metas={:?}", column_metas);
-                }
-        */
-        let rows = part.nums_rows;
         // TODO: add prefetch column data.
+        let num_rows = part.nums_rows;
         let num_cols = self.projection.len();
         let mut column_chunk_futs = Vec::with_capacity(num_cols);
-        let mut col_idx = Vec::with_capacity(num_cols);
-        for index in &self.projection {
-            let column_meta = &part.columns_meta[index];
-            let column_reader = self.operator.object(&part.location);
-            let fut = async move {
-                // @todo
-                let column_chunk =
-                    Self::read_column(column_reader, 0, column_meta.offset, column_meta.length)
-                        .await?;
-                Ok::<_, ErrorCode>(column_chunk)
+        for proj in &self.projection {
+            let indices = part.proj_map.get(proj).unwrap();
+            for index in indices {
+                let column_meta = &part.columns_meta[index];
+                let column_reader = self.operator.object(&part.location);
+                let fut = async move {
+                    let (idx, column_chunk) = Self::read_column(
+                        column_reader,
+                        *index,
+                        column_meta.offset,
+                        column_meta.length,
+                    )
+                    .await?;
+                    Ok::<_, ErrorCode>((idx, column_chunk))
+                }
+                .instrument(debug_span!("read_col_chunk"));
+                column_chunk_futs.push(fut);
             }
-            .instrument(debug_span!("read_col_chunk"));
-            column_chunk_futs.push(fut);
-            col_idx.push(index);
         }
 
+        let num_cols = column_chunk_futs.len();
         let chunks = futures::stream::iter(column_chunk_futs)
             .buffered(std::cmp::min(10, num_cols))
             .try_collect::<Vec<_>>()
             .await?;
+        let mut chunk_map: HashMap<usize, Vec<u8>> = chunks.into_iter().collect();
 
         let mut columns_array_iter = Vec::with_capacity(num_cols);
-        for (i, (_index, column_chunk)) in chunks.into_iter().enumerate() {
-            let idx = *col_idx[i];
-            let field = self.arrow_schema.fields[idx].clone();
-            let column_descriptor = &self.parquet_schema_descriptor.columns()[idx];
-            let column_meta = &part.columns_meta[&idx];
+        for proj in &self.projection {
+            let field = self.arrow_schema.fields[*proj].clone();
+
+            let indices = part.proj_map.get(proj).unwrap();
+            let mut column_metas = Vec::with_capacity(indices.len());
+            let mut column_chunks = Vec::with_capacity(indices.len());
+            let mut column_descriptors = Vec::with_capacity(indices.len());
+
+            for index in indices {
+                let column_meta = &part.columns_meta[&index];
+                let column_descriptor = &self.parquet_schema_descriptor.columns()[*index];
+                let column_chunk = chunk_map.remove(index).unwrap();
+                column_metas.push(column_meta);
+                column_descriptors.push(column_descriptor);
+                column_chunks.push(column_chunk);
+            }
             columns_array_iter.push(Self::to_array_iter(
-                column_meta,
-                column_chunk,
-                rows,
-                column_descriptor,
+                column_metas,
+                column_chunks,
+                num_rows,
+                column_descriptors,
                 field,
                 &part.compression,
             )?);
         }
 
-        Ok((rows, columns_array_iter))
+        Ok((num_rows, columns_array_iter))
     }
 
     pub fn deserialize(
@@ -410,15 +312,8 @@ impl BlockReader {
         part: PartInfoPtr,
         chunks: Vec<(usize, Vec<u8>)>,
     ) -> Result<DataBlock> {
-        //if self.projection.len() != chunks.len() {
-        //    return Err(ErrorCode::LogicalError(
-        //        "Columns chunk len must be equals projections len.",
-        //    ));
-        //}
-
-        let mut chunk_map: HashMap<usize, Vec<u8>> = chunks.into_iter().collect();
-
         let part = FusePartInfo::from_part(&part)?;
+        let mut chunk_map: HashMap<usize, Vec<u8>> = chunks.into_iter().collect();
         let mut columns_array_iter = Vec::with_capacity(self.projection.len());
 
         let num_rows = part.nums_rows;
@@ -433,12 +328,12 @@ impl BlockReader {
             for index in indices {
                 let column_meta = &part.columns_meta[&index];
                 let column_descriptor = &self.parquet_schema_descriptor.columns()[*index];
+                let column_chunk = chunk_map.remove(index).unwrap();
                 column_metas.push(column_meta);
                 column_descriptors.push(column_descriptor);
-                let column_chunk = chunk_map.remove(index).unwrap();
                 column_chunks.push(column_chunk);
             }
-            columns_array_iter.push(Self::to_array_iter2(
+            columns_array_iter.push(Self::to_array_iter(
                 column_metas,
                 column_chunks,
                 num_rows,
@@ -448,22 +343,6 @@ impl BlockReader {
             )?);
         }
 
-        /**
-                for (index, column_chunk) in chunks.into_iter().enumerate() {
-                    let index = self.projection[index];
-                    let field = self.arrow_schema.fields[index].clone();
-                    let column_descriptor = &self.parquet_schema_descriptor.columns()[index];
-                    let column_meta = &part.columns_meta[&index];
-                    columns_array_iter.push(Self::to_array_iter(
-                        column_meta,
-                        column_chunk,
-                        num_rows,
-                        column_descriptor,
-                        field,
-                        &part.compression,
-                    )?);
-                }
-        */
         let mut deserializer = RowGroupDeserializer::new(columns_array_iter, num_rows, None);
 
         self.try_next_block(&mut deserializer)
@@ -552,26 +431,5 @@ impl BlockReader {
             Compression::Lz4 => ParquetCompression::Lz4,
             Compression::Lz4Raw => ParquetCompression::Lz4Raw,
         }
-    }
-
-    fn transverse_path(parquet_type: &ParquetType) -> Vec<String> {
-        let mut pathes = Vec::new();
-        match parquet_type {
-            ParquetType::PrimitiveType(primitive) => {
-                let path = primitive.field_info.name.clone();
-                pathes.push(path);
-            }
-            ParquetType::GroupType {
-                field_info, fields, ..
-            } => {
-                fields.iter().map(|field| {
-                    Self::transverse_path(field).iter().map(|sub_path| {
-                        let path = format!("{}:{}", field_info.name, sub_path);
-                        pathes.push(path);
-                    });
-                });
-            }
-        }
-        pathes
     }
 }

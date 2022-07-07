@@ -85,7 +85,7 @@ impl StatisticsAccumulator {
         let block_size = statistics.block_bytes_size;
         let col_stats = statistics.block_column_statistics.clone();
         let location = (statistics.block_file_location, DataBlock::VERSION);
-        let (col_metas, col_infos) = column_metas(&meta)?;
+        let (col_metas, col_schema) = column_metas(&meta)?;
         let cluster_stats = statistics.block_cluster_statistics;
 
         self.blocks_metas.push(BlockMeta::new(
@@ -94,7 +94,7 @@ impl StatisticsAccumulator {
             file_size,
             col_stats,
             col_metas,
-            col_infos,
+            col_schema,
             cluster_stats,
             location,
         ));
