@@ -96,11 +96,6 @@ impl FuseTable {
         (statistics, partitions)
     }
 
-
-
-
-
-
     fn is_exact(push_downs: &Option<Extras>) -> bool {
         match push_downs {
             None => true,
@@ -120,7 +115,6 @@ impl FuseTable {
         }
 
         println!("all_columns_partitions======");
-
 
         let mut remaining = limit;
 
@@ -159,9 +153,6 @@ impl FuseTable {
         println!("projection_partitions---------");
         println!("indices={:?}", indices);
 
-
-
-
         let mut remaining = limit;
 
         for block_meta in metas {
@@ -190,9 +181,9 @@ impl FuseTable {
     }
 
     pub(crate) fn all_columns_part(meta: &BlockMeta) -> PartInfoPtr {
-        let mut columns_meta: HashMap<usize, ColumnMeta> = HashMap::with_capacity(meta.col_metas.len());
+        let mut columns_meta: HashMap<usize, ColumnMeta> =
+            HashMap::with_capacity(meta.col_metas.len());
         let mut proj_map: HashMap<usize, Vec<usize>> = HashMap::with_capacity(meta.col_metas.len());
-
 
         if let Some(root_schema) = &meta.col_schema {
             let col_schemas = root_schema.children.as_ref().unwrap();
@@ -220,15 +211,16 @@ impl FuseTable {
                             let column_meta = &meta.col_metas[&column_id];
                             columns_meta.insert(
                                 column_id as usize,
-                                ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
+                                ColumnMeta::create(
+                                    column_meta.offset,
+                                    column_meta.len,
+                                    column_meta.num_values,
+                                ),
                             );
                         }
                     }
                 }
-                proj_map.insert(
-                    idx,
-                    column_ids,
-                );
+                proj_map.insert(idx, column_ids);
             }
         } else {
             for (idx, column_meta) in &meta.col_metas {
@@ -236,10 +228,7 @@ impl FuseTable {
                     *idx as usize,
                     ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
                 );
-                proj_map.insert(
-                    *idx as usize,
-                    vec![*idx as usize],
-                );
+                proj_map.insert(*idx as usize, vec![*idx as usize]);
             }
         }
 
@@ -249,7 +238,6 @@ impl FuseTable {
 
         println!("all columns_meta={:?}", columns_meta);
         println!("all meta.col_schema={:?}", meta.col_schema);
-
 
         FusePartInfo::create(
             location,
@@ -262,7 +250,8 @@ impl FuseTable {
     }
 
     fn projection_part(meta: &BlockMeta, projections: &[usize]) -> PartInfoPtr {
-        let mut columns_meta: HashMap<usize, ColumnMeta> = HashMap::with_capacity(meta.col_metas.len());
+        let mut columns_meta: HashMap<usize, ColumnMeta> =
+            HashMap::with_capacity(meta.col_metas.len());
         let mut proj_map: HashMap<usize, Vec<usize>> = HashMap::with_capacity(meta.col_metas.len());
 
         if let Some(root_schema) = &meta.col_schema {
@@ -290,15 +279,16 @@ impl FuseTable {
                             let column_meta = &meta.col_metas[&column_id];
                             columns_meta.insert(
                                 column_id as usize,
-                                ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
+                                ColumnMeta::create(
+                                    column_meta.offset,
+                                    column_meta.len,
+                                    column_meta.num_values,
+                                ),
                             );
                         }
                     }
                 }
-                proj_map.insert(
-                    *projection,
-                    column_ids,
-                );
+                proj_map.insert(*projection, column_ids);
             }
         } else {
             for projection in projections {
@@ -308,10 +298,7 @@ impl FuseTable {
                     *projection,
                     ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
                 );
-                proj_map.insert(
-                    *projection,
-                    vec![*projection],
-                );
+                proj_map.insert(*projection, vec![*projection]);
             }
         }
 
@@ -319,11 +306,8 @@ impl FuseTable {
         let location = meta.location.0.clone();
         let format_version = meta.location.1;
 
-
         println!("part columns_meta={:?}", columns_meta);
         println!("part meta.col_schema={:?}", meta.col_schema);
-
-
 
         // TODO
         // row_count should be a hint value of  LIMIT,

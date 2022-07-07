@@ -81,8 +81,6 @@ impl ColumnSchema {
     }
 }
 
-
-
 /// Meta information of a block
 /// Part of and kept inside the [SegmentInfo]
 #[derive(Serialize, Deserialize, Clone, Debug)]
