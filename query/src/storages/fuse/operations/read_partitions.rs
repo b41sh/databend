@@ -208,7 +208,7 @@ impl FuseTable {
                     }
                     let curr_col_schema = stack.pop().unwrap();
                     //match &curr_col_schema.children {
-                    match curr_col_schema.children {
+                    match &curr_col_schema.children {
                         Some(children) => {
                             for child in children.iter().rev() {
                                 stack.push(child);
@@ -216,10 +216,10 @@ impl FuseTable {
                         }
                         None => {
                             let column_id = curr_col_schema.column_id.unwrap();
-                            column_ids.push(column_id);
+                            column_ids.push(column_id as usize);
                             let column_meta = &meta.col_metas[&column_id];
                             columns_meta.insert(
-                                (column_id as usize),
+                                column_id as usize,
                                 ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
                             );
                         }
@@ -233,12 +233,12 @@ impl FuseTable {
         } else {
             for (idx, column_meta) in &meta.col_metas {
                 columns_meta.insert(
-                    *idx,
+                    *idx as usize,
                     ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
                 );
                 proj_map.insert(
-                    *idx,
-                    vec![*idx],
+                    *idx as usize,
+                    vec![*idx as usize],
                 );
             }
         }
@@ -286,17 +286,17 @@ impl FuseTable {
                         }
                         None => {
                             let column_id = curr_col_schema.column_id.unwrap();
-                            column_ids.push(column_id);
+                            column_ids.push(column_id as usize);
                             let column_meta = &meta.col_metas[&column_id];
                             columns_meta.insert(
-                                (column_id as usize),
+                                column_id as usize,
                                 ColumnMeta::create(column_meta.offset, column_meta.len, column_meta.num_values),
                             );
                         }
                     }
                 }
                 proj_map.insert(
-                    projection,
+                    *projection,
                     column_ids,
                 );
             }

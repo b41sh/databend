@@ -105,7 +105,7 @@ impl FusePartInfo {
         format_version: u64,
         rows_count: u64,
         columns_meta: HashMap<usize, ColumnMeta>,
-        proj_map: HashMap<u32, Vec<u32>>,
+        proj_map: HashMap<usize, Vec<usize>>,
         compression: Compression,
     ) -> Arc<Box<dyn PartInfo>> {
         Arc::new(Box::new(FusePartInfo {

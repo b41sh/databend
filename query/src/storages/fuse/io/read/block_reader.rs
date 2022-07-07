@@ -151,8 +151,8 @@ impl BlockReader {
             })
             .collect::<Vec<_>>();
 
-        let types = &column_descriptors.iter()
-            .map(|column_descriptor| column_descriptor.descriptor.primitive_type)
+        let types = column_descriptors.iter()
+            .map(|column_descriptor| &column_descriptor.descriptor.primitive_type)
             .collect::<Vec<_>>();
 
         Ok(column_iter_to_arrays(
@@ -414,7 +414,7 @@ impl BlockReader {
             .await?;
 
         let mut columns_array_iter = Vec::with_capacity(num_cols);
-        for (i, (index, column_chunk)) in chunks.into_iter().enumerate() {
+        for (i, (_index, column_chunk)) in chunks.into_iter().enumerate() {
             let idx = *col_idx[i];
             let field = self.arrow_schema.fields[idx].clone();
             let column_descriptor = &self.parquet_schema_descriptor.columns()[idx];
@@ -432,33 +432,33 @@ impl BlockReader {
         Ok((rows, columns_array_iter))
     }
 
-    pub fn deserialize(&self, part: PartInfoPtr, chunks: Vec<(u32, Vec<u8>)>) -> Result<DataBlock> {
+    pub fn deserialize(&self, part: PartInfoPtr, chunks: Vec<(usize, Vec<u8>)>) -> Result<DataBlock> {
         //if self.projection.len() != chunks.len() {
         //    return Err(ErrorCode::LogicalError(
         //        "Columns chunk len must be equals projections len.",
         //    ));
         //}
 
-        let chunk_map: HashMap<u32, Vec<u8>> = chunks.into_iter().collect();
+        let mut chunk_map: HashMap<usize, Vec<u8>> = chunks.into_iter().collect();
 
         let part = FusePartInfo::from_part(&part)?;
         let mut columns_array_iter = Vec::with_capacity(self.projection.len());
 
         let num_rows = part.nums_rows;
-        for proj in self.projection {
-            let field = self.arrow_schema.fields[proj].clone();
+        for proj in &self.projection {
+            let field = self.arrow_schema.fields[*proj].clone();
 
-            let indices = part.proj_map.get(&proj).unwrap();
-            let column_metas = Vec::with_capacity(indices.len());
-            let column_chunks = Vec::with_capacity(indices.len());
-            let column_descriptors = Vec::with_capacity(indices.len());
+            let indices = part.proj_map.get(proj).unwrap();
+            let mut column_metas = Vec::with_capacity(indices.len());
+            let mut column_chunks = Vec::with_capacity(indices.len());
+            let mut column_descriptors = Vec::with_capacity(indices.len());
 
             for index in indices {
                 let column_meta = &part.columns_meta[&index];
-                let column_descriptor = &self.parquet_schema_descriptor.columns()[&index];
+                let column_descriptor = &self.parquet_schema_descriptor.columns()[*index];
                 column_metas.push(column_meta);
                 column_descriptors.push(column_descriptor);
-                let column_chunk = chunk_map.get(&index).unwrap();
+                let column_chunk = chunk_map.remove(index).unwrap();
                 column_chunks.push(column_chunk);
             }
             columns_array_iter.push(Self::to_array_iter2(
@@ -494,7 +494,7 @@ impl BlockReader {
         self.try_next_block(&mut deserializer)
     }
 
-    pub async fn read_columns_data(&self, part: PartInfoPtr) -> Result<Vec<(u32, Vec<u8>)>> {
+    pub async fn read_columns_data(&self, part: PartInfoPtr) -> Result<Vec<(usize, Vec<u8>)>> {
         let part = FusePartInfo::from_part(&part)?;
         let mut join_handlers = Vec::with_capacity(self.projection.len());
 
@@ -516,7 +516,7 @@ impl BlockReader {
         futures::future::try_join_all(join_handlers).await
     }
 
-    pub async fn read_column(o: Object, index: u32, offset: u64, length: u64) -> Result<(u32, Vec<u8>)> {
+    pub async fn read_column(o: Object, index: usize, offset: u64, length: u64) -> Result<(usize, Vec<u8>)> {
         let handler = common_base::base::tokio::spawn(async move {
             let op = || async {
                 let mut chunk = vec![0; length as usize];
