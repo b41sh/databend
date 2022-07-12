@@ -305,6 +305,16 @@ impl FuseTable {
                 } else {
                     statistics::reduce_block_statistics(&[&acc.col_stats, &stats.col_stats])?
                 };
+                if let Some(sub_col_stats) = &stats.sub_col_stats {
+                    acc.sub_col_stats = if acc.sub_col_stats.is_none() {
+                        Some(sub_col_stats.clone())
+                    } else {
+                        Some(statistics::reduce_block_sub_statistics(&[
+                            &acc.sub_col_stats.unwrap(),
+                            &sub_col_stats,
+                        ])?)
+                    };
+                }
                 seg_acc.push(loc.clone());
                 Ok::<_, ErrorCode>((acc, seg_acc))
             },

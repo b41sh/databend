@@ -35,6 +35,7 @@ pub struct Statistics {
     pub compressed_byte_size: u64,
 
     pub col_stats: HashMap<ColumnId, ColumnStatistics>,
+    pub sub_col_stats: Option<HashMap<String, ColumnStatistics>>,
 }
 
 /// Thing has a u64 version nubmer

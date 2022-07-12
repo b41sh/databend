@@ -193,13 +193,14 @@ impl BlockStreamWriter {
         acc = partial_acc.end(file_size, location, col_metas, col_schema);
         self.number_of_blocks_accumulated += 1;
         if self.number_of_blocks_accumulated >= self.num_block_threshold {
-            let summary = acc.summary()?;
+            let (summary, sub_summary) = acc.summary()?;
             let seg = SegmentInfo::new(acc.blocks_metas, Statistics {
                 row_count: acc.summary_row_count,
                 block_count: acc.summary_block_count,
                 uncompressed_byte_size: acc.in_memory_size,
                 compressed_byte_size: acc.file_size,
                 col_stats: summary,
+                sub_col_stats: sub_summary,
             });
 
             // Reset state
@@ -246,13 +247,14 @@ impl Compactor<DataBlock, SegmentInfo> for BlockStreamWriter {
         match acc {
             None => Ok(None),
             Some(acc) => {
-                let summary = acc.summary()?;
+                let (summary, sub_summary) = acc.summary()?;
                 let seg = SegmentInfo::new(acc.blocks_metas, Statistics {
                     row_count: acc.summary_row_count,
                     block_count: acc.summary_block_count,
                     uncompressed_byte_size: acc.in_memory_size,
                     compressed_byte_size: acc.file_size,
                     col_stats: summary,
+                    sub_col_stats: sub_summary,
                 });
                 Ok(Some(seg))
             }

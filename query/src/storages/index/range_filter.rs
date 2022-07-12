@@ -34,6 +34,7 @@ use crate::pipelines::transforms::ExpressionExecutor;
 use crate::sessions::QueryContext;
 
 pub type StatisticsOfColumns = HashMap<u32, ColumnStatistics>;
+pub type StatisticsOfSubColumns = HashMap<String, ColumnStatistics>;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct ColumnStatistics {

@@ -48,7 +48,7 @@ impl<'a> BlockWriter<'a> {
         let data_accessor = &self.data_accessor;
         let row_count = block.num_rows() as u64;
         let block_size = block.memory_size() as u64;
-        let col_stats = accumulator::columns_statistics(&block)?;
+        let (col_stats, sub_col_stats) = accumulator::columns_statistics(&block)?;
         let (file_size, file_meta_data) = write_block(block, data_accessor, &location).await?;
         let (col_metas, col_schema) = util::column_metas(&file_meta_data)?;
         let cluster_stats = None; // TODO confirm this with zhyass
@@ -58,6 +58,7 @@ impl<'a> BlockWriter<'a> {
             block_size,
             file_size,
             col_stats,
+            sub_col_stats,
             col_metas,
             col_schema,
             cluster_stats,

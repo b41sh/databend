@@ -28,6 +28,7 @@ pub use range_filter::ClusterStatistics;
 pub use range_filter::ColumnStatistics;
 pub use range_filter::RangeFilter;
 pub use range_filter::StatisticsOfColumns;
+pub use range_filter::StatisticsOfSubColumns;
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum IndexSchemaVersion {

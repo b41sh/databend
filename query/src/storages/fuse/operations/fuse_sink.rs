@@ -166,7 +166,7 @@ impl Processor for FuseTableSink {
             }
             State::GenerateSegment => {
                 let acc = std::mem::take(&mut self.accumulator);
-                let col_stats = acc.summary()?;
+                let (col_stats, sub_col_stats) = acc.summary()?;
 
                 let segment_info = SegmentInfo::new(acc.blocks_metas, Statistics {
                     row_count: acc.summary_row_count,
@@ -174,6 +174,7 @@ impl Processor for FuseTableSink {
                     uncompressed_byte_size: acc.in_memory_size,
                     compressed_byte_size: acc.file_size,
                     col_stats,
+                    sub_col_stats,
                 });
 
                 self.state = State::SerializedSegment {

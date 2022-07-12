@@ -24,6 +24,7 @@ use crate::storages::fuse::meta::ColumnId;
 use crate::storages::fuse::meta::Statistics;
 use crate::storages::index::ColumnStatistics;
 use crate::storages::index::StatisticsOfColumns;
+use crate::storages::index::StatisticsOfSubColumns;
 
 pub fn reduce_block_statistics<T: Borrow<StatisticsOfColumns>>(
     stats: &[T],
@@ -96,13 +97,96 @@ pub fn reduce_block_statistics<T: Borrow<StatisticsOfColumns>>(
         })
 }
 
+pub fn reduce_block_sub_statistics<T: Borrow<StatisticsOfSubColumns>>(
+    sub_stats: &[T],
+) -> Result<StatisticsOfSubColumns> {
+    // Combine statistics of a column into `Vec`, that is:
+    // from : `&[HashMap<String, ColumnStatistics>]`
+    // to   : `HashMap<String, Vec<&ColumnStatistics>)>`
+    let col_stat_list = sub_stats.iter().fold(HashMap::new(), |acc, item| {
+        item.borrow().iter().fold(
+            acc,
+            |mut acc: HashMap<String, Vec<&ColumnStatistics>>, (col_key, sub_stats)| {
+                acc.entry(col_key.clone())
+                    .or_insert_with(|| vec![sub_stats])
+                    .push(sub_stats);
+                acc
+            },
+        )
+    });
+
+    // Reduce the `Vec<&ColumnStatistics` into ColumnStatistics`, i.e.:
+    // from : `HashMap<String, Vec<&ColumnStatistics>)>`
+    // to   : `type BlockStatistics = HashMap<String, ColumnStatistics>`
+    let len = sub_stats.len();
+    col_stat_list.iter().try_fold(
+        HashMap::with_capacity(len),
+        |mut acc, (col_key, sub_stats)| {
+            let mut min_stats = Vec::with_capacity(sub_stats.len());
+            let mut max_stats = Vec::with_capacity(sub_stats.len());
+            let mut unset_bits = 0;
+            let mut in_memory_size = 0;
+
+            for col_stats in sub_stats {
+                min_stats.push(col_stats.min.clone());
+                max_stats.push(col_stats.max.clone());
+
+                unset_bits += col_stats.unset_bits;
+                in_memory_size += col_stats.in_memory_size;
+            }
+
+            // TODO:
+
+            // for some data types, we shall balance the accuracy and the length
+            // e.g. for a string col, which max value is "abcdef....", we record the max as something like "b"
+
+            // In accumulator.rs, we use aggregation functions to get the min/max of `DataValue`s,
+            // like this:
+            //   `let maxs = eval_aggr("max", vec![], &[column_field], rows)?`
+            // we should unify these logics, or at least, ensure the ways they compares do NOT diverge
+            let min = min_stats
+                .iter()
+                .filter(|s| !s.is_null())
+                .min_by(|&x, &y| x.cmp(y))
+                .cloned()
+                .unwrap_or(DataValue::Null);
+
+            let max = max_stats
+                .iter()
+                .filter(|s| !s.is_null())
+                .max_by(|&x, &y| x.cmp(y))
+                .cloned()
+                .unwrap_or(DataValue::Null);
+
+            acc.insert(col_key.clone(), ColumnStatistics {
+                min,
+                max,
+                unset_bits,
+                in_memory_size,
+            });
+            Ok(acc)
+        },
+    )
+}
+
 pub fn merge_statistics(l: &Statistics, r: &Statistics) -> Result<Statistics> {
+    let sub_col_stats = match (l.sub_col_stats.clone(), r.sub_col_stats.clone()) {
+        (None, None) => None,
+        (Some(l_sub_col_stats), None) => Some(l_sub_col_stats.clone()),
+        (None, Some(r_sub_col_stats)) => Some(r_sub_col_stats.clone()),
+        (Some(l_sub_col_stats), Some(r_sub_col_stats)) => Some(reduce_block_sub_statistics(&[
+            &l_sub_col_stats,
+            &r_sub_col_stats,
+        ])?),
+    };
+
     let s = Statistics {
         row_count: l.row_count + r.row_count,
         block_count: l.block_count + r.block_count,
         uncompressed_byte_size: l.uncompressed_byte_size + r.uncompressed_byte_size,
         compressed_byte_size: l.compressed_byte_size + r.compressed_byte_size,
         col_stats: reduce_block_statistics(&[&l.col_stats, &r.col_stats])?,
+        sub_col_stats: sub_col_stats,
     };
     Ok(s)
 }
@@ -135,11 +219,24 @@ pub fn reduce_block_metas<T: Borrow<BlockMeta>>(block_metas: &[T]) -> Result<Sta
         .collect::<Vec<_>>();
     let merged_col_stats = reduce_block_statistics(&stats)?;
 
+    let sub_stats = block_metas
+        .iter()
+        .map(|v| v.borrow().sub_col_stats.clone())
+        .filter(|s| s.is_some())
+        .map(|s| s.unwrap())
+        .collect::<Vec<_>>();
+    let merged_sub_col_stats = if sub_stats.is_empty() {
+        None
+    } else {
+        Some(reduce_block_sub_statistics(&sub_stats)?)
+    };
+
     Ok(Statistics {
         row_count,
         block_count,
         uncompressed_byte_size,
         compressed_byte_size,
         col_stats: merged_col_stats,
+        sub_col_stats: merged_sub_col_stats,
     })
 }

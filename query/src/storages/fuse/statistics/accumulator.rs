@@ -14,6 +14,7 @@
 //
 
 use std::collections::HashMap;
+use std::collections::VecDeque;
 
 use common_arrow::parquet::metadata::ThriftFileMetaData;
 use common_datablocks::DataBlock;
@@ -30,11 +31,13 @@ use crate::storages::fuse::operations::column_metas;
 use crate::storages::index::ClusterStatistics;
 use crate::storages::index::ColumnStatistics;
 use crate::storages::index::StatisticsOfColumns;
+use crate::storages::index::StatisticsOfSubColumns;
 
 #[derive(Default)]
 pub struct StatisticsAccumulator {
     pub blocks_metas: Vec<BlockMeta>,
     pub blocks_statistics: Vec<StatisticsOfColumns>,
+    pub blocks_sub_statistics: Vec<StatisticsOfSubColumns>,
     pub summary_row_count: u64,
     pub summary_block_count: u64,
     pub in_memory_size: u64,
@@ -57,13 +60,18 @@ impl StatisticsAccumulator {
         self.summary_block_count += 1;
         self.summary_row_count += row_count;
         self.in_memory_size += block_in_memory_size;
-        let block_stats = columns_statistics(block)?;
-        self.blocks_statistics.push(block_stats.clone());
+        let (column_statistics, sub_column_statistics) = columns_statistics(block)?;
+        self.blocks_statistics.push(column_statistics.clone());
+        if let Some(ref sub_column_statistics) = sub_column_statistics {
+            self.blocks_sub_statistics
+                .push(sub_column_statistics.clone());
+        }
         Ok(PartiallyAccumulated {
             accumulator: self,
             block_row_count: block.num_rows() as u64,
             block_size: block.memory_size() as u64,
-            block_columns_statistics: block_stats,
+            block_columns_statistics: column_statistics,
+            block_sub_columns_statistics: sub_column_statistics,
             block_cluster_statistics: cluster_stats,
         })
     }
@@ -80,10 +88,14 @@ impl StatisticsAccumulator {
         self.summary_row_count += statistics.block_rows_size;
         self.blocks_statistics
             .push(statistics.block_column_statistics.clone());
-
+        if let Some(ref sub_column_statistics) = statistics.block_sub_column_statistics {
+            self.blocks_sub_statistics
+                .push(sub_column_statistics.clone());
+        }
         let row_count = statistics.block_rows_size;
         let block_size = statistics.block_bytes_size;
         let col_stats = statistics.block_column_statistics.clone();
+        let sub_col_stats = statistics.block_sub_column_statistics.clone();
         let location = (statistics.block_file_location, DataBlock::VERSION);
         let (col_metas, col_schema) = column_metas(&meta)?;
         let cluster_stats = statistics.block_cluster_statistics;
@@ -93,6 +105,7 @@ impl StatisticsAccumulator {
             block_size,
             file_size,
             col_stats,
+            sub_col_stats,
             col_metas,
             col_schema,
             cluster_stats,
@@ -143,8 +156,16 @@ impl StatisticsAccumulator {
         Ok(statistics)
     }
 
-    pub fn summary(&self) -> Result<StatisticsOfColumns> {
-        super::reduce_block_statistics(&self.blocks_statistics)
+    pub fn summary(&self) -> Result<(StatisticsOfColumns, Option<StatisticsOfSubColumns>)> {
+        let col_stats = super::reduce_block_statistics(&self.blocks_statistics)?;
+        let sub_col_stats = if self.blocks_sub_statistics.is_empty() {
+            None
+        } else {
+            Some(super::reduce_block_sub_statistics(
+                &self.blocks_sub_statistics,
+            )?)
+        };
+        Ok((col_stats, sub_col_stats))
     }
 }
 
@@ -153,6 +174,7 @@ pub struct PartiallyAccumulated {
     block_row_count: u64,
     block_size: u64,
     block_columns_statistics: HashMap<ColumnId, ColumnStatistics>,
+    block_sub_columns_statistics: Option<HashMap<String, ColumnStatistics>>,
     block_cluster_statistics: Option<ClusterStatistics>,
 }
 
@@ -170,6 +192,7 @@ impl PartiallyAccumulated {
         let row_count = self.block_row_count;
         let block_size = self.block_size;
         let col_stats = self.block_columns_statistics;
+        let sub_col_stats = self.block_sub_columns_statistics;
         let cluster_stats = self.block_cluster_statistics;
         let location = (location, DataBlock::VERSION);
 
@@ -178,6 +201,7 @@ impl PartiallyAccumulated {
             block_size,
             file_size,
             col_stats,
+            sub_col_stats,
             col_metas,
             col_schema,
             cluster_stats,
@@ -193,6 +217,7 @@ pub struct BlockStatistics {
     pub block_bytes_size: u64,
     pub block_file_location: String,
     pub block_column_statistics: HashMap<ColumnId, ColumnStatistics>,
+    pub block_sub_column_statistics: Option<HashMap<String, ColumnStatistics>>,
     pub block_cluster_statistics: Option<ClusterStatistics>,
 }
 
@@ -202,11 +227,13 @@ impl BlockStatistics {
         location: String,
         cluster_stats: Option<ClusterStatistics>,
     ) -> Result<BlockStatistics> {
+        let (column_statistics, sub_column_statistics) = columns_statistics(data_block)?;
         Ok(BlockStatistics {
             block_file_location: location,
             block_rows_size: data_block.num_rows() as u64,
             block_bytes_size: data_block.memory_size() as u64,
-            block_column_statistics: columns_statistics(data_block)?,
+            block_column_statistics: column_statistics,
+            block_sub_column_statistics: sub_column_statistics,
             block_cluster_statistics: cluster_stats,
         })
     }
@@ -253,43 +280,103 @@ impl BlockStatistics {
     }
 }
 
-pub fn columns_statistics(data_block: &DataBlock) -> Result<StatisticsOfColumns> {
-    let mut statistics = StatisticsOfColumns::new();
+pub fn columns_statistics(
+    data_block: &DataBlock,
+) -> Result<(StatisticsOfColumns, Option<StatisticsOfSubColumns>)> {
+    let mut column_fields = Vec::with_capacity(data_block.num_columns());
+    let mut sub_col_map = HashMap::new();
 
-    let rows = data_block.num_rows();
+    let mut deque = VecDeque::new();
     for idx in 0..data_block.num_columns() {
         let col = data_block.column(idx);
         let field = data_block.schema().field(idx);
         let column_field = ColumnWithField::new(col.clone(), field.clone());
+        column_fields.push(column_field);
 
-        let mut min = DataValue::Null;
-        let mut max = DataValue::Null;
-
-        let mins = eval_aggr("min", vec![], &[column_field.clone()], rows)?;
-        let maxs = eval_aggr("max", vec![], &[column_field], rows)?;
-
-        if mins.len() > 0 {
-            min = mins.get(0);
+        if field.data_type().data_type_id() == TypeID::Struct {
+            deque.push_back((field.clone(), col.clone()));
         }
-        if maxs.len() > 0 {
-            max = maxs.get(0);
+    }
+
+    loop {
+        if deque.is_empty() {
+            break;
         }
-        let (is_all_null, bitmap) = col.validity();
-        let unset_bits = match (is_all_null, bitmap) {
-            (true, _) => rows,
-            (false, Some(bitmap)) => bitmap.unset_bits(),
-            (false, None) => 0,
-        };
+        let len = deque.len();
+        for _ in 0..len {
+            let (field, col) = deque.pop_front().unwrap();
+            let name = field.name();
+            if let DataTypeImpl::Struct(ty) = field.data_type() {
+                let sub_names = ty.names();
+                let sub_types = ty.types();
+                let column: &StructColumn = Series::check_get(&col)?;
+                let sub_cols = column.values();
 
-        let in_memory_size = col.memory_size() as u64;
-        let col_stats = ColumnStatistics {
-            min,
-            max,
-            unset_bits: unset_bits as u64,
-            in_memory_size,
-        };
+                for (sub_name, (sub_type, sub_col)) in
+                    sub_names.iter().zip(sub_types.iter().zip(sub_cols))
+                {
+                    let sub_name = format!("{}.{}", name, sub_name);
+                    let sub_field = DataField::new(&sub_name, sub_type.clone());
+                    let sub_column_field = ColumnWithField::new(sub_col.clone(), sub_field.clone());
 
+                    sub_col_map.insert(sub_name, sub_column_field);
+                    if sub_field.data_type().data_type_id() == TypeID::Struct {
+                        deque.push_back((sub_field.clone(), sub_col.clone()));
+                    }
+                }
+            }
+        }
+    }
+
+    let mut statistics = StatisticsOfColumns::new();
+    let rows = data_block.num_rows();
+    for (idx, column_field) in column_fields.into_iter().enumerate() {
+        let col_stats = calculate_column_statistics(rows, &column_field)?;
         statistics.insert(idx as u32, col_stats);
     }
-    Ok(statistics)
+    if sub_col_map.is_empty() {
+        return Ok((statistics, None));
+    }
+
+    let mut sub_statistics = StatisticsOfSubColumns::new();
+    for (sub_name, sub_column_field) in sub_col_map.into_iter() {
+        let sub_col_stats = calculate_column_statistics(rows, &sub_column_field)?;
+        sub_statistics.insert(sub_name, sub_col_stats);
+    }
+    Ok((statistics, Some(sub_statistics)))
+}
+
+fn calculate_column_statistics(
+    rows: usize,
+    column_field: &ColumnWithField,
+) -> Result<ColumnStatistics> {
+    let col = column_field.column();
+
+    let mut min = DataValue::Null;
+    let mut max = DataValue::Null;
+
+    let mins = eval_aggr("min", vec![], &[column_field.clone()], rows)?;
+    let maxs = eval_aggr("max", vec![], &[column_field.clone()], rows)?;
+
+    if mins.len() > 0 {
+        min = mins.get(0);
+    }
+    if maxs.len() > 0 {
+        max = maxs.get(0);
+    }
+    let (is_all_null, bitmap) = col.validity();
+    let unset_bits = match (is_all_null, bitmap) {
+        (true, _) => rows,
+        (false, Some(bitmap)) => bitmap.unset_bits(),
+        (false, None) => 0,
+    };
+
+    let in_memory_size = col.memory_size() as u64;
+    let col_stats = ColumnStatistics {
+        min,
+        max,
+        unset_bits: unset_bits as u64,
+        in_memory_size,
+    };
+    Ok(col_stats)
 }
