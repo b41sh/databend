@@ -147,7 +147,7 @@ impl StatisticsAccumulator {
             let col_stats = ColumnStatistics {
                 min,
                 max,
-                unset_bits: unset_bits as u64,
+                null_count: unset_bits as u64,
                 in_memory_size,
             };
 
