@@ -75,6 +75,8 @@ use crate::sql::BindContext;
 use crate::sql::NameResolutionContext;
 use crate::sql::ScalarBinder;
 
+const MAX_ROWS: usize = 10240;
+
 pub struct InsertInterpreterV2 {
     ctx: Arc<QueryContext>,
     plan: Insert,
@@ -407,6 +409,10 @@ impl AsyncSource for ValueSource {
                 continue;
             }
             positions.push_back(mat.start());
+        }
+        // Use the max rows to prevent malicious attacks
+        if estimated_rows > MAX_ROWS {
+            estimated_rows = MAX_ROWS;
         }
 
         let mut reader = Cursor::new(self.data.as_bytes());
