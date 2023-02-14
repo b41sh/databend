@@ -78,6 +78,7 @@ pub struct NativeDeserializeDataTransform {
     prewhere_filter: Arc<Option<Expr>>,
 
     skipped_page: usize,
+    is_nested: bool,
 
     read_columns: Vec<usize>,
     top_k: Option<(TopK, TopKSorter, usize)>,
@@ -150,6 +151,11 @@ impl NativeDeserializeDataTransform {
             column_leaves.push(leaves);
         }
 
+        let is_nested = block_reader
+            .project_column_nodes
+            .iter()
+            .any(|node| node.is_nested);
+
         Ok(ProcessorPtr::create(Box::new(
             NativeDeserializeDataTransform {
                 func_ctx,
@@ -171,6 +177,7 @@ impl NativeDeserializeDataTransform {
                 top_k,
                 topn_finish: false,
                 read_columns: vec![],
+                is_nested,
             },
         )))
     }
@@ -228,11 +235,13 @@ impl NativeDeserializeDataTransform {
         column_node: &ColumnNode,
         leaves: Vec<ColumnDescriptor>,
         readers: Vec<NativeReader<Box<dyn NativeReaderExt>>>,
+        all_is_nested: bool,
+        pages_num: usize,
         skip_bitmap: Option<Bitmap>,
     ) -> Result<BTreeMap<usize, Box<dyn Array>>> {
         let field = column_node.field.clone();
         let is_nested = column_node.is_nested;
-        let skipped_readers = match skip_bitmap {
+        let readers = match skip_bitmap {
             Some(ref skip_bitmap) => readers
                 .into_iter()
                 .map(|mut reader| {
@@ -242,9 +251,21 @@ impl NativeDeserializeDataTransform {
                 .collect::<Vec<_>>(),
             None => readers,
         };
+        // Todo
+        // Read all pages at once to avoid unnecessary Array concat operations
+        let readers = if !all_is_nested && pages_num > 1 {
+            readers
+                .into_iter()
+                .map(|mut reader| {
+                    reader.set_max_pages(pages_num);
+                    reader
+                })
+                .collect::<Vec<_>>()
+        } else {
+            readers
+        };
 
-        let mut array_iter = match column_iter_to_arrays(skipped_readers, leaves, field, is_nested)
-        {
+        let mut array_iter = match column_iter_to_arrays(readers, leaves, field, is_nested) {
             Ok(array_iter) => array_iter,
             Err(err) => return Err(err.into()),
         };
@@ -358,7 +379,14 @@ impl Processor for NativeDeserializeDataTransform {
                 native_meta = native_meta.slice(range.start, range.end);
             }
             let pages_num = native_meta.pages.len();
-            let mut skip_pages = MutableBitmap::from_len_zeroed(pages_num);
+
+            // Todo
+            // Read all pages at once to avoid unnecessary Array concat operations
+            let skip_page_len = if self.is_nested { pages_num } else { 1 };
+            //println!("self.is_nested={:?}", self.is_nested);
+            //println!("pages_num={:?}", pages_num);
+            //println!("skip_page_len={:?}", skip_page_len);
+            let mut skip_pages = MutableBitmap::from_len_zeroed(skip_page_len);
 
             let mut arrays = Vec::with_capacity(chunks.len());
             self.read_columns.clear();
@@ -368,7 +396,14 @@ impl Processor for NativeDeserializeDataTransform {
                     let column_node = &self.block_reader.project_column_nodes[*index];
                     let leaves = self.column_leaves.get(*index).unwrap().clone();
                     let readers = chunks.remove(index).unwrap();
-                    let curr_arrays = Self::read_arrays(column_node, leaves, readers, None)?;
+                    let curr_arrays = Self::read_arrays(
+                        column_node,
+                        leaves,
+                        readers,
+                        self.is_nested,
+                        pages_num,
+                        None,
+                    )?;
                     if curr_arrays.is_empty() {
                         // No data anymore
                         self.check_topn();
@@ -404,7 +439,14 @@ impl Processor for NativeDeserializeDataTransform {
                 } else {
                     None
                 };
-                let curr_arrays = Self::read_arrays(column_node, leaves, readers, skip_bitmap)?;
+                let curr_arrays = Self::read_arrays(
+                    column_node,
+                    leaves,
+                    readers,
+                    self.is_nested,
+                    pages_num,
+                    skip_bitmap,
+                )?;
                 if curr_arrays.is_empty() {
                     // No data anymore
                     self.check_topn();
@@ -482,7 +524,14 @@ impl Processor for NativeDeserializeDataTransform {
                 } else {
                     None
                 };
-                let curr_arrays = Self::read_arrays(column_node, leaves, readers, skip_bitmap)?;
+                let curr_arrays = Self::read_arrays(
+                    column_node,
+                    leaves,
+                    readers,
+                    self.is_nested,
+                    pages_num,
+                    skip_bitmap,
+                )?;
                 arrays.push((*index, curr_arrays));
             }
             let mut blocks = Vec::with_capacity(skip_pages.len() - skip_pages.unset_bits());
