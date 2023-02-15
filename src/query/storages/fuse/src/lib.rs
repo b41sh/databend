@@ -17,6 +17,7 @@
 #![feature(type_alias_impl_trait)]
 #![feature(io_error_other)]
 #![feature(once_cell)]
+#![feature(iter_advance_by)]
 
 mod constants;
 mod fuse_lazy_part;

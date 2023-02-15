@@ -17,6 +17,8 @@ use std::collections::BTreeMap;
 use std::collections::VecDeque;
 use std::sync::Arc;
 
+use common_arrow::arrow::io::parquet::read::ArrayIter;
+
 use common_arrow::arrow::array::Array;
 use common_arrow::arrow::bitmap::Bitmap;
 use common_arrow::arrow::bitmap::MutableBitmap;
@@ -82,6 +84,7 @@ pub struct NativeDeserializeDataTransform {
     read_columns: Vec<usize>,
     top_k: Option<(TopK, TopKSorter, usize)>,
     topn_finish: bool,
+    array_iters: BTreeMap<usize, ArrayIter<'static>>,
 }
 
 impl NativeDeserializeDataTransform {
@@ -171,6 +174,7 @@ impl NativeDeserializeDataTransform {
                 top_k,
                 topn_finish: false,
                 read_columns: vec![],
+                array_iters: BTreeMap::new(),
             },
         )))
     }
@@ -222,6 +226,47 @@ impl NativeDeserializeDataTransform {
             }
         }
     }
+
+    fn build_array_iter(
+        column_node: &ColumnNode,
+        leaves: Vec<ColumnDescriptor>,
+        readers: Vec<NativeReader<Box<dyn NativeReaderExt>>>,
+    ) -> Result<ArrayIter<'static>> {
+        let field = column_node.field.clone();
+        let is_nested = column_node.is_nested;
+        match column_iter_to_arrays(readers, leaves, field, is_nested) {
+            Ok(array_iter) => Ok(array_iter),
+            Err(err) => Err(err.into()),
+        }
+    }
+
+    fn skip_chunks_page(read_columns: &[usize], chunks: &mut DataChunks) -> Result<()> {
+        for (index, readers) in chunks.iter_mut() {
+            if read_columns.contains(&index) {
+                continue;
+            }
+            for reader in readers {
+                reader.skip_page()?;
+            }
+        }
+        Ok(())
+    }
+
+/**
+    fn skip_array_iters_page(n: usize, read_columns: &[usize], mut array_iters: BTreeMap<usize, ArrayIter<'static>>) -> Result<BTreeMap<usize, ArrayIter<'static>>> {
+        println!("\t\t skip array_iter array_iters.len={:?}", array_iters.len());
+        for index in 0..n {
+            if read_columns.contains(&index) {
+                continue;
+            }
+            if let Some(mut array_iter) = array_iters.remove(&index) {
+                array_iter.advance_by(1).unwrap();
+                array_iters.insert(index, array_iter);
+            }
+        }
+        Ok(array_iters)
+    }
+*/
 
     // read all arrays from NativeReader, skip filtered pages by bitmap
     fn read_arrays(
@@ -340,6 +385,7 @@ impl Processor for NativeDeserializeDataTransform {
     }
 
     fn process(&mut self) -> Result<()> {
+        /**
         if let Some(mut chunks) = self.chunks.pop_front() {
             let part = self.parts.pop_front().unwrap();
             let part = FusePartInfo::from_part(&part)?;
@@ -511,6 +557,277 @@ impl Processor for NativeDeserializeDataTransform {
 
             // Step 7: Add the block to output data
             self.add_block(data_block)?;
+        }
+        */
+
+
+        if let Some(chunks) = self.chunks.front_mut() {
+            // this means it's empty projection
+            if chunks.is_empty() && self.array_iters.is_empty() {
+                let _ = self.chunks.pop_front();
+                let part = self.parts.pop_front().unwrap();
+                let part = FusePartInfo::from_part(&part)?;
+                let num_rows = part.nums_rows;
+                let data_block = self.block_reader.build_default_values_block(num_rows)?;
+                self.add_block(data_block)?;
+                return Ok(());
+            }
+
+            let mut arrays = Vec::with_capacity(chunks.len());
+            self.read_columns.clear();
+
+            // Step 1: Check TOP_K, if prewhere_columns contains not only TOP_K, we can check if TOP_K column can satisfy the heap.
+            if self.prewhere_columns.len() > 1 {
+                if let Some((top_k, sorter, index)) = self.top_k.as_mut() {
+                    println!("is top_k------");
+                    let mut array_iter = match self.array_iters.remove(index) {
+                        Some(array_iter) => {
+                            println!("old array");
+                            array_iter
+                        },
+                        None => {
+                            println!("new array");
+                            let column_node = &self.block_reader.project_column_nodes[*index];
+                            let leaves = self.column_leaves.get(*index).unwrap().clone();
+                            let readers = chunks.remove(index).unwrap();
+
+                            Self::build_array_iter(
+                                column_node,
+                                leaves,
+                                readers,
+                            )?
+                        }
+                    };
+                    match array_iter.next() {
+                        Some(array) => {
+                            let array = array?;
+                            println!("has next data");
+                            self.read_columns.push(*index);
+
+                            let data_type = top_k.order_by.data_type().into();
+                            let col = Column::from_arrow(array.as_ref(), &data_type);
+
+                            arrays.push((*index, array));
+                            self.array_iters.insert(*index, array_iter);
+
+                            if sorter.never_match_any(&col) {
+                                self.skipped_page += 1;
+                                //Self::skip_array_iters_page(&self.read_columns, &self.array_iters)?;
+
+
+        println!("\t\t 0000 skip array_iter array_iters.len={:?}", self.array_iters.len());
+        //for index in 0..self.column_leaves.len() {
+        //for index in self.array_iters.keys() {
+        for index in 0..self.column_leaves.len() {
+            if self.read_columns.contains(&index) {
+                continue;
+            }
+            if let Some(mut array_iter) = self.array_iters.remove(&index) {
+                println!("\t\t skip 00000");
+                array_iter.advance_by(1).unwrap();
+                self.array_iters.insert(index, array_iter);
+            }
+        }
+
+
+                                return Self::skip_chunks_page(&self.read_columns, chunks);
+                            }
+                        }
+                        None => {
+                            println!("no next data");
+                            // No data anymore
+                            let _ = self.chunks.pop_front();
+                            let _ = self.parts.pop_front().unwrap();
+
+                            self.check_topn();
+                            self.array_iters.clear();
+                            return Ok(());
+                        }
+                    }
+                }
+            }
+
+            // Step 2: Read Prewhere columns and get the filter
+            for index in self.prewhere_columns.iter() {
+                println!("index={:?}", index);
+                if self.read_columns.contains(index) {
+                    continue;
+                }
+                let mut array_iter = match self.array_iters.remove(index) {
+                    Some(array_iter) => {
+                        println!("old array");
+                        array_iter
+                    },
+                    None => {
+                        println!("new array");
+                        let column_node = &self.block_reader.project_column_nodes[*index];
+                        let leaves = self.column_leaves.get(*index).unwrap().clone();
+                        let readers = chunks.remove(index).unwrap();
+
+                        Self::build_array_iter(
+                            column_node,
+                            leaves,
+                            readers,
+                        )?
+                    }
+                };
+
+                match array_iter.next() {
+                    Some(array) => {
+                        println!("has next data");
+                        self.read_columns.push(*index);
+                        arrays.push((*index, array?));
+                        self.array_iters.insert(*index, array_iter);
+                    }
+                    None => {
+                        println!("no next data");
+                        // No data anymore
+                        let _ = self.chunks.pop_front();
+                        let _ = self.parts.pop_front().unwrap();
+
+                        self.check_topn();
+                        self.array_iters.clear();
+                        return Ok(());
+                    }
+                }
+            }
+
+            let filter = match self.prewhere_filter.as_ref() {
+                Some(filter) => {
+                    let prewhere_block = self.block_reader.build_block(arrays.clone())?;
+                    let evaluator =
+                        Evaluator::new(&prewhere_block, self.func_ctx, &BUILTIN_FUNCTIONS);
+                    let result = evaluator
+                        .run(filter)
+                        .map_err(|e| e.add_message("eval prewhere filter failed:"))?;
+                    let filter = FilterHelpers::cast_to_nonull_boolean(&result).unwrap();
+
+                    // Step 3: Apply the filter, if it's all filtered, we can skip the remain columns.
+                    if FilterHelpers::is_all_unset(&filter) {
+                        self.skipped_page += 1;
+                        //Self::skip_array_iters_page(&self.read_columns, &self.array_iters)?;
+
+        println!("\t\t 11111 skip array_iter array_iters.len={:?}", self.array_iters.len());
+        //for index in 0..self.column_leaves.len() {
+        //for index in self.array_iters.keys() {
+        for index in 0..self.column_leaves.len() {
+            if self.read_columns.contains(&index) {
+                continue;
+            }
+            if let Some(mut array_iter) = self.array_iters.remove(&index) {
+                println!("\t\t skip 00000");
+                array_iter.advance_by(1).unwrap();
+                self.array_iters.insert(index, array_iter);
+            }
+        }
+
+
+
+                        return Self::skip_chunks_page(&self.read_columns, chunks);
+                    }
+
+                    // Step 4: Apply the filter to topk and update the bitmap, this will filter more results
+                    let filter = if let Some((_, sorter, index)) = &mut self.top_k {
+                        let index_prewhere = self
+                            .prewhere_columns
+                            .iter()
+                            .position(|x| x == index)
+                            .unwrap();
+                        let top_k_column = prewhere_block
+                            .get_by_offset(index_prewhere)
+                            .value
+                            .as_column()
+                            .unwrap();
+
+                        let mut bitmap =
+                            FilterHelpers::filter_to_bitmap(filter, prewhere_block.num_rows());
+                        sorter.push_column(top_k_column, &mut bitmap);
+                        Value::Column(bitmap.into())
+                    } else {
+                        filter
+                    };
+
+                    if FilterHelpers::is_all_unset(&filter) {
+                        self.skipped_page += 1;
+                        //self.array_iters = Self::skip_array_iters_page(self.column_leaves.len(), &self.read_columns, self.array_iters)?;
+
+        println!("\t\t 2222 skip array_iter array_iters.len={:?}", self.array_iters.len());
+        //for index in self.array_iters.keys() {
+//    |                      immutable borrow occurs here
+//    |                      immutable borrow later used here
+
+        for index in 0..self.column_leaves.len() {
+            if self.read_columns.contains(&index) {
+                continue;
+            }
+            if let Some(mut array_iter) = self.array_iters.remove(&index) {
+                println!("\t\t skip 00000");
+                array_iter.advance_by(1).unwrap();
+                self.array_iters.insert(index, array_iter);
+            }
+        }
+
+/**
+        println!("\t\t skip array_iter array_iters.len={:?}", self.array_iters.len());
+        for (index, mut array_iter) in &self.array_iters {
+            if self.read_columns.contains(&index) {
+                continue;
+            }
+            println!("\t\t skip array_iter index={:?}", index);
+            array_iter.advance_by(1).unwrap();
+        }
+*/
+
+
+                        return Self::skip_chunks_page(&self.read_columns, chunks);
+                    }
+                    Some(filter)
+                },
+                None => None,
+            };
+
+            for index in self.remain_columns.iter() {
+                println!("remain index={:?}", index);
+                let mut array_iter = match self.array_iters.remove(index) {
+                    Some(array_iter) => {
+                        println!("old array");
+                        array_iter
+                    },
+                    None => {
+                        println!("new array");
+                        let column_node = &self.block_reader.project_column_nodes[*index];
+                        let leaves = self.column_leaves.get(*index).unwrap().clone();
+                        let readers = chunks.remove(index).unwrap();
+
+                        Self::build_array_iter(
+                            column_node,
+                            leaves,
+                            readers,
+                        )?
+                    }
+                };
+
+                let array = array_iter.next().unwrap();
+                arrays.push((*index, array?));
+                self.array_iters.insert(*index, array_iter);
+            }
+
+            let block = if let Some(filter) = filter {
+                let block = self.block_reader.build_block(arrays)?;
+                let block = block.resort(&self.src_schema, &self.output_schema)?;
+                block.filter_boolean_value(filter)?
+            } else {
+                self.block_reader.build_block(arrays)?
+            };
+
+
+            // Step 5: fill missing field default value if need
+            //let data_block = self
+            //    .block_reader
+            //    .fill_missing_native_column_values(data_block, &self.parts)?;
+
+            // Step 6: Add the block to output data
+            self.add_block(block)?;
         }
 
         Ok(())
