@@ -17,12 +17,10 @@ use std::collections::BTreeMap;
 use std::collections::VecDeque;
 use std::sync::Arc;
 
-use common_arrow::arrow::io::parquet::read::ArrayIter;
-
 use common_arrow::arrow::array::Array;
 use common_arrow::arrow::bitmap::Bitmap;
 use common_arrow::arrow::bitmap::MutableBitmap;
-use common_arrow::native::read::deserialize::column_iter_to_arrays;
+use common_arrow::native::read::{ArrayIter,column_iter_to_arrays};
 use common_arrow::native::read::reader::NativeReader;
 use common_arrow::parquet::metadata::ColumnDescriptor;
 use common_base::base::Progress;
@@ -85,6 +83,8 @@ pub struct NativeDeserializeDataTransform {
     top_k: Option<(TopK, TopKSorter, usize)>,
     topn_finish: bool,
     array_iters: BTreeMap<usize, ArrayIter<'static>>,
+    // the page numbers of each array_iter can skip.
+    array_skips: BTreeMap<usize, usize>,
 }
 
 impl NativeDeserializeDataTransform {
@@ -175,6 +175,7 @@ impl NativeDeserializeDataTransform {
                 topn_finish: false,
                 read_columns: vec![],
                 array_iters: BTreeMap::new(),
+                array_skips: BTreeMap::new(),
             },
         )))
     }
@@ -251,6 +252,7 @@ impl NativeDeserializeDataTransform {
         }
         Ok(())
     }
+}
 
 /**
     fn skip_array_iters_page(n: usize, read_columns: &[usize], mut array_iters: BTreeMap<usize, ArrayIter<'static>>) -> Result<BTreeMap<usize, ArrayIter<'static>>> {
@@ -268,6 +270,7 @@ impl NativeDeserializeDataTransform {
     }
 */
 
+/**
     // read all arrays from NativeReader, skip filtered pages by bitmap
     fn read_arrays(
         column_node: &ColumnNode,
@@ -312,6 +315,7 @@ impl NativeDeserializeDataTransform {
         Ok(arrays)
     }
 }
+*/
 
 impl Processor for NativeDeserializeDataTransform {
     fn name(&self) -> String {
@@ -590,7 +594,7 @@ impl Processor for NativeDeserializeDataTransform {
                             let column_node = &self.block_reader.project_column_nodes[*index];
                             let leaves = self.column_leaves.get(*index).unwrap().clone();
                             let readers = chunks.remove(index).unwrap();
-
+                            self.array_skips.insert(*index, 0);
                             Self::build_array_iter(
                                 column_node,
                                 leaves,
@@ -614,22 +618,10 @@ impl Processor for NativeDeserializeDataTransform {
                                 self.skipped_page += 1;
                                 //Self::skip_array_iters_page(&self.read_columns, &self.array_iters)?;
 
-
-        println!("\t\t 0000 skip array_iter array_iters.len={:?}", self.array_iters.len());
-        //for index in 0..self.column_leaves.len() {
-        //for index in self.array_iters.keys() {
-        for index in 0..self.column_leaves.len() {
-            if self.read_columns.contains(&index) {
-                continue;
-            }
-            if let Some(mut array_iter) = self.array_iters.remove(&index) {
-                println!("\t\t skip 00000");
-                array_iter.advance_by(1).unwrap();
-                self.array_iters.insert(index, array_iter);
-            }
-        }
-
-
+                                for (_, skip_num) in self.array_skips.iter_mut() {
+                                    *skip_num += 1;
+                                }
+                                println!("topk self.array_skips={:?}", self.array_skips);
                                 return Self::skip_chunks_page(&self.read_columns, chunks);
                             }
                         }
@@ -641,6 +633,7 @@ impl Processor for NativeDeserializeDataTransform {
 
                             self.check_topn();
                             self.array_iters.clear();
+                            self.array_skips.clear();
                             return Ok(());
                         }
                     }
@@ -663,7 +656,8 @@ impl Processor for NativeDeserializeDataTransform {
                         let column_node = &self.block_reader.project_column_nodes[*index];
                         let leaves = self.column_leaves.get(*index).unwrap().clone();
                         let readers = chunks.remove(index).unwrap();
-
+ 
+                        self.array_skips.insert(*index, 0);
                         Self::build_array_iter(
                             column_node,
                             leaves,
@@ -672,12 +666,15 @@ impl Processor for NativeDeserializeDataTransform {
                     }
                 };
 
-                match array_iter.next() {
+                let skip_pages = self.array_skips.get(index).unwrap_or_else(|| &0);
+                println!("prewhere index={:?} skip_pages={:?}", index, skip_pages);
+                match array_iter.nth(*skip_pages) {
                     Some(array) => {
                         println!("has next data");
                         self.read_columns.push(*index);
                         arrays.push((*index, array?));
                         self.array_iters.insert(*index, array_iter);
+                        self.array_skips.insert(*index, 0);
                     }
                     None => {
                         println!("no next data");
@@ -687,6 +684,7 @@ impl Processor for NativeDeserializeDataTransform {
 
                         self.check_topn();
                         self.array_iters.clear();
+                        self.array_skips.clear();
                         return Ok(());
                     }
                 }
@@ -707,20 +705,13 @@ impl Processor for NativeDeserializeDataTransform {
                         self.skipped_page += 1;
                         //Self::skip_array_iters_page(&self.read_columns, &self.array_iters)?;
 
-        println!("\t\t 11111 skip array_iter array_iters.len={:?}", self.array_iters.len());
-        //for index in 0..self.column_leaves.len() {
-        //for index in self.array_iters.keys() {
-        for index in 0..self.column_leaves.len() {
-            if self.read_columns.contains(&index) {
-                continue;
-            }
-            if let Some(mut array_iter) = self.array_iters.remove(&index) {
-                println!("\t\t skip 00000");
-                array_iter.advance_by(1).unwrap();
-                self.array_iters.insert(index, array_iter);
-            }
-        }
-
+                                for (i, skip_num) in self.array_skips.iter_mut() {
+                                    if self.read_columns.contains(i) {
+                                        continue;
+                                    }
+                                    *skip_num += 1;
+                                }
+                                println!("prewhere self.array_skips={:?}", self.array_skips);
 
 
                         return Self::skip_chunks_page(&self.read_columns, chunks);
@@ -751,32 +742,14 @@ impl Processor for NativeDeserializeDataTransform {
                         self.skipped_page += 1;
                         //self.array_iters = Self::skip_array_iters_page(self.column_leaves.len(), &self.read_columns, self.array_iters)?;
 
-        println!("\t\t 2222 skip array_iter array_iters.len={:?}", self.array_iters.len());
-        //for index in self.array_iters.keys() {
-//    |                      immutable borrow occurs here
-//    |                      immutable borrow later used here
 
-        for index in 0..self.column_leaves.len() {
-            if self.read_columns.contains(&index) {
-                continue;
-            }
-            if let Some(mut array_iter) = self.array_iters.remove(&index) {
-                println!("\t\t skip 00000");
-                array_iter.advance_by(1).unwrap();
-                self.array_iters.insert(index, array_iter);
-            }
-        }
-
-/**
-        println!("\t\t skip array_iter array_iters.len={:?}", self.array_iters.len());
-        for (index, mut array_iter) in &self.array_iters {
-            if self.read_columns.contains(&index) {
-                continue;
-            }
-            println!("\t\t skip array_iter index={:?}", index);
-            array_iter.advance_by(1).unwrap();
-        }
-*/
+                                for (i, skip_num) in self.array_skips.iter_mut() {
+                                    if self.read_columns.contains(i) {
+                                        continue;
+                                    }
+                                    *skip_num += 1;
+                                }
+                                println!("filter self.array_skips={:?}", self.array_skips);
 
 
                         return Self::skip_chunks_page(&self.read_columns, chunks);
@@ -799,6 +772,7 @@ impl Processor for NativeDeserializeDataTransform {
                         let leaves = self.column_leaves.get(*index).unwrap().clone();
                         let readers = chunks.remove(index).unwrap();
 
+                        self.array_skips.insert(*index, 0);
                         Self::build_array_iter(
                             column_node,
                             leaves,
@@ -807,9 +781,12 @@ impl Processor for NativeDeserializeDataTransform {
                     }
                 };
 
-                let array = array_iter.next().unwrap();
+                let skip_pages = self.array_skips.get(index).unwrap_or_else(|| &0);
+                println!("remain index={:?} skip_pages={:?}", index, skip_pages);
+                let array = array_iter.nth(*skip_pages).unwrap();
                 arrays.push((*index, array?));
                 self.array_iters.insert(*index, array_iter);
+                self.array_skips.insert(*index, 0);
             }
 
             let block = if let Some(filter) = filter {
