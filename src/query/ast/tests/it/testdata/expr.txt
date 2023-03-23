@@ -1671,7 +1671,7 @@ ArraySort {
         ],
     },
     asc: true,
-    null_first: true,
+    nulls_first: true,
 }
 
 
@@ -1710,7 +1710,7 @@ ArraySort {
         ],
     },
     asc: true,
-    null_first: true,
+    nulls_first: true,
 }
 
 
@@ -1747,7 +1747,7 @@ ArraySort {
         ],
     },
     asc: false,
-    null_first: true,
+    nulls_first: true,
 }
 
 

@@ -284,14 +284,27 @@ pub fn transform_expr(ast: AExpr, columns: &[(&str, DataType)]) -> RawExpr {
             span,
             expr,
             asc,
-            null_first,
+            nulls_first,
         } => {
-            let name = match (asc, null_first) {
-                (true, true) => "array_sort_asc_null_first".to_string(),
-                (true, false) => "array_sort_asc_null_last".to_string(),
-                (false, true) => "array_sort_desc_null_first".to_string(),
-                (false, false) => "array_sort_desc_null_last".to_string(),
+            let name = match (asc, nulls_first) {
+                (true, true) => "array_sort_asc_nulls_first".to_string(),
+                (true, false) => "array_sort_asc_nulls_last".to_string(),
+                (false, true) => "array_sort_desc_nulls_first".to_string(),
+                (false, false) => "array_sort_desc_nulls_last".to_string(),
             };
+            RawExpr::FunctionCall {
+                span,
+                name,
+                params: vec![],
+                args: vec![transform_expr(*expr, columns)],
+            }
+        }
+        AExpr::ArrayAggr {
+            span,
+            expr,
+            func_name,
+        } => {
+            let name = format!("array_{}", func_name);
             RawExpr::FunctionCall {
                 span,
                 name,

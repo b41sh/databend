@@ -564,6 +564,24 @@ impl<'ast> Visitor<'ast> for AstFormatVisitor {
         self.children.push(node);
     }
 
+    fn visit_array_sort(&mut self, _span: Span, expr: &'ast Expr, _asc: bool, _nulls_first: bool) {
+        self.visit_expr(expr);
+        let children = vec![self.children.pop().unwrap()];
+        let name = "Function ArraySort".to_string();
+        let format_ctx = AstFormatContext::with_children(name, children.len());
+        let node = FormatTreeNode::with_children(format_ctx, children);
+        self.children.push(node);
+    }
+
+    fn visit_array_aggr(&mut self, _span: Span, expr: &'ast Expr, _func_name: &'ast String) {
+        self.visit_expr(expr);
+        let children = vec![self.children.pop().unwrap()];
+        let name = "Function ArrayAggr".to_string();
+        let format_ctx = AstFormatContext::with_children(name, children.len());
+        let node = FormatTreeNode::with_children(format_ctx, children);
+        self.children.push(node);
+    }
+
     fn visit_map(&mut self, _span: Span, kvs: &'ast [(Expr, Expr)]) {
         let mut children = Vec::with_capacity(kvs.len());
         for (key_expr, val_expr) in kvs.iter() {

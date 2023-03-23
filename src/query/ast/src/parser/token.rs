@@ -777,6 +777,8 @@ pub enum TokenKind {
     TRIM,
     #[token("ARRAY_SORT", ignore(ascii_case))]
     ARRAY_SORT,
+    #[token("ARRAY_AGGR", ignore(ascii_case))]
+    ARRAY_AGGR,
     #[token("TRUE", ignore(ascii_case))]
     TRUE,
     #[token("TRUNCATE", ignore(ascii_case))]
@@ -1020,6 +1022,7 @@ impl TokenKind {
             // | TokenKind::TREAT
             | TokenKind::TRIM
             | TokenKind::ARRAY_SORT
+            | TokenKind::ARRAY_AGGR
             | TokenKind::TRUE
             | TokenKind::TRY_CAST
             // | TokenKind::UNIQUE

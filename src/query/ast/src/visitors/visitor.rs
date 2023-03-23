@@ -281,7 +281,11 @@ pub trait Visitor<'ast>: Sized {
         }
     }
 
-    fn visit_array_sort(&mut self, _span: Span, expr: &'ast Expr, _asc: bool, _null_first: bool) {
+    fn visit_array_sort(&mut self, _span: Span, expr: &'ast Expr, _asc: bool, _nulls_first: bool) {
+        walk_expr(self, expr);
+    }
+
+    fn visit_array_aggr(&mut self, _span: Span, expr: &'ast Expr, _func_name: &'ast String) {
         walk_expr(self, expr);
     }
 

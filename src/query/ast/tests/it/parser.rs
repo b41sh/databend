@@ -564,6 +564,7 @@ fn test_expr() {
         r#"array_sort([2])"#,
         r#"array_sort([2,0.1], 'ASC')"#,
         r#"array_sort([3,2], 'DESC', 'NULLS FIRST')"#,
+        r#"array_aggr([3,2], 'max')"#,
         r#"col1::UInt8"#,
         r#"(arr[0]:a).b"#,
         r#"arr[4]["k"]"#,

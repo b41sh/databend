@@ -122,8 +122,13 @@ pub fn walk_expr_mut<V: VisitorMut>(visitor: &mut V, expr: &mut Expr) {
             span,
             expr,
             asc,
-            null_first,
-        } => visitor.visit_array_sort(*span, expr, *asc, *null_first),
+            nulls_first,
+        } => visitor.visit_array_sort(*span, expr, *asc, *nulls_first),
+        Expr::ArrayAggr {
+            span,
+            expr,
+            func_name,
+        } => visitor.visit_array_aggr(*span, expr, func_name),
         Expr::Map { span, kvs } => visitor.visit_map(*span, kvs),
         Expr::Interval { span, expr, unit } => visitor.visit_interval(*span, expr, unit),
         Expr::DateAdd {

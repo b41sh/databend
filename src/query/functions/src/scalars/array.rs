@@ -70,20 +70,27 @@ use siphasher::sip128::SipHasher24;
 use crate::aggregates::eval_aggr;
 use crate::AggregateFunctionFactory;
 
-const ARRAY_AGGREGATE_FUNCTIONS: &[(&str, &str); 6] = &[
+const ARRAY_AGGREGATE_FUNCTIONS: &[(&str, &str); 13] = &[
     ("array_avg", "avg"),
     ("array_count", "count"),
     ("array_max", "max"),
     ("array_min", "min"),
     ("array_sum", "sum"),
     ("array_any", "any"),
+    ("array_approx_count_distinct", "approx_count_distinct"),
+    ("array_stddev_pop", "stddev_pop"),
+    ("array_stddev", "stddev"),
+    ("array_std", "std"),
+    ("array_stddev_samp", "stddev_samp"),
+    ("array_median", "median"),
+    ("array_list", "list"),
 ];
 
 const ARRAY_SORT_FUNCTIONS: &[(&str, (bool, bool)); 4] = &[
-    ("array_sort_asc_null_first", (true, true)),
-    ("array_sort_desc_null_first", (false, true)),
-    ("array_sort_asc_null_last", (true, false)),
-    ("array_sort_desc_null_last", (false, false)),
+    ("array_sort_asc_nulls_first", (true, true)),
+    ("array_sort_desc_nulls_first", (false, true)),
+    ("array_sort_asc_nulls_last", (true, false)),
+    ("array_sort_desc_nulls_last", (false, false)),
 ];
 
 pub fn register(registry: &mut FunctionRegistry) {

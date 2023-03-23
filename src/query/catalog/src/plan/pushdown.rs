@@ -60,7 +60,7 @@ pub struct PushDownInfo {
     pub prewhere: Option<PrewhereInfo>,
     /// Optional limit to skip read
     pub limit: Option<usize>,
-    /// Optional order_by expression plan, asc, null_first
+    /// Optional order_by expression plan, asc, nulls_first
     pub order_by: Vec<(RemoteExpr<String>, bool, bool)>,
 }
 

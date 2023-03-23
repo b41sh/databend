@@ -178,7 +178,7 @@ pub enum Expr {
         modifier: Option<SubqueryModifier>,
         subquery: Box<Query>,
     },
-    /// Access elements of `Array`, `Object` and `Variant` by index or key, like `arr[0]`, or `obj:k1`
+    /// Access elements of `Array`, `Map` and `Variant` by index or key, like `arr[0]`, or `obj:k1`
     MapAccess {
         span: Span,
         expr: Box<Expr>,
@@ -186,11 +186,18 @@ pub enum Expr {
     },
     /// The `Array` expr
     Array { span: Span, exprs: Vec<Expr> },
+    /// The `Array Sort` function
     ArraySort {
         span: Span,
         expr: Box<Expr>,
         asc: bool,
-        null_first: bool,
+        nulls_first: bool,
+    },
+    /// The `Array Aggregate` function
+    ArrayAggr {
+        span: Span,
+        expr: Box<Expr>,
+        func_name: Box<String>,
     },
     /// The `Map` expr
     Map { span: Span, kvs: Vec<(Expr, Expr)> },
@@ -614,6 +621,7 @@ impl Expr {
             | Expr::MapAccess { span, .. }
             | Expr::Array { span, .. }
             | Expr::ArraySort { span, .. }
+            | Expr::ArrayAggr { span, .. }
             | Expr::Map { span, .. }
             | Expr::Interval { span, .. }
             | Expr::DateAdd { span, .. }
@@ -1205,21 +1213,29 @@ impl Display for Expr {
             Expr::ArraySort {
                 expr,
                 asc,
-                null_first,
+                nulls_first,
                 ..
             } => {
                 write!(f, "ARRAY_SORT(")?;
-                write!(f, "{expr})")?;
+                write!(f, "{expr}")?;
                 if *asc {
-                    write!(f, " , 'ASC'")?;
+                    write!(f, ", 'ASC'")?;
                 } else {
-                    write!(f, " , 'DESC'")?;
+                    write!(f, ", 'DESC'")?;
                 }
-                if *null_first {
-                    write!(f, " , 'NULLS FIRST'")?;
+                if *nulls_first {
+                    write!(f, ", 'NULLS FIRST'")?;
                 } else {
-                    write!(f, " , 'NULLS LAST'")?;
+                    write!(f, ", 'NULLS LAST'")?;
                 }
+                write!(f, ")")?;
+            }
+            Expr::ArrayAggr {
+                expr, func_name, ..
+            } => {
+                write!(f, "ARRAY_AGGR(")?;
+                write!(f, "{expr}")?;
+                write!(f, ", '{func_name}'")?;
                 write!(f, ")")?;
             }
             Expr::Map { kvs, .. } => {

@@ -328,42 +328,30 @@ pub(crate) fn pretty_expr(expr: Expr) -> RcDoc<'static> {
         Expr::ArraySort {
             expr,
             asc,
-            null_first,
+            nulls_first,
             ..
-        } => {
-            let res = pretty_expr(*expr);
-            if asc {
-                res.clone()
-                    .append(RcDoc::text(","))
-                    .append(RcDoc::space())
-                    .append(RcDoc::text("'"))
-                    .append(RcDoc::text("ASC"))
-                    .append(RcDoc::text("'"));
+        } => RcDoc::text("array_sort(")
+            .append(pretty_expr(*expr))
+            .append(RcDoc::text(", "))
+            .append(if asc {
+                RcDoc::text("'ASC'")
             } else {
-                res.clone()
-                    .append(RcDoc::text(","))
-                    .append(RcDoc::space())
-                    .append(RcDoc::text("'"))
-                    .append(RcDoc::text("DESC"))
-                    .append(RcDoc::text("'"));
-            }
-            if null_first {
-                res.clone()
-                    .append(RcDoc::text(","))
-                    .append(RcDoc::space())
-                    .append(RcDoc::text("'"))
-                    .append(RcDoc::text("NULL FIRST"))
-                    .append(RcDoc::text("'"));
+                RcDoc::text("'DESC'")
+            })
+            .append(RcDoc::text(", "))
+            .append(if nulls_first {
+                RcDoc::text("'NULLS FIRST'")
             } else {
-                res.clone()
-                    .append(RcDoc::text(","))
-                    .append(RcDoc::space())
-                    .append(RcDoc::text("'"))
-                    .append(RcDoc::text("NULL LAST"))
-                    .append(RcDoc::text("'"));
-            }
-            res.clone().append(RcDoc::text(")"))
-        }
+                RcDoc::text("'NULLS LAST'")
+            })
+            .append(RcDoc::text(")")),
+        Expr::ArrayAggr {
+            expr, func_name, ..
+        } => RcDoc::text("array_aggr(")
+            .append(pretty_expr(*expr))
+            .append(RcDoc::text(", '"))
+            .append(RcDoc::text(*func_name))
+            .append(RcDoc::text("')")),
         Expr::Interval { expr, unit, .. } => RcDoc::text("INTERVAL")
             .append(RcDoc::space())
             .append(pretty_expr(*expr))

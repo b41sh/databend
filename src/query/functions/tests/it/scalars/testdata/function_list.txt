@@ -101,22 +101,22 @@ Functions overloads:
 1 array_remove_last(Array(Nothing) NULL) :: Array(Nothing) NULL
 2 array_remove_last(Array(T0)) :: Array(T0)
 3 array_remove_last(Array(T0) NULL) :: Array(T0) NULL
-0 array_sort_asc_null_first(Array(Nothing)) :: Array(Nothing)
-1 array_sort_asc_null_first(Array(Nothing) NULL) :: Array(Nothing) NULL
-2 array_sort_asc_null_first(Array(T0)) :: Array(T0)
-3 array_sort_asc_null_first(Array(T0) NULL) :: Array(T0) NULL
-0 array_sort_asc_null_last(Array(Nothing)) :: Array(Nothing)
-1 array_sort_asc_null_last(Array(Nothing) NULL) :: Array(Nothing) NULL
-2 array_sort_asc_null_last(Array(T0)) :: Array(T0)
-3 array_sort_asc_null_last(Array(T0) NULL) :: Array(T0) NULL
-0 array_sort_desc_null_first(Array(Nothing)) :: Array(Nothing)
-1 array_sort_desc_null_first(Array(Nothing) NULL) :: Array(Nothing) NULL
-2 array_sort_desc_null_first(Array(T0)) :: Array(T0)
-3 array_sort_desc_null_first(Array(T0) NULL) :: Array(T0) NULL
-0 array_sort_desc_null_last(Array(Nothing)) :: Array(Nothing)
-1 array_sort_desc_null_last(Array(Nothing) NULL) :: Array(Nothing) NULL
-2 array_sort_desc_null_last(Array(T0)) :: Array(T0)
-3 array_sort_desc_null_last(Array(T0) NULL) :: Array(T0) NULL
+0 array_sort_asc_nulls_first(Array(Nothing)) :: Array(Nothing)
+1 array_sort_asc_nulls_first(Array(Nothing) NULL) :: Array(Nothing) NULL
+2 array_sort_asc_nulls_first(Array(T0)) :: Array(T0)
+3 array_sort_asc_nulls_first(Array(T0) NULL) :: Array(T0) NULL
+0 array_sort_asc_nulls_last(Array(Nothing)) :: Array(Nothing)
+1 array_sort_asc_nulls_last(Array(Nothing) NULL) :: Array(Nothing) NULL
+2 array_sort_asc_nulls_last(Array(T0)) :: Array(T0)
+3 array_sort_asc_nulls_last(Array(T0) NULL) :: Array(T0) NULL
+0 array_sort_desc_nulls_first(Array(Nothing)) :: Array(Nothing)
+1 array_sort_desc_nulls_first(Array(Nothing) NULL) :: Array(Nothing) NULL
+2 array_sort_desc_nulls_first(Array(T0)) :: Array(T0)
+3 array_sort_desc_nulls_first(Array(T0) NULL) :: Array(T0) NULL
+0 array_sort_desc_nulls_last(Array(Nothing)) :: Array(Nothing)
+1 array_sort_desc_nulls_last(Array(Nothing) NULL) :: Array(Nothing) NULL
+2 array_sort_desc_nulls_last(Array(T0)) :: Array(T0)
+3 array_sort_desc_nulls_last(Array(T0) NULL) :: Array(T0) NULL
 0 array_sum FACTORY
 0 array_unique(Array(Nothing)) :: UInt64
 1 array_unique(Array(Nothing) NULL) :: UInt64 NULL
