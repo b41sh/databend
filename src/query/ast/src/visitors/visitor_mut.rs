@@ -289,7 +289,7 @@ pub trait VisitorMut: Sized {
         walk_expr_mut(self, expr);
     }
 
-    fn visit_array_aggr(&mut self, _span: Span, expr: &'ast Expr, _func_name: &'ast String) {
+    fn visit_array_aggr(&mut self, _span: Span, expr: &mut Expr, _func_name: &mut String) {
         walk_expr_mut(self, expr);
     }
 

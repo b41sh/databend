@@ -24,7 +24,6 @@ use common_expression::types::number::*;
 use common_expression::types::DataType;
 use common_expression::types::ValueType;
 use common_expression::types::*;
-use common_expression::with_decimal_mapped_type;
 use common_expression::with_number_mapped_type;
 use common_expression::Column;
 use common_expression::ColumnBuilder;
@@ -415,24 +414,35 @@ pub fn try_create_aggregate_list_function(
                 }
             })
         }
-        DataType::Decimal(decimal_type) => {
-            with_decimal_mapped_type!(|DECIMAL_TYPE| match decimal_type {
-                DecimalDataType::DECIMAL_TYPE(size) => {
-                    if nullable {
-                        type State = NullableListState<DecimalType<size>>;
-                        AggregateListFunction::<DecimalType<size>, State>::try_create(
-                            display_name,
-                            return_type,
-                        )
-                    } else {
-                        type State = ListState<DecimalType<size>>;
-                        AggregateListFunction::<DecimalType<size>, State>::try_create(
-                            display_name,
-                            return_type,
-                        )
-                    }
-                }
-            })
+        DataType::Decimal(DecimalDataType::Decimal128(_)) => {
+            if nullable {
+                type State = NullableListState<DecimalType<i128>>;
+                AggregateListFunction::<DecimalType<i128>, State>::try_create(
+                    display_name,
+                    return_type,
+                )
+            } else {
+                type State = ListState<DecimalType<i128>>;
+                AggregateListFunction::<DecimalType<i128>, State>::try_create(
+                    display_name,
+                    return_type,
+                )
+            }
+        }
+        DataType::Decimal(DecimalDataType::Decimal256(_)) => {
+            if nullable {
+                type State = NullableListState<DecimalType<i256>>;
+                AggregateListFunction::<DecimalType<i256>, State>::try_create(
+                    display_name,
+                    return_type,
+                )
+            } else {
+                type State = ListState<DecimalType<i256>>;
+                AggregateListFunction::<DecimalType<i256>, State>::try_create(
+                    display_name,
+                    return_type,
+                )
+            }
         }
         _ => {
             if nullable {
