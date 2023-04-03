@@ -62,6 +62,7 @@ use crate::DerivedColumn;
 use crate::IndexType;
 use crate::MetadataRef;
 use crate::TableInternalColumn;
+use crate::VirtualColumn;
 
 /// Decorrelate subqueries inside `s_expr`.
 ///
@@ -409,6 +410,11 @@ impl SubqueryRewriter {
                     ColumnEntry::InternalColumn(TableInternalColumn {
                         internal_column, ..
                     }) => (internal_column.column_name(), internal_column.data_type()),
+                    ColumnEntry::VirtualColumn(VirtualColumn {
+                        column_name,
+                        data_type,
+                        ..
+                    }) => (column_name, DataType::from(data_type)),
                 };
                 self.derived_columns.insert(
                     *correlated_column,
@@ -482,6 +488,9 @@ impl SubqueryRewriter {
                             internal_column,
                             ..
                         }) => internal_column.data_type(),
+                        ColumnEntry::VirtualColumn(VirtualColumn { data_type, .. }) => {
+                            DataType::from(data_type)
+                        }
                     };
                     let column_binding = ColumnBinding {
                         database_name: None,
@@ -602,6 +611,9 @@ impl SubqueryRewriter {
                                 internal_column,
                                 ..
                             }) => internal_column.data_type(),
+                            ColumnEntry::VirtualColumn(VirtualColumn { data_type, .. }) => {
+                                DataType::from(data_type)
+                            }
                         };
                         ColumnBinding {
                             database_name: None,
@@ -820,6 +832,9 @@ impl SubqueryRewriter {
                 ColumnEntry::InternalColumn(TableInternalColumn {
                     internal_column, ..
                 }) => internal_column.data_type(),
+                ColumnEntry::VirtualColumn(VirtualColumn { data_type, .. }) => {
+                    DataType::from(data_type)
+                }
             };
             let right_column = ScalarExpr::BoundColumnRef(BoundColumnRef {
                 span,
