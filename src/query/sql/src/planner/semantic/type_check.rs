@@ -2434,6 +2434,7 @@ impl<'a> TypeChecker<'a> {
         let virutal_column = ColumnBinding {
             database_name: column.database_name.clone(),
             table_name: column.table_name.clone(),
+            table_index: Some(table_index),
             column_name: name,
             index,
             data_type: Box::new(data_type.clone()),
