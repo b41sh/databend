@@ -202,6 +202,7 @@ impl PhysicalPlanBuilder {
                 let mut name_mapping = BTreeMap::new();
                 let mut project_internal_columns = BTreeMap::new();
                 let metadata = self.metadata.read().clone();
+
                 for index in scan.columns.iter() {
                     let column = metadata.column(*index);
                     if let ColumnEntry::BaseTableColumn(BaseTableColumn { path_indices, .. }) =
