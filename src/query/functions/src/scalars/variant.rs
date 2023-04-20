@@ -60,6 +60,7 @@ use jsonb::as_bool;
 use jsonb::as_f64;
 use jsonb::as_i64;
 use jsonb::as_str;
+use jsonb::build_array;
 use jsonb::build_object;
 use jsonb::get_by_index;
 use jsonb::get_by_name;
@@ -80,7 +81,6 @@ use jsonb::to_u64;
 
 pub fn register(registry: &mut FunctionRegistry) {
     registry.register_aliases("json_object_keys", &["object_keys"]);
-    registry.register_aliases("json_path_query_array", &["get_path"]);
 
     registry.register_passthrough_nullable_1_arg::<StringType, VariantType, _, _>(
         "parse_json",
@@ -309,6 +309,44 @@ pub fn register(registry: &mut FunctionRegistry) {
         ),
     );
 
+    registry.register_combine_nullable_2_arg::<VariantType, StringType, VariantType, _, _>(
+        "get_path",
+        |_, _| FunctionDomain::MayThrow,
+        vectorize_with_builder_2_arg::<VariantType, StringType, NullableType<VariantType>>(
+            |val, path, output, ctx| {
+                if let Some(validity) = &ctx.validity {
+                    if !validity.get_bit(output.len()) {
+                        output.push_null();
+                        return;
+                    }
+                }
+                match parse_json_path(path) {
+                    Ok(json_path) => {
+                        let mut vals = get_by_path(val, json_path);
+                        if vals.is_empty() {
+                            output.push_null();
+                        } else if vals.len() == 1 {
+                            let v = vals.remove(0);
+                            output.push(&v);
+                        } else {
+                            let mut array_val = Vec::new();
+                            let items: Vec<_> = vals.iter().map(|v| v.as_slice()).collect();
+                            build_array(items, &mut array_val).unwrap();
+                            output.push(&array_val);
+                        }
+                    }
+                    Err(_) => {
+                        ctx.set_error(
+                            output.len(),
+                            format!("Invalid JSON Path '{}'", &String::from_utf8_lossy(path),),
+                        );
+                        output.push_null();
+                    }
+                }
+            },
+        ),
+    );
+
     registry.register_combine_nullable_2_arg::<StringType, StringType, StringType, _, _>(
         "json_extract_path_text",
         |_, _| FunctionDomain::MayThrow,
@@ -325,13 +363,22 @@ pub fn register(registry: &mut FunctionRegistry) {
                         let mut buf = Vec::new();
                         val.write_to_vec(&mut buf);
                         match parse_json_path(path) {
-                            Ok(json_path) => match get_by_path_array(&buf, json_path) {
-                                Some(v) => {
+                            Ok(json_path) => {
+                                let mut vals = get_by_path(val, json_path);
+                                if vals.is_empty() {
+                                    output.push_null();
+                                } else if vals.len() == 1 {
+                                    let v = vals.remove(0);
                                     let json_val = to_string(&v);
                                     output.push(json_val.as_bytes());
+                                } else {
+                                    let mut array_val = Vec::new();
+                                    let items: Vec<_> = vals.iter().map(|v| v.as_slice()).collect();
+                                    build_array(items, &mut array_val).unwrap();
+                                    let json_val = to_string(&array_val);
+                                    output.push(json_val.as_bytes());
                                 }
-                                None => output.push_null(),
-                            },
+                            }
                             Err(_) => {
                                 ctx.set_error(
                                     output.len(),

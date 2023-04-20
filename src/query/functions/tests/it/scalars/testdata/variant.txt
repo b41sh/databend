@@ -711,7 +711,7 @@ evaluation (internal):
 
 ast            : get_path(parse_json('[[1,2],3]'), '[0]')
 raw expr       : get_path(parse_json("[[1,2],3]"), "[0]")
-checked expr   : json_path_query_array<Variant, String>(parse_json<String>("[[1,2],3]"), "[0]")
+checked expr   : get_path<Variant, String>(parse_json<String>("[[1,2],3]"), "[0]")
 optimized expr : 0x80000002200000022000000250015002
 output type    : Variant NULL
 output domain  : Undefined
@@ -720,7 +720,7 @@ output         : [1,2]
 
 ast            : get_path(parse_json('[[1,2],3]'), '[0][1]')
 raw expr       : get_path(parse_json("[[1,2],3]"), "[0][1]")
-checked expr   : json_path_query_array<Variant, String>(parse_json<String>("[[1,2],3]"), "[0][1]")
+checked expr   : get_path<Variant, String>(parse_json<String>("[[1,2],3]"), "[0][1]")
 optimized expr : 0x20000000200000025002
 output type    : Variant NULL
 output domain  : Undefined
@@ -729,7 +729,7 @@ output         : 2
 
 ast            : get_path(parse_json('[1,2,3]'), '[0]')
 raw expr       : get_path(parse_json("[1,2,3]"), "[0]")
-checked expr   : json_path_query_array<Variant, String>(parse_json<String>("[1,2,3]"), "[0]")
+checked expr   : get_path<Variant, String>(parse_json<String>("[1,2,3]"), "[0]")
 optimized expr : 0x20000000200000025001
 output type    : Variant NULL
 output domain  : Undefined
@@ -738,7 +738,7 @@ output         : 1
 
 ast            : get_path(parse_json('[1,2,3]'), 'k2:k3')
 raw expr       : get_path(parse_json("[1,2,3]"), "k2:k3")
-checked expr   : json_path_query_array<Variant, String>(parse_json<String>("[1,2,3]"), "k2:k3")
+checked expr   : get_path<Variant, String>(parse_json<String>("[1,2,3]"), "k2:k3")
 optimized expr : NULL
 output type    : Variant NULL
 output domain  : {NULL}
@@ -747,7 +747,7 @@ output         : NULL
 
 ast            : get_path(parse_json('{"a":{"b":2}}'), '["a"]["b"]')
 raw expr       : get_path(parse_json("{\"a\":{\"b\":2}}"), "[\"a\"][\"b\"]")
-checked expr   : json_path_query_array<Variant, String>(parse_json<String>("{\"a\":{\"b\":2}}"), "[\"a\"][\"b\"]")
+checked expr   : get_path<Variant, String>(parse_json<String>("{\"a\":{\"b\":2}}"), "[\"a\"][\"b\"]")
 optimized expr : 0x20000000200000025002
 output type    : Variant NULL
 output domain  : Undefined
@@ -756,7 +756,7 @@ output         : 2
 
 ast            : get_path(parse_json('{"a":{"b":2}}'), 'a:b')
 raw expr       : get_path(parse_json("{\"a\":{\"b\":2}}"), "a:b")
-checked expr   : json_path_query_array<Variant, String>(parse_json<String>("{\"a\":{\"b\":2}}"), "a:b")
+checked expr   : get_path<Variant, String>(parse_json<String>("{\"a\":{\"b\":2}}"), "a:b")
 optimized expr : 0x20000000200000025002
 output type    : Variant NULL
 output domain  : Undefined
@@ -765,7 +765,7 @@ output         : 2
 
 ast            : get_path(parse_json('{"a":{"b":2}}'), '["a"]')
 raw expr       : get_path(parse_json("{\"a\":{\"b\":2}}"), "[\"a\"]")
-checked expr   : json_path_query_array<Variant, String>(parse_json<String>("{\"a\":{\"b\":2}}"), "[\"a\"]")
+checked expr   : get_path<Variant, String>(parse_json<String>("{\"a\":{\"b\":2}}"), "[\"a\"]")
 optimized expr : 0x400000011000000120000002625002
 output type    : Variant NULL
 output domain  : Undefined
@@ -774,7 +774,7 @@ output         : {"b":2}
 
 ast            : get_path(parse_json('{"a":{"b":2}}'), 'a')
 raw expr       : get_path(parse_json("{\"a\":{\"b\":2}}"), "a")
-checked expr   : json_path_query_array<Variant, String>(parse_json<String>("{\"a\":{\"b\":2}}"), "a")
+checked expr   : get_path<Variant, String>(parse_json<String>("{\"a\":{\"b\":2}}"), "a")
 optimized expr : 0x400000011000000120000002625002
 output type    : Variant NULL
 output domain  : Undefined
@@ -783,7 +783,7 @@ output         : {"b":2}
 
 ast            : get_path(parse_json(s), k)
 raw expr       : get_path(parse_json(s::String), k::String)
-checked expr   : json_path_query_array<Variant, String>(parse_json<String>(s), k)
+checked expr   : get_path<Variant, String>(parse_json<String>(s), k)
 evaluation:
 +--------+---------------------------------+-------------------+--------------+
 |        | s                               | k                 | Output       |
@@ -806,7 +806,7 @@ evaluation (internal):
 
 ast            : get_path(parse_json(s), k)
 raw expr       : get_path(parse_json(s::String NULL), k::String)
-checked expr   : json_path_query_array<Variant NULL, String NULL>(parse_json<String NULL>(s), CAST(k AS String NULL))
+checked expr   : get_path<Variant NULL, String NULL>(parse_json<String NULL>(s), CAST(k AS String NULL))
 evaluation:
 +--------+-----------------------------+--------------+--------------+
 |        | s                           | k            | Output       |
