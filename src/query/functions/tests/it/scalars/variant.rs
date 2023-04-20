@@ -628,7 +628,7 @@ fn test_json_path_query_array(file: &mut impl Write) {
         ),
         (
             "p",
-            StringType::from_data(vec!["$[0]", "$[*].k2", "$.a", "$[0,2]"]),
+            StringType::from_data(vec!["$[0]", "$[*].k", "$.a", "$[0,2]"]),
         ),
     ]);
 }
@@ -675,7 +675,7 @@ fn test_json_path_query_first(file: &mut impl Write) {
         ),
         (
             "p",
-            StringType::from_data(vec!["$[0]", "$[*].k2", "$.a", "$[0,2]"]),
+            StringType::from_data(vec!["$[0]", "$[*].k", "$.a", "$[0,2]"]),
         ),
     ]);
 }

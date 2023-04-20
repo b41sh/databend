@@ -65,6 +65,7 @@ use jsonb::build_object;
 use jsonb::get_by_index;
 use jsonb::get_by_name;
 use jsonb::get_by_name_ignore_case;
+use jsonb::get_by_path;
 use jsonb::get_by_path_array;
 use jsonb::get_by_path_first;
 use jsonb::is_array;
@@ -364,7 +365,7 @@ pub fn register(registry: &mut FunctionRegistry) {
                         val.write_to_vec(&mut buf);
                         match parse_json_path(path) {
                             Ok(json_path) => {
-                                let mut vals = get_by_path(val, json_path);
+                                let mut vals = get_by_path(&buf, json_path);
                                 if vals.is_empty() {
                                     output.push_null();
                                 } else if vals.len() == 1 {
