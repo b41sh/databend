@@ -787,7 +787,7 @@ pub trait TryExtendFromSelf {
 /// 1. `offsets.len() > 0`
 /// 2. `offsets[i] >= offsets[i-1] for all i`
 /// 3. `offsets[i] < values.len() for all i`
-pub unsafe trait GenericBinaryArray<O: crate::offset::Offset>: Array {
+pub unsafe trait GenericBinaryArray<O: crate::arrow::offset::Offset>: Array {
     /// The values of the array
     fn values(&self) -> &[u8];
     /// The offsets of the array

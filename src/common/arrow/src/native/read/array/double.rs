@@ -18,13 +18,13 @@
 use std::io::Cursor;
 use std::marker::PhantomData;
 
-use crate::compression::double::{decompress_double, DoubleType};
-use crate::read::{read_basic::*, BufReader, NativeReadBuf, PageIterator};
-use crate::PageMeta;
+use crate::native::compression::double::{decompress_double, DoubleType};
+use crate::native::read::{read_basic::*, BufReader, NativeReadBuf, PageIterator};
+use crate::native::PageMeta;
 use crate::arrow::array::Array;
 use crate::arrow::array::PrimitiveArray;
 use crate::arrow::bitmap::MutableBitmap;
-use crate::buffer::Buffer;
+use crate::arrow::buffer::Buffer;
 use crate::arrow::datatypes::DataType;
 use crate::arrow::error::Result;
 use crate::arrow::io::parquet::read::{InitNested, NestedState};

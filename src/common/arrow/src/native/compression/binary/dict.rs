@@ -28,7 +28,7 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use crate::native::compression::integer::compress_integer;
 use crate::native::compression::integer::{decompress_integer, Dict, DictEncoder};
 use crate::native::compression::{get_bits_needed, is_valid, Compression};
-use crate::native::general_err;
+use crate::general_err;
 use crate::native::util::AsBytes;
 use crate::native::write::WriteOptions;
 

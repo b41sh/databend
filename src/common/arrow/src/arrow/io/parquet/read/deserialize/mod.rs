@@ -117,15 +117,15 @@ pub fn create_map(
 fn is_primitive(data_type: &DataType) -> bool {
     matches!(
         data_type.to_physical_type(),
-        crate::datatypes::PhysicalType::Primitive(_)
-            | crate::datatypes::PhysicalType::Null
-            | crate::datatypes::PhysicalType::Boolean
-            | crate::datatypes::PhysicalType::Utf8
-            | crate::datatypes::PhysicalType::LargeUtf8
-            | crate::datatypes::PhysicalType::Binary
-            | crate::datatypes::PhysicalType::LargeBinary
-            | crate::datatypes::PhysicalType::FixedSizeBinary
-            | crate::datatypes::PhysicalType::Dictionary(_)
+        crate::arrow::datatypes::PhysicalType::Primitive(_)
+            | crate::arrow::datatypes::PhysicalType::Null
+            | crate::arrow::datatypes::PhysicalType::Boolean
+            | crate::arrow::datatypes::PhysicalType::Utf8
+            | crate::arrow::datatypes::PhysicalType::LargeUtf8
+            | crate::arrow::datatypes::PhysicalType::Binary
+            | crate::arrow::datatypes::PhysicalType::LargeBinary
+            | crate::arrow::datatypes::PhysicalType::FixedSizeBinary
+            | crate::arrow::datatypes::PhysicalType::Dictionary(_)
     )
 }
 

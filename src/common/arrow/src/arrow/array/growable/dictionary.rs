@@ -90,7 +90,7 @@ impl<'a, T: DictionaryKey> GrowableDictionary<'a, T> {
 
         #[cfg(debug_assertions)]
         {
-            crate::array::specification::check_indexes(&key_values, self.values.len()).unwrap();
+            crate::arrow::array::specification::check_indexes(&key_values, self.values.len()).unwrap();
         }
         let keys =
             PrimitiveArray::<T>::new(T::PRIMITIVE.into(), key_values.into(), validity.into());

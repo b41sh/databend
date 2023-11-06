@@ -29,7 +29,7 @@ use roaring::RoaringBitmap;
 
 use crate::native::compression::integer::Freq;
 use crate::native::compression::Compression;
-use crate::native::general_err;
+use crate::general_err;
 
 use crate::native::write::WriteOptions;
 

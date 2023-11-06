@@ -15,9 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::read::PageIterator;
-use crate::PageMeta;
-use crate::{
+use crate::native::read::PageIterator;
+use crate::native::PageMeta;
+use crate::arrow::{
     array::{Array, NullArray},
     datatypes::DataType,
     error::Result,

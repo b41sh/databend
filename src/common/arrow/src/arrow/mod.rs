@@ -29,8 +29,5 @@ pub mod scalar;
 pub mod io;
 pub mod chunk;
 pub mod compute;
-
-
-#[macro_use]
-mod util;
+pub mod util;
 

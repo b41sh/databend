@@ -33,7 +33,7 @@ impl MutableArray for DynMutableStructArray {
         self.inner[0].len()
     }
 
-    fn validity(&self) -> Option<&crate::bitmap::MutableBitmap> {
+    fn validity(&self) -> Option<&crate::arrow::bitmap::MutableBitmap> {
         None
     }
 

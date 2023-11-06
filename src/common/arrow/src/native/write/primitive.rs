@@ -36,60 +36,60 @@ pub(crate) fn write_primitive<T: NativeType, W: Write>(
     scratch.clear();
     // compress_integer(array, write_options, scratch)?;
     match T::PRIMITIVE {
-        crate::types::PrimitiveType::Int8 => {
+        crate::arrow::types::PrimitiveType::Int8 => {
             let array: &PrimitiveArray<i8> = array.as_any().downcast_ref().unwrap();
             compress_integer(array, write_options, scratch)?;
         }
-        crate::types::PrimitiveType::Int16 => {
+        crate::arrow::types::PrimitiveType::Int16 => {
             let array: &PrimitiveArray<i16> = array.as_any().downcast_ref().unwrap();
             compress_integer(array, write_options, scratch)?;
         }
-        crate::types::PrimitiveType::Int32 => {
+        crate::arrow::types::PrimitiveType::Int32 => {
             let array: &PrimitiveArray<i32> = array.as_any().downcast_ref().unwrap();
             compress_integer(array, write_options, scratch)?;
         }
-        crate::types::PrimitiveType::Int64 => {
+        crate::arrow::types::PrimitiveType::Int64 => {
             let array: &PrimitiveArray<i64> = array.as_any().downcast_ref().unwrap();
             compress_integer(array, write_options, scratch)?;
         }
-        crate::types::PrimitiveType::UInt8 => {
+        crate::arrow::types::PrimitiveType::UInt8 => {
             let array: &PrimitiveArray<u8> = array.as_any().downcast_ref().unwrap();
             compress_integer(array, write_options, scratch)?;
         }
-        crate::types::PrimitiveType::UInt16 => {
+        crate::arrow::types::PrimitiveType::UInt16 => {
             let array: &PrimitiveArray<u16> = array.as_any().downcast_ref().unwrap();
             compress_integer(array, write_options, scratch)?;
         }
-        crate::types::PrimitiveType::UInt32 => {
+        crate::arrow::types::PrimitiveType::UInt32 => {
             let array: &PrimitiveArray<u32> = array.as_any().downcast_ref().unwrap();
             compress_integer(array, write_options, scratch)?;
         }
-        crate::types::PrimitiveType::UInt64 => {
+        crate::arrow::types::PrimitiveType::UInt64 => {
             let array: &PrimitiveArray<u64> = array.as_any().downcast_ref().unwrap();
             compress_integer(array, write_options, scratch)?;
         }
-        crate::types::PrimitiveType::Int128 => {
+        crate::arrow::types::PrimitiveType::Int128 => {
             let array: &PrimitiveArray<i128> = array.as_any().downcast_ref().unwrap();
             compress_integer(array, write_options, scratch)?;
         }
-        crate::types::PrimitiveType::Int256 => {
+        crate::arrow::types::PrimitiveType::Int256 => {
             let array: &PrimitiveArray<i256> = array.as_any().downcast_ref().unwrap();
             compress_integer(array, write_options, scratch)?;
         }
-        crate::types::PrimitiveType::Float32 => {
+        crate::arrow::types::PrimitiveType::Float32 => {
             let array: &PrimitiveArray<f32> = array.as_any().downcast_ref().unwrap();
 
             compress_double(array, write_options, scratch)?;
         }
-        crate::types::PrimitiveType::Float64 => {
+        crate::arrow::types::PrimitiveType::Float64 => {
             let array: &PrimitiveArray<f64> = array.as_any().downcast_ref().unwrap();
 
             compress_double(array, write_options, scratch)?;
         }
 
-        crate::types::PrimitiveType::Float16 => unimplemented!(),
-        crate::types::PrimitiveType::DaysMs => unimplemented!(),
-        crate::types::PrimitiveType::MonthDayNano => unimplemented!(),
+        crate::arrow::types::PrimitiveType::Float16 => unimplemented!(),
+        crate::arrow::types::PrimitiveType::DaysMs => unimplemented!(),
+        crate::arrow::types::PrimitiveType::MonthDayNano => unimplemented!(),
     }
     w.write_all(scratch.as_slice())?;
     Ok(())

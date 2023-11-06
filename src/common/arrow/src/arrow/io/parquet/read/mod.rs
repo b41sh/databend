@@ -66,8 +66,8 @@ pub async fn read_metadata_async<R: AsyncRead + AsyncSeek + Send + Unpin>(
     Ok(_read_metadata_async(reader).await?)
 }
 
-fn convert_days_ms(value: &[u8]) -> crate::types::days_ms {
-    crate::types::days_ms(
+fn convert_days_ms(value: &[u8]) -> crate::arrow::types::days_ms {
+    crate::arrow::types::days_ms(
         i32::from_le_bytes(value[4..8].try_into().unwrap()),
         i32::from_le_bytes(value[8..12].try_into().unwrap()),
     )

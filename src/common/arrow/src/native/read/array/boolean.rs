@@ -17,9 +17,9 @@
 
 use std::io::Cursor;
 
-use crate::compression::boolean::decompress_boolean;
-use crate::read::{read_basic::*, BufReader, NativeReadBuf, PageIterator};
-use crate::PageMeta;
+use crate::native::compression::boolean::decompress_boolean;
+use crate::native::read::{read_basic::*, BufReader, NativeReadBuf, PageIterator};
+use crate::native::PageMeta;
 use crate::arrow::array::{Array, BooleanArray};
 use crate::arrow::bitmap::MutableBitmap;
 use crate::arrow::datatypes::DataType;

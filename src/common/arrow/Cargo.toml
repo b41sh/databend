@@ -31,6 +31,8 @@ parquet-default = [
 ]
 simd = ["arrow/simd"]
 
+
+
 [dependencies] # In alphabetical order
 # Workspace dependencies
 
@@ -65,5 +67,24 @@ itertools = "^0.10"
 multiversion = "0.7.3"
 #memchr = { version = "2.6", optional = true }
 memchr = "2.6"
+bytemuck = { version = "1", features = ["derive"] }
+num = { version = "0.4", default-features = false, features = ["std"] }
+ethnum = "1"
+num-traits = "0.2"
+chrono = { version = "0.4.31", default_features = false, features = ["std"] }
+chrono-tz = { version = "0.8", optional = true }
+ahash = { version = "0.8", default-features = false, features = [
+        "std",
+        "runtime-rng",
+] }
+dyn-clone = "1"
+either = "1.9"
+foreign_vec = "0.1.0"
+simdutf8 = "0.1.4"
+lz4 = { version = "1.23.1" }
+zstd = { version = "0.11" }
+snap = { version = "1.1.0" }
+
+
 
 [dev-dependencies]

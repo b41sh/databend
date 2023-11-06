@@ -20,7 +20,7 @@ use crate::arrow::datatypes::Field;
 use crate::arrow::error::Result;
 use crate::arrow::io::parquet::read::{create_list, NestedState};
 
-use crate::read::deserialize::DynIter;
+use crate::native::read::deserialize::DynIter;
 
 /// An iterator adapter over [`DynIter`] assumed to be encoded as List arrays
 pub struct ListIterator<'a> {

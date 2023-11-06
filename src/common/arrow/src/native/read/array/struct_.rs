@@ -20,7 +20,7 @@ use crate::arrow::datatypes::{DataType, Field};
 use crate::arrow::error::Result;
 use crate::arrow::io::parquet::read::NestedState;
 
-use crate::read::deserialize::NestedIters;
+use crate::native::read::deserialize::NestedIters;
 
 type StructValues = Vec<Option<Result<(NestedState, Box<dyn Array>)>>>;
 

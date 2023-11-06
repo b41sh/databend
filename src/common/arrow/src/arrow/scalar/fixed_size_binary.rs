@@ -19,7 +19,7 @@ impl FixedSizeBinaryScalar {
     pub fn new<P: Into<Vec<u8>>>(data_type: DataType, value: Option<P>) -> Self {
         assert_eq!(
             data_type.to_physical_type(),
-            crate::datatypes::PhysicalType::FixedSizeBinary
+            crate::arrow::datatypes::PhysicalType::FixedSizeBinary
         );
         Self {
             value: value.map(|x| {

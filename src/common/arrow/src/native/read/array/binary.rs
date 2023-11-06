@@ -18,17 +18,18 @@
 use std::io::Cursor;
 use std::marker::PhantomData;
 
-use crate::compression::binary::decompress_binary;
-use crate::read::{read_basic::*, BufReader, NativeReadBuf, PageIterator};
-use crate::PageMeta;
+use crate::native::compression::binary::decompress_binary;
+use crate::native::read::{read_basic::*, BufReader, NativeReadBuf, PageIterator};
+use crate::native::PageMeta;
 use crate::arrow::array::{Array, BinaryArray, Utf8Array};
 use crate::arrow::bitmap::{Bitmap, MutableBitmap};
-use crate::buffer::Buffer;
+use crate::arrow::buffer::Buffer;
 use crate::arrow::datatypes::DataType;
 use crate::arrow::error::Result;
 use crate::arrow::io::parquet::read::{InitNested, NestedState};
-use crate::offset::OffsetsBuffer;
-use crate::types::Offset;
+use crate::arrow::offset::OffsetsBuffer;
+use crate::arrow::types::Offset;
+
 use parquet2::metadata::ColumnDescriptor;
 
 #[derive(Debug)]

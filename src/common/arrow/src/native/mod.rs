@@ -19,8 +19,8 @@
 
 mod compression;
 
-#[macro_use]
-mod errors;
+//#[macro_use]
+//mod errors;
 
 pub use compression::CommonCompression;
 

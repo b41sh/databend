@@ -28,7 +28,7 @@ use crate::native::compression::integer::Dict;
 use crate::native::compression::integer::DictEncoder;
 use crate::native::compression::integer::RawNative;
 use crate::native::compression::Compression;
-use crate::native::general_err;
+use crate::general_err;
 use crate::native::write::WriteOptions;
 
 use super::traits::DoubleType;

@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![cfg_attr(feature = "simd", feature(portable_simd))]
+
+#[macro_use]
+mod errors;
+
+
 mod parquet_read;
 mod parquet_write;
 pub mod schema_projection;

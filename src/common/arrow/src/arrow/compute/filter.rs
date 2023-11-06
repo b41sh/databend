@@ -279,7 +279,7 @@ pub fn filter(array: &dyn Array, filter: &BooleanArray) -> Result<Box<dyn Array>
         let values = filter.values();
         let new_values = values & validities;
         let filter = BooleanArray::new(DataType::Boolean, new_values, None);
-        return crate::compute::filter::filter(array, &filter);
+        return crate::arrow::compute::filter::filter(array, &filter);
     }
 
     let false_count = filter.values().unset_bits();

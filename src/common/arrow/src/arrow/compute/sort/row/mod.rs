@@ -355,7 +355,7 @@ impl<'a> DoubleEndedIterator for RowsIter<'a> {
     }
 }
 
-unsafe impl<'a> crate::trusted_len::TrustedLen for RowsIter<'a> {}
+unsafe impl<'a> crate::arrow::trusted_len::TrustedLen for RowsIter<'a> {}
 
 /// A comparable representation of a row
 ///

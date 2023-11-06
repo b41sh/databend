@@ -75,7 +75,7 @@ impl Compression {
             15 => Ok(Compression::DeltaBitpacking),
             16 => Ok(Compression::Patas),
 
-            other => Err(crate::error::Error::OutOfSpec(format!(
+            other => Err(crate::arrow::error::Error::OutOfSpec(format!(
                 "Unknown compression codec {other}",
             ))),
         }

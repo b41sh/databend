@@ -89,7 +89,7 @@ where
             ));
         }
 
-        let parquet_schema = crate::io::parquet::write::to_parquet_schema(&schema)?;
+        let parquet_schema = crate::arrow::io::parquet::write::to_parquet_schema(&schema)?;
         let created_by = Some("Arrow2 - Native Rust implementation of Arrow".to_string());
         let writer = FileStreamer::new(
             writer,
@@ -163,7 +163,7 @@ where
         }
         let this = self.get_mut();
         if let Some(mut writer) = this.writer.take() {
-            let rows = crate::io::parquet::write::row_group_iter(
+            let rows = crate::arrow::io::parquet::write::row_group_iter(
                 item,
                 this.encodings.clone(),
                 this.parquet_schema.fields().to_vec(),
