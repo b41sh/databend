@@ -1,6 +1,6 @@
 //! APIs exposing `parquet2`'s statistics as arrow's statistics.
 
-use crate::arrow::with_match_primitive_type;
+//use crate::arrow::with_match_primitive_type;
 use ethnum::I256;
 use std::collections::VecDeque;
 use std::sync::Arc;

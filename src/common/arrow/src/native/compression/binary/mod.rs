@@ -11,7 +11,7 @@ use crate::arrow::{
     types::Offset,
 };
 
-use crate::arrow::{
+use crate::native::{
     read::{read_basic::read_compress_header, NativeReadBuf},
     util::env::{check_dict_env, check_freq_env},
     write::WriteOptions,

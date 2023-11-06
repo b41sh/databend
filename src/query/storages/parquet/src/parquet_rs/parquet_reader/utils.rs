@@ -16,7 +16,7 @@ use arrow_array::BooleanArray;
 use arrow_array::RecordBatch;
 use arrow_array::StructArray;
 use arrow_schema::FieldRef;
-use common_arrow::arrow::array::Arrow2Arrow;
+//use common_arrow::arrow::array::Arrow2Arrow;
 use common_arrow::arrow::bitmap::Bitmap;
 use common_exception::ErrorCode;
 use common_exception::Result;
@@ -101,7 +101,8 @@ pub fn bitmap_to_boolean_array(bitmap: Bitmap) -> BooleanArray {
         )
         .unwrap(),
     );
-    BooleanArray::from(res.to_data())
+    //BooleanArray::from(res.to_data())
+    todo!()
 }
 
 /// FieldPaths is used to traverse nested columns in [`RecordBatch`].
@@ -152,12 +153,13 @@ pub fn compute_output_field_paths(
 }
 
 pub fn to_arrow_schema(schema: &TableSchema) -> arrow_schema::Schema {
-    let fields = schema
-        .fields()
-        .iter()
-        .map(|f| arrow_schema::Field::from(common_arrow::arrow::datatypes::Field::from(f)))
-        .collect::<Vec<_>>();
-    arrow_schema::Schema::new(fields)
+    //let fields = schema
+    //    .fields()
+    //    .iter()
+    //    .map(|f| arrow_schema::Field::from(common_arrow::arrow::datatypes::Field::from(f)))
+    //    .collect::<Vec<_>>();
+    //arrow_schema::Schema::new(fields)
+    todo!()
 }
 
 pub fn error_cannot_find_field(name: &str, schema: &parquet::schema::types::Type) -> ErrorCode {

@@ -23,15 +23,17 @@ use crate::DataField;
 
 impl Column {
     pub fn into_arrow_rs(self) -> Result<Arc<dyn Array>, ArrowError> {
-        let arrow2_array = self.as_arrow();
-        let arrow_array: Arc<dyn Array> = arrow2_array.into();
-        Ok(arrow_array)
+        //let arrow2_array = self.as_arrow();
+        //let arrow_array: Arc<dyn Array> = arrow2_array.into();
+        //Ok(arrow_array)
+        todo!()
     }
 
     pub fn from_arrow_rs(array: Arc<dyn Array>, field: &Field) -> Result<Self, ArrowError> {
-        let field = DataField::try_from(field)?;
-        let arrow2_array: Box<dyn common_arrow::arrow::array::Array> = array.into();
+        //let field = DataField::try_from(field)?;
+        //let arrow2_array: Box<dyn common_arrow::arrow::array::Array> = array.into();
 
-        Ok(Column::from_arrow(arrow2_array.as_ref(), field.data_type()))
+        //Ok(Column::from_arrow(arrow2_array.as_ref(), field.data_type()))
+        todo!()
     }
 }

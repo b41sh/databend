@@ -1,7 +1,7 @@
 //! Contains operators to sort individual and slices of [`Array`]s.
 use std::cmp::Ordering;
 
-use crate::arrow::match_integer_type;
+//use crate::arrow::match_integer_type;
 
 use crate::arrow::array::ord;
 use crate::arrow::compute::take;

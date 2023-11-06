@@ -17,8 +17,8 @@
 
 //! Defines take kernel for [`Array`]
 
-use crate::arrow::match_integer_type;
-use crate::arrow::with_match_primitive_type;
+//use crate::arrow::match_integer_type;
+//use crate::arrow::with_match_primitive_type;
 
 use crate::arrow::{
     array::{new_empty_array, Array, NullArray, PrimitiveArray},

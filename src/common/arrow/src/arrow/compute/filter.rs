@@ -8,7 +8,7 @@ use crate::arrow::error::Result;
 use crate::arrow::types::simd::Simd;
 use crate::arrow::types::BitChunkOnes;
 use crate::arrow::{array::*, types::NativeType};
-use crate::arrow::with_match_primitive_type;
+//use crate::arrow::with_match_primitive_type;
 
 
 /// Function that can filter arbitrary arrays

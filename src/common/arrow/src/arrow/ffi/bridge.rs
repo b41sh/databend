@@ -1,8 +1,9 @@
 use crate::arrow::array::*;
 
-use crate::arrow::match_integer_type;
-use crate::arrow::with_match_primitive_type;
-
+//use crate::arrow::match_integer_type;
+//use crate::arrow::with_match_primitive_type;
+use crate::match_integer_type;
+use crate::with_match_primitive_type;
 
 macro_rules! ffi_dyn {
     ($array:expr, $ty:ty) => {{

@@ -47,7 +47,7 @@
 use crate::arrow::array::*;
 use crate::arrow::datatypes::{DataType, IntervalUnit};
 use crate::arrow::scalar::*;
-use crate::arrow::match_integer_type;
+//use crate::arrow::match_integer_type;
 
 
 pub mod binary;

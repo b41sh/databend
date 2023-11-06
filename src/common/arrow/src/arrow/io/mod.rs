@@ -4,7 +4,7 @@
 
 
 pub mod ipc;
-//pub mod flight;
+pub mod flight;
 
 pub mod parquet;
 

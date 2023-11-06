@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use arrow::datatypes::Field;
-use arrow::error::Result;
-use arrow::io::parquet::read::to_deserializer;
-use arrow::io::parquet::read::ArrayIter;
+use crate::arrow::datatypes::Field;
+use crate::arrow::error::Result;
+use crate::arrow::io::parquet::read::to_deserializer;
+use crate::arrow::io::parquet::read::ArrayIter;
 use futures::AsyncRead;
 use futures::AsyncReadExt;
 use futures::AsyncSeek;

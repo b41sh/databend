@@ -71,7 +71,7 @@ macro_rules! with_match_integer_double_type2 {
             };
         }
         use crate::arrow::datatypes::PrimitiveType::*;
-        use crate::types::i256;
+        use crate::arrow::types::i256;
         match $key_type {
             Int8 => __with_ty__! { i8 },
             Int16 => __with_ty__! { i16 },

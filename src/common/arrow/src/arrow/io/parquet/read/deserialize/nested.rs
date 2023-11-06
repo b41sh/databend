@@ -1,4 +1,4 @@
-use crate::arrow::match_integer_type;
+//use crate::arrow::match_integer_type;
 
 use ethnum::I256;
 use parquet2::schema::types::PrimitiveType;

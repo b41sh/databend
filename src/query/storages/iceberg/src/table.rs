@@ -107,7 +107,7 @@ impl IcebergTable {
             .map_err(|e| {
                 ErrorCode::ReadTableDataError(format!("Cannot convert table metadata: {e:?}"))
             })?;
-
+        /**
         // Build arrow2 schema from arrow schema.
         let fields: Vec<Arrow2Field> = arrow_schema
             .fields()
@@ -139,6 +139,8 @@ impl IcebergTable {
             op: dop,
             table: OnceCell::new_with(Some(table)),
         })
+        */
+        todo!()
     }
 
     async fn table(&self) -> Result<&icelake::Table> {
@@ -172,6 +174,7 @@ impl IcebergTable {
 
         let table_schema = self.schema();
         let arrow_schema = table_schema.to_arrow();
+/**
         let arrow_fields = arrow_schema
             .fields
             .into_iter()
@@ -227,6 +230,8 @@ impl IcebergTable {
             },
             max_threads.max(1),
         )
+*/
+        todo!()
     }
 
     #[minitrace::trace]

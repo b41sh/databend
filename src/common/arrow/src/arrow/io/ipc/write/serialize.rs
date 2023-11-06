@@ -1,8 +1,8 @@
 #![allow(clippy::ptr_arg)] // false positive in clippy, see https://github.com/rust-lang/rust-clippy/issues/8463
 use arrow_format::ipc;
 
-use crate::arrow::match_integer_type;
-use crate::arrow::with_match_primitive_type;
+//use crate::arrow::match_integer_type;
+//use crate::arrow::with_match_primitive_type;
 
 
 use crate::arrow::{

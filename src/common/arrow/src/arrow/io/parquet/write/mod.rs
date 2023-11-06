@@ -26,7 +26,7 @@ mod sink;
 mod utf8;
 mod utils;
 
-use crate::arrow::match_integer_type;
+//use crate::arrow::match_integer_type;
 
 use crate::arrow::array::*;
 use crate::arrow::datatypes::*;

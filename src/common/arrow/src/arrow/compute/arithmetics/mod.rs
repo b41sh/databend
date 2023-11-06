@@ -17,7 +17,7 @@ pub mod basic;
 pub mod decimal;
 pub mod time;
 
-use crate::arrow::match_integer_type;
+//use crate::arrow::match_integer_type;
 
 use crate::arrow::{
     array::{Array, DictionaryArray, PrimitiveArray},

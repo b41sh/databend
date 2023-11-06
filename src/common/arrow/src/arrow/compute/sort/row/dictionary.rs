@@ -20,8 +20,10 @@ use crate::arrow::{
     compute::sort::SortOptions,
     datatypes::PhysicalType,
     error::*,
-    with_match_primitive_without_interval_type,
+    //with_match_primitive_without_interval_type,
 };
+
+use crate::with_match_primitive_without_interval_type;
 
 use super::{
     fixed::FixedLengthEncoding,

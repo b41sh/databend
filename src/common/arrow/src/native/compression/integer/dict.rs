@@ -172,11 +172,11 @@ where
 use hashbrown::hash_map::RawEntryMut;
 use hashbrown::HashMap;
 
-use crate::compression::{get_bits_needed, Compression};
+use crate::native::compression::{get_bits_needed, Compression};
 
 use crate::general_err;
-use crate::util::AsBytes;
-use crate::write::WriteOptions;
+use crate::native::util::AsBytes;
+use crate::native::write::WriteOptions;
 
 const DEFAULT_DEDUP_CAPACITY: usize = 4096;
 

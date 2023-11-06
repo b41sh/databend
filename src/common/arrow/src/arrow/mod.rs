@@ -23,6 +23,7 @@ pub mod error;
 pub mod datatypes;
 pub mod offset;
 pub mod ffi;
+#[macro_use]
 pub mod array;
 pub mod temporal_conversions;
 pub mod scalar;
@@ -30,4 +31,5 @@ pub mod io;
 pub mod chunk;
 pub mod compute;
 pub mod util;
+
 

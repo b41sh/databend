@@ -11,7 +11,7 @@ use crate::arrow::{array::Array, types::NativeType};
 
 use super::utils::combine_validities;
 
-use crate::arrow::with_match_primitive_type;
+//use crate::arrow::with_match_primitive_type;
 
 
 /// Returns an array whose validity is null iff `lhs == rhs` or `lhs` is null.

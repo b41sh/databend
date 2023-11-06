@@ -9,7 +9,7 @@ mod traits;
 use std::collections::HashMap;
 
 use crate::arrow::{
-    arrow::array::{Array, MutablePrimitiveArray, PrimitiveArray},
+    array::{Array, MutablePrimitiveArray, PrimitiveArray},
     error::{Error, Result},
 };
 use rand::{thread_rng, Rng};

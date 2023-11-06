@@ -33,4 +33,4 @@ pub use parquet_read::read_columns_async;
 pub use parquet_read::read_columns_many_async;
 pub use parquet_write::write_parquet_file;
 
-pub type ArrayRef = Box<dyn ::arrow::array::Array>;
+pub type ArrayRef = Box<dyn crate::arrow::array::Array>;

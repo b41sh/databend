@@ -1,6 +1,6 @@
 use std::borrow::{Borrow, Cow};
 
-use crate::arrow::match_integer_type;
+//use crate::arrow::match_integer_type;
 
 use arrow_format::ipc::planus::Builder;
 
