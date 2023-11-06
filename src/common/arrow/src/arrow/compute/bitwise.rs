@@ -1,9 +1,9 @@
 //! Contains bitwise operators: [`or`], [`and`], [`xor`] and [`not`].
 use std::ops::{BitAnd, BitOr, BitXor, Not};
 
-use crate::array::PrimitiveArray;
-use crate::compute::arity::{binary, unary};
-use crate::types::NativeType;
+use crate::arrow::array::PrimitiveArray;
+use crate::arrow::compute::arity::{binary, unary};
+use crate::arrow::types::NativeType;
 
 /// Performs `OR` operation on two [`PrimitiveArray`]s.
 /// # Panic

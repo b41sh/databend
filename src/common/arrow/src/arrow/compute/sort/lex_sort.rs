@@ -1,14 +1,14 @@
 use std::cmp::Ordering;
 
-use crate::compute::take;
-use crate::error::{Error, Result};
-use crate::{
+use crate::arrow::compute::take;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::{
     array::{ord, Array, PrimitiveArray},
     types::Index,
 };
 
 use super::{sort_to_indices, SortOptions};
-use crate::array::ord::DynComparator;
+use crate::arrow::array::ord::DynComparator;
 
 type IsValid = Box<dyn Fn(usize) -> bool + Send + Sync>;
 

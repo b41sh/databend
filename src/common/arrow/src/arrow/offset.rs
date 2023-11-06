@@ -1,9 +1,9 @@
 //! Contains the declaration of [`Offset`]
 use std::hint::unreachable_unchecked;
 
-use crate::buffer::Buffer;
-use crate::error::Error;
-pub use crate::types::Offset;
+use crate::arrow::buffer::Buffer;
+use crate::arrow::error::Error;
+pub use crate::arrow::types::Offset;
 
 /// A wrapper type of [`Vec<O>`] representing the invariants of Arrow's offsets.
 /// It is guaranteed to (sound to assume that):

@@ -62,13 +62,13 @@ use std::iter::once;
 
 use itertools::Itertools;
 
-use crate::array::{
+use crate::arrow::array::{
     growable::make_growable,
     ord::{build_compare, DynComparator},
     Array,
 };
-pub use crate::compute::sort::SortOptions;
-use crate::error::Result;
+pub use crate::arrow::compute::sort::SortOptions;
+use crate::arrow::error::Result;
 
 /// A slice denoting `(array_index, start, len)` representing a slice from one of N arrays.
 /// This is used to keep track of contiguous blocks of slots.

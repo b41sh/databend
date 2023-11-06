@@ -8,7 +8,7 @@ use parquet2::{
 use super::super::binary::{encode_delta, ord_binary};
 use super::super::utils;
 use super::super::WriteOptions;
-use crate::{
+use crate::arrow::{
     array::{Array, Utf8Array},
     error::{Error, Result},
     io::parquet::read::schema::is_nullable,

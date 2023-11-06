@@ -2,7 +2,7 @@ mod nested;
 
 use parquet2::page::Page;
 
-use crate::{array::NullArray, datatypes::DataType};
+use crate::arrow::{array::NullArray, datatypes::DataType};
 
 use super::super::{ArrayIter, Pages};
 pub(super) use nested::NestedIter;
@@ -62,7 +62,7 @@ mod tests {
         schema::types::{PhysicalType, PrimitiveType},
     };
 
-    use crate::{array::NullArray, datatypes::DataType, error::Error};
+    use crate::arrow::{array::NullArray, datatypes::DataType, error::Error};
 
     use super::iter_to_arrays;
 

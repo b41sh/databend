@@ -2,8 +2,8 @@ use std::ops::Rem;
 
 use num_traits::{CheckedRem, NumCast};
 
-use crate::datatypes::PrimitiveType;
-use crate::{
+use crate::arrow::datatypes::PrimitiveType;
+use crate::arrow::{
     array::{Array, PrimitiveArray},
     compute::{
         arithmetics::{ArrayCheckedRem, ArrayRem},

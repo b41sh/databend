@@ -1,4 +1,4 @@
-use crate::{
+use crate::arrow::{
     array::{Array, BooleanArray, PrimitiveArray},
     bitmap::{Bitmap, MutableBitmap},
 };
@@ -102,7 +102,7 @@ pub fn take<I: Index>(values: &BooleanArray, indices: &PrimitiveArray<I>) -> Boo
 
 #[cfg(test)]
 mod tests {
-    use crate::array::Int32Array;
+    use crate::arrow::array::Int32Array;
 
     use super::*;
 

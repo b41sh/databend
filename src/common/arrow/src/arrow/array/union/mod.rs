@@ -1,4 +1,4 @@
-use crate::{
+use crate::arrow::{
     bitmap::Bitmap,
     buffer::Buffer,
     datatypes::{DataType, Field, UnionMode},

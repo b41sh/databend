@@ -1,4 +1,4 @@
-use crate::array::{Array, NullArray};
+use crate::arrow::array::{Array, NullArray};
 
 #[inline]
 pub(super) fn equal(lhs: &NullArray, rhs: &NullArray) -> bool {

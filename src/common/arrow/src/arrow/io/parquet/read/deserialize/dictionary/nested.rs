@@ -6,8 +6,8 @@ use parquet2::{
     schema::Repetition,
 };
 
-use crate::datatypes::DataType;
-use crate::{
+use crate::arrow::datatypes::DataType;
+use crate::arrow::{
     array::{Array, DictionaryArray, DictionaryKey},
     bitmap::MutableBitmap,
     error::{Error, Result},

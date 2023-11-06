@@ -1,4 +1,4 @@
-use crate::{array::Array, bitmap::MutableBitmap, offset::Offset};
+use crate::arrow::{array::Array, bitmap::MutableBitmap, offset::Offset};
 
 // function used to extend nulls from arrays. This function's lifetime is bound to the array
 // because it reads nulls from it.

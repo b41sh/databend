@@ -4,7 +4,7 @@ use arrow_format::flight::data::{FlightData, SchemaResult};
 use arrow_format::ipc;
 use arrow_format::ipc::planus::ReadAsRoot;
 
-use crate::{
+use crate::arrow::{
     array::Array,
     chunk::Chunk,
     datatypes::*,
@@ -18,7 +18,7 @@ use super::ipc::read::Dictionaries;
 use super::ipc::{IpcField, IpcSchema};
 
 pub use super::ipc::write::default_ipc_fields;
-pub use crate::io::ipc::write::common::WriteOptions;
+pub use crate::arrow::io::ipc::write::common::WriteOptions;
 
 /// Serializes [`Chunk`] to a vector of [`FlightData`] representing the serialized dictionaries
 /// and a [`FlightData`] representing the batch.

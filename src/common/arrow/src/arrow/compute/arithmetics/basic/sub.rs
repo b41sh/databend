@@ -3,7 +3,7 @@ use std::ops::Sub;
 
 use num_traits::{ops::overflowing::OverflowingSub, CheckedSub, SaturatingSub, WrappingSub};
 
-use crate::{
+use crate::arrow::{
     array::PrimitiveArray,
     bitmap::Bitmap,
     compute::{

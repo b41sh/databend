@@ -1,4 +1,4 @@
-use crate::{
+use crate::arrow::{
     array::{Array, MapArray, MutableArray},
     datatypes::DataType,
     error::Error,

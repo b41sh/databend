@@ -1,6 +1,6 @@
-use crate::array::{DictionaryArray, DictionaryKey, PrimitiveArray, Utf8Array};
-use crate::offset::Offset;
-use crate::types::Index;
+use crate::arrow::array::{DictionaryArray, DictionaryKey, PrimitiveArray, Utf8Array};
+use crate::arrow::offset::Offset;
+use crate::arrow::types::Index;
 
 use super::common;
 use super::SortOptions;

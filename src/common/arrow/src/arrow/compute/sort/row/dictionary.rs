@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::{
+use crate::arrow::{
     array::{Array, BinaryArray, DictionaryArray, DictionaryKey, PrimitiveArray, Utf8Array},
     compute::sort::SortOptions,
     datatypes::PhysicalType,

@@ -1,4 +1,4 @@
-use crate::bitmap::{Bitmap, MutableBitmap};
+use crate::arrow::bitmap::{Bitmap, MutableBitmap};
 
 use super::utils::{BitChunk, BitChunkIterExact, BitChunksExact};
 

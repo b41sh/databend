@@ -1,9 +1,9 @@
 use arrow_format::ipc::planus::Builder;
 
-use crate::datatypes::{
+use crate::arrow::datatypes::{
     DataType, Field, IntegerType, IntervalUnit, Metadata, Schema, TimeUnit, UnionMode,
 };
-use crate::io::ipc::endianess::is_native_little_endian;
+use crate::arrow::io::ipc::endianess::is_native_little_endian;
 
 use super::super::IpcField;
 

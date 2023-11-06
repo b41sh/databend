@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::arrow::error::Error;
 
 /// The different types of errors that reading from IPC can cause
 #[derive(Debug)]

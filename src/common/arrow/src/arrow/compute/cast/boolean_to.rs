@@ -1,4 +1,4 @@
-use crate::{
+use crate::arrow::{
     array::{Array, BinaryArray, BooleanArray, PrimitiveArray, Utf8Array},
     error::Result,
     offset::Offset,

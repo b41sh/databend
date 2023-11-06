@@ -1,11 +1,11 @@
-use crate::{
+use crate::arrow::{
     array::{FromFfi, ToFfi},
     bitmap::align,
     ffi,
     offset::{Offset, OffsetsBuffer},
 };
 
-use crate::error::Result;
+use crate::arrow::error::Result;
 
 use super::BinaryArray;
 

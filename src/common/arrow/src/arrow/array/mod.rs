@@ -19,8 +19,8 @@
 use std::any::Any;
 use std::sync::Arc;
 
-use crate::error::Result;
-use crate::{
+use crate::arrow::error::Result;
+use crate::arrow::{
     bitmap::{Bitmap, MutableBitmap},
     datatypes::DataType,
 };
@@ -274,7 +274,7 @@ macro_rules! match_integer_type {(
     $key_type:expr, | $_:tt $T:ident | $($body:tt)*
 ) => ({
     macro_rules! __with_ty__ {( $_ $T:ident ) => ( $($body)* )}
-    use crate::datatypes::IntegerType::*;
+    use crate::arrow::datatypes::IntegerType::*;
     match $key_type {
         Int8 => __with_ty__! { i8 },
         Int16 => __with_ty__! { i16 },
@@ -292,8 +292,8 @@ macro_rules! with_match_primitive_type {(
     $key_type:expr, | $_:tt $T:ident | $($body:tt)*
 ) => ({
     macro_rules! __with_ty__ {( $_ $T:ident ) => ( $($body)* )}
-    use crate::datatypes::PrimitiveType::*;
-    use crate::types::{days_ms, months_days_ns, f16, i256};
+    use crate::arrow::datatypes::PrimitiveType::*;
+    use crate::arrow::types::{days_ms, months_days_ns, f16, i256};
     match $key_type {
         Int8 => __with_ty__! { i8 },
         Int16 => __with_ty__! { i16 },
@@ -315,7 +315,7 @@ macro_rules! with_match_primitive_type {(
 
 impl std::fmt::Debug for dyn Array + '_ {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use crate::datatypes::PhysicalType::*;
+        use crate::arrow::datatypes::PhysicalType::*;
         match self.data_type().to_physical_type() {
             Null => fmt_dyn!(self, NullArray, f),
             Boolean => fmt_dyn!(self, BooleanArray, f),
@@ -344,7 +344,7 @@ impl std::fmt::Debug for dyn Array + '_ {
 
 /// Creates a new [`Array`] with a [`Array::len`] of 0.
 pub fn new_empty_array(data_type: DataType) -> Box<dyn Array> {
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     match data_type.to_physical_type() {
         Null => Box::new(NullArray::new_empty(data_type)),
         Boolean => Box::new(BooleanArray::new_empty(data_type)),
@@ -374,7 +374,7 @@ pub fn new_empty_array(data_type: DataType) -> Box<dyn Array> {
 /// The array is guaranteed to have [`Array::null_count`] equal to [`Array::len`]
 /// for all types except Union, which does not have a validity.
 pub fn new_null_array(data_type: DataType, length: usize) -> Box<dyn Array> {
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     match data_type.to_physical_type() {
         Null => Box::new(NullArray::new_null(data_type, length)),
         Boolean => Box::new(BooleanArray::new_null(data_type, length)),
@@ -451,7 +451,7 @@ impl From<&dyn arrow_array::Array> for Box<dyn Array> {
 /// Convert an arrow2 [`Array`] to [`arrow_data::ArrayData`]
 #[cfg(feature = "arrow")]
 pub fn to_data(array: &dyn Array) -> arrow_data::ArrayData {
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     match array.data_type().to_physical_type() {
         Null => to_data_dyn!(array, NullArray),
         Boolean => to_data_dyn!(array, BooleanArray),
@@ -480,7 +480,7 @@ pub fn to_data(array: &dyn Array) -> arrow_data::ArrayData {
 /// Convert an [`arrow_data::ArrayData`] to arrow2 [`Array`]
 #[cfg(feature = "arrow")]
 pub fn from_data(data: &arrow_data::ArrayData) -> Box<dyn Array> {
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     let data_type: DataType = data.data_type().clone().into();
     match data_type.to_physical_type() {
         Null => Box::new(NullArray::from_data(data)),
@@ -671,7 +671,7 @@ macro_rules! impl_common_array {
 /// This operation is `O(1)` over `len`, as it amounts to increase two ref counts
 /// and moving the concrete struct under a `Box`.
 pub fn clone(array: &dyn Array) -> Box<dyn Array> {
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     match array.data_type().to_physical_type() {
         Null => clone_dyn!(array, NullArray),
         Boolean => clone_dyn!(array, BooleanArray),

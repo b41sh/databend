@@ -4,11 +4,11 @@ use std::io::Read;
 use arrow_format;
 use arrow_format::ipc::planus::ReadAsRoot;
 
-use crate::array::Array;
-use crate::chunk::Chunk;
-use crate::datatypes::Schema;
-use crate::error::{Error, Result};
-use crate::io::ipc::IpcSchema;
+use crate::arrow::array::Array;
+use crate::arrow::chunk::Chunk;
+use crate::arrow::datatypes::Schema;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::io::ipc::IpcSchema;
 
 use super::super::CONTINUATION_MARKER;
 use super::common::*;

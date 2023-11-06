@@ -6,7 +6,7 @@ use parquet2::{
     read::levels::get_bit_width,
 };
 
-use crate::{array::Array, bitmap::MutableBitmap, error::Result};
+use crate::arrow::{array::Array, bitmap::MutableBitmap, error::Result};
 
 pub use super::utils::Zip;
 use super::utils::{DecodedState, MaybeNext};

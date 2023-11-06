@@ -1,6 +1,6 @@
-use crate::array::{from_data, to_data, Arrow2Arrow, ListArray};
-use crate::bitmap::Bitmap;
-use crate::offset::{Offset, OffsetsBuffer};
+use crate::arrow::array::{from_data, to_data, Arrow2Arrow, ListArray};
+use crate::arrow::bitmap::Bitmap;
+use crate::arrow::offset::{Offset, OffsetsBuffer};
 use arrow_data::{ArrayData, ArrayDataBuilder};
 
 impl<O: Offset> Arrow2Arrow for ListArray<O> {

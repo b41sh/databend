@@ -32,9 +32,9 @@ pub use parquet2::{
     FallibleStreamingIterator,
 };
 
-use crate::{array::Array, error::Result};
+use crate::arrow::{array::Array, error::Result};
 
-use crate::types::{i256, NativeType};
+use crate::arrow::types::{i256, NativeType};
 pub use deserialize::{
     column_iter_to_arrays, create_list, create_map, get_page_iterator, init_nested, n_columns,
     nested_column_iter_to_arrays, InitNested, NestedArrayIter, NestedState, StructIterator,

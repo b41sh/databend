@@ -6,9 +6,9 @@ use super::super::nested;
 use super::super::utils;
 use super::super::WriteOptions;
 use super::basic::{build_statistics, encode_plain};
-use crate::io::parquet::read::schema::is_nullable;
-use crate::io::parquet::write::Nested;
-use crate::{
+use crate::arrow::io::parquet::read::schema::is_nullable;
+use crate::arrow::io::parquet::write::Nested;
+use crate::arrow::{
     array::{Array, PrimitiveArray},
     error::Result,
     types::NativeType as ArrowNativeType,

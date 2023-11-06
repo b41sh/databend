@@ -1,14 +1,14 @@
 //! Contains operators to sort individual and slices of [`Array`]s.
 use std::cmp::Ordering;
 
-use crate::match_integer_type;
+use crate::arrow::match_integer_type;
 
-use crate::array::ord;
-use crate::compute::take;
-use crate::datatypes::*;
-use crate::error::{Error, Result};
-use crate::offset::Offset;
-use crate::{array::*, types::Index};
+use crate::arrow::array::ord;
+use crate::arrow::compute::take;
+use crate::arrow::datatypes::*;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::offset::Offset;
+use crate::arrow::{array::*, types::Index};
 
 mod binary;
 mod boolean;

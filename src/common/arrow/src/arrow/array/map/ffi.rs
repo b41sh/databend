@@ -1,4 +1,4 @@
-use crate::{array::FromFfi, bitmap::align, error::Result, ffi, offset::OffsetsBuffer};
+use crate::arrow::{array::FromFfi, bitmap::align, error::Result, ffi, offset::OffsetsBuffer};
 
 use super::super::{ffi::ToFfi, Array};
 use super::MapArray;

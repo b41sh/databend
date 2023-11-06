@@ -7,8 +7,8 @@ use parquet2::schema::{
     Repetition,
 };
 
-use crate::datatypes::{DataType, Field, IntervalUnit, TimeUnit};
-use crate::io::parquet::read::schema::SchemaInferenceOptions;
+use crate::arrow::datatypes::{DataType, Field, IntervalUnit, TimeUnit};
+use crate::arrow::io::parquet::read::schema::SchemaInferenceOptions;
 
 /// Converts [`ParquetType`]s to a [`Field`], ignoring parquet fields that do not contain
 /// any physical column.
@@ -412,8 +412,8 @@ mod tests {
 
     use super::*;
 
-    use crate::datatypes::{DataType, Field, TimeUnit};
-    use crate::error::Result;
+    use crate::arrow::datatypes::{DataType, Field, TimeUnit};
+    use crate::arrow::error::Result;
 
     #[test]
     fn test_flat_primitives() -> Result<()> {

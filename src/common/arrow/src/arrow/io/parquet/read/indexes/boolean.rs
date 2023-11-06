@@ -1,6 +1,6 @@
 use parquet2::indexes::PageIndex;
 
-use crate::array::{BooleanArray, PrimitiveArray};
+use crate::arrow::array::{BooleanArray, PrimitiveArray};
 
 use super::ColumnPageStatistics;
 

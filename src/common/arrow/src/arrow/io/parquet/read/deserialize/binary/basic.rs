@@ -8,7 +8,7 @@ use parquet2::{
     schema::Repetition,
 };
 
-use crate::{
+use crate::arrow::{
     array::{Array, BinaryArray, Utf8Array},
     bitmap::MutableBitmap,
     datatypes::{DataType, PhysicalType},

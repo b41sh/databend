@@ -1,6 +1,6 @@
 use std::{iter::FromIterator, sync::Arc};
 
-use crate::{
+use crate::arrow::{
     array::{
         specification::try_check_offsets_bounds, Array, ArrayAccessor, ArrayValuesIter,
         MutableArray, TryExtend, TryExtendFromSelf, TryPush,
@@ -13,7 +13,7 @@ use crate::{
 };
 
 use super::{BinaryArray, MutableBinaryArray};
-use crate::array::physical_binary::*;
+use crate::arrow::array::physical_binary::*;
 
 /// A [`MutableArray`] that builds a [`BinaryArray`]. It differs
 /// from [`MutableBinaryArray`] in that it builds non-null [`BinaryArray`].

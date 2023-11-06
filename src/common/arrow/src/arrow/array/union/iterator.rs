@@ -1,5 +1,5 @@
 use super::UnionArray;
-use crate::{scalar::Scalar, trusted_len::TrustedLen};
+use crate::arrow::{scalar::Scalar, trusted_len::TrustedLen};
 
 #[derive(Debug, Clone)]
 pub struct UnionIter<'a> {

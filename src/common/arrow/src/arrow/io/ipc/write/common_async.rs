@@ -1,7 +1,7 @@
 use futures::AsyncWrite;
 use futures::AsyncWriteExt;
 
-use crate::error::Result;
+use crate::arrow::error::Result;
 
 use super::super::CONTINUATION_MARKER;
 use super::common::pad_to_64;

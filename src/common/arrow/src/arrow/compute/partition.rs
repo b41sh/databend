@@ -17,9 +17,9 @@
 
 //! Defines partition kernel for [`crate::array::Array`]
 
-use crate::array::ord::DynComparator;
-use crate::compute::sort::{build_compare, SortColumn};
-use crate::error::{Error, Result};
+use crate::arrow::array::ord::DynComparator;
+use crate::arrow::compute::sort::{build_compare, SortColumn};
+use crate::arrow::error::{Error, Result};
 use std::cmp::Ordering;
 use std::iter::Iterator;
 use std::ops::Range;

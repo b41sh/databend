@@ -1,6 +1,6 @@
 //! Defines common maps to a [`Utf8Array`]
 
-use crate::{
+use crate::arrow::{
     array::{Array, Utf8Array},
     datatypes::DataType,
     error::{Error, Result},

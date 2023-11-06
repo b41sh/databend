@@ -10,9 +10,9 @@ mod stream;
 pub(crate) use array::try_from;
 pub(crate) use array::{ArrowArrayRef, InternalArrowArray};
 
-use crate::array::Array;
-use crate::datatypes::{DataType, Field};
-use crate::error::Result;
+use crate::arrow::array::Array;
+use crate::arrow::datatypes::{DataType, Field};
+use crate::arrow::error::Result;
 
 use self::schema::to_field;
 

@@ -1,6 +1,6 @@
 //! Declares the [`contains`] operator
 
-use crate::{
+use crate::arrow::{
     array::{Array, BinaryArray, BooleanArray, ListArray, PrimitiveArray, Utf8Array},
     bitmap::Bitmap,
     datatypes::DataType,

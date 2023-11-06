@@ -17,10 +17,10 @@
 
 //! Defines take kernel for [`Array`]
 
-use crate::match_integer_type;
-use crate::with_match_primitive_type;
+use crate::arrow::match_integer_type;
+use crate::arrow::with_match_primitive_type;
 
-use crate::{
+use crate::arrow::{
     array::{new_empty_array, Array, NullArray, PrimitiveArray},
     datatypes::DataType,
     error::Result,
@@ -46,7 +46,7 @@ pub fn take<O: Index>(values: &dyn Array, indices: &PrimitiveArray<O>) -> Result
         return Ok(new_empty_array(values.data_type().clone()));
     }
 
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     match values.data_type().to_physical_type() {
         Null => Ok(Box::new(NullArray::new(
             values.data_type().clone(),

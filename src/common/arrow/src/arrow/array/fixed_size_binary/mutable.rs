@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{
+use crate::arrow::{
     array::{physical_binary::extend_validity, Array, MutableArray, TryExtendFromSelf},
     bitmap::MutableBitmap,
     datatypes::DataType,

@@ -8,7 +8,7 @@ use parquet2::{
     types::NativeType as ParquetNativeType,
 };
 
-use crate::{
+use crate::arrow::{
     array::PrimitiveArray, bitmap::MutableBitmap, datatypes::DataType, error::Result,
     types::NativeType,
 };

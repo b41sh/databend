@@ -7,7 +7,7 @@ use parquet2::{
     schema::Repetition,
 };
 
-use crate::{
+use crate::arrow::{
     array::FixedSizeBinaryArray, bitmap::MutableBitmap, datatypes::DataType, error::Result,
 };
 

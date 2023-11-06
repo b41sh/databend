@@ -1,5 +1,5 @@
 //! Defines the addition arithmetic kernels for [`PrimitiveArray`] representing decimals.
-use crate::{
+use crate::arrow::{
     array::PrimitiveArray,
     compute::{
         arithmetics::{ArrayAdd, ArrayCheckedAdd, ArraySaturatingAdd},
@@ -7,7 +7,7 @@ use crate::{
         utils::{check_same_len, combine_validities},
     },
 };
-use crate::{
+use crate::arrow::{
     datatypes::DataType,
     error::{Error, Result},
 };

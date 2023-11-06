@@ -15,9 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::array::growable::GrowableFixedSizeList;
-use crate::array::FixedSizeListArray;
-use crate::array::{growable::Growable, PrimitiveArray};
+use crate::arrow::array::growable::GrowableFixedSizeList;
+use crate::arrow::array::FixedSizeListArray;
+use crate::arrow::array::{growable::Growable, PrimitiveArray};
 
 use super::Index;
 

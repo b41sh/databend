@@ -13,7 +13,7 @@ use std::ops::{Add, Sub};
 
 use num_traits::AsPrimitive;
 
-use crate::{
+use crate::arrow::{
     array::PrimitiveArray,
     compute::arity::{binary, unary},
     datatypes::{DataType, TimeUnit},

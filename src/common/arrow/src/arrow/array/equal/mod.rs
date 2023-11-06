@@ -1,5 +1,5 @@
-use crate::offset::Offset;
-use crate::types::NativeType;
+use crate::arrow::offset::Offset;
+use crate::arrow::types::NativeType;
 
 use super::*;
 
@@ -205,7 +205,7 @@ pub fn equal(lhs: &dyn Array, rhs: &dyn Array) -> bool {
         return false;
     }
 
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     match lhs.data_type().to_physical_type() {
         Null => {
             let lhs = lhs.as_any().downcast_ref().unwrap();

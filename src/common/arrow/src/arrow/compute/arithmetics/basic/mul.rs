@@ -3,7 +3,7 @@ use std::ops::Mul;
 
 use num_traits::{ops::overflowing::OverflowingMul, CheckedMul, SaturatingMul, WrappingMul};
 
-use crate::{
+use crate::arrow::{
     array::PrimitiveArray,
     bitmap::Bitmap,
     compute::{

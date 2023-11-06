@@ -6,7 +6,7 @@
 //! data in the order it was written in.
 use ahash::AHashMap;
 
-use crate::array::Array;
+use crate::arrow::array::Array;
 
 mod array;
 mod common;

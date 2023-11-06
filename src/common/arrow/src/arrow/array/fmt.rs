@@ -1,6 +1,6 @@
 use std::fmt::{Result, Write};
 
-use crate::bitmap::Bitmap;
+use crate::arrow::bitmap::Bitmap;
 
 use super::Array;
 
@@ -11,7 +11,7 @@ pub fn get_value_display<'a, F: Write + 'a>(
     array: &'a dyn Array,
     null: &'static str,
 ) -> Box<dyn Fn(&mut F, usize) -> Result + 'a> {
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     match array.data_type().to_physical_type() {
         Null => Box::new(move |f, _| write!(f, "{null}")),
         Boolean => Box::new(|f, index| {

@@ -1,9 +1,9 @@
 use std::collections::VecDeque;
 use std::io::{Read, Seek};
 
-use crate::array::StructArray;
-use crate::datatypes::DataType;
-use crate::error::{Error, Result};
+use crate::arrow::array::StructArray;
+use crate::arrow::datatypes::DataType;
+use crate::arrow::error::{Error, Result};
 
 use super::super::super::IpcField;
 use super::super::deserialize::{read, skip};

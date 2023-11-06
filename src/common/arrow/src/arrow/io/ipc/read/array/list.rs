@@ -2,11 +2,11 @@ use std::collections::VecDeque;
 use std::convert::TryInto;
 use std::io::{Read, Seek};
 
-use crate::array::ListArray;
-use crate::buffer::Buffer;
-use crate::datatypes::DataType;
-use crate::error::{Error, Result};
-use crate::offset::Offset;
+use crate::arrow::array::ListArray;
+use crate::arrow::buffer::Buffer;
+use crate::arrow::datatypes::DataType;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::offset::Offset;
 
 use super::super::super::IpcField;
 use super::super::deserialize::{read, skip};

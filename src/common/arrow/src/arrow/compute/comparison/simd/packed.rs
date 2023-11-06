@@ -1,8 +1,8 @@
 use std::convert::TryInto;
 use std::simd::{SimdPartialEq, SimdPartialOrd, ToBitMask};
 
-use crate::types::simd::*;
-use crate::types::{days_ms, f16, i256, months_days_ns};
+use crate::arrow::types::simd::*;
+use crate::arrow::types::{days_ms, f16, i256, months_days_ns};
 
 use super::*;
 

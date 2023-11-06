@@ -1,4 +1,4 @@
-use crate::{array::FromFfi, error::Result, ffi};
+use crate::arrow::{array::FromFfi, error::Result, ffi};
 
 use super::super::{ffi::ToFfi, Array};
 use super::UnionArray;

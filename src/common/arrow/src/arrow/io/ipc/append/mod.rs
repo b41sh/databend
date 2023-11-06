@@ -5,7 +5,7 @@
 // write new footer
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::error::{Error, Result};
+use crate::arrow::error::{Error, Result};
 
 use super::endianess::is_native_little_endian;
 use super::read::{self, FileMetadata};

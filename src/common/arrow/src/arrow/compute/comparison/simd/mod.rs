@@ -1,4 +1,4 @@
-use crate::types::NativeType;
+use crate::arrow::types::NativeType;
 
 /// [`NativeType`] that supports a representation of 8 lanes
 pub trait Simd8: NativeType {

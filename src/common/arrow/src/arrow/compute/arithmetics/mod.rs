@@ -17,9 +17,9 @@ pub mod basic;
 pub mod decimal;
 pub mod time;
 
-use crate::match_integer_type;
+use crate::arrow::match_integer_type;
 
-use crate::{
+use crate::arrow::{
     array::{Array, DictionaryArray, PrimitiveArray},
     bitmap::Bitmap,
     datatypes::{DataType, IntervalUnit, TimeUnit},
@@ -404,8 +404,8 @@ macro_rules! with_match_negatable {(
     $key_type:expr, | $_:tt $T:ident | $($body:tt)*
 ) => ({
     macro_rules! __with_ty__ {( $_ $T:ident ) => ( $($body)* )}
-    use crate::datatypes::PrimitiveType::*;
-    use crate::types::{days_ms, months_days_ns, i256};
+    use crate::arrow::datatypes::PrimitiveType::*;
+    use crate::arrow::types::{days_ms, months_days_ns, i256};
     match $key_type {
         Int8 => __with_ty__! { i8 },
         Int16 => __with_ty__! { i16 },
@@ -427,7 +427,7 @@ macro_rules! with_match_negatable {(
 /// * the opertion is not supported for the logical type (use [`can_neg`] to check)
 /// * the operation overflows
 pub fn neg(array: &dyn Array) -> Box<dyn Array> {
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     match array.data_type().to_physical_type() {
         Primitive(primitive) => with_match_negatable!(primitive, |$T| {
             let array = array.as_any().downcast_ref().unwrap();
@@ -455,8 +455,8 @@ pub fn can_neg(data_type: &DataType) -> bool {
         return can_neg(values.as_ref());
     }
 
-    use crate::datatypes::PhysicalType::*;
-    use crate::datatypes::PrimitiveType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PrimitiveType::*;
     matches!(
         data_type.to_physical_type(),
         Primitive(Int8)

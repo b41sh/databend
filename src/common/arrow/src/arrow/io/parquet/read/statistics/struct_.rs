@@ -1,6 +1,6 @@
-use crate::array::{Array, StructArray};
-use crate::error::Result;
-use crate::{array::MutableArray, datatypes::DataType};
+use crate::arrow::array::{Array, StructArray};
+use crate::arrow::error::Result;
+use crate::arrow::{array::MutableArray, datatypes::DataType};
 
 use super::make_mutable;
 

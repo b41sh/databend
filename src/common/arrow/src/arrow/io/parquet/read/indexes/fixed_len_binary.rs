@@ -1,7 +1,7 @@
 use parquet2::indexes::PageIndex;
 
-use crate::types::{i256, NativeType};
-use crate::{
+use crate::arrow::types::{i256, NativeType};
+use crate::arrow::{
     array::{Array, FixedSizeBinaryArray, MutableFixedSizeBinaryArray, PrimitiveArray},
     datatypes::{DataType, PhysicalType, PrimitiveType},
     trusted_len::TrustedLen,

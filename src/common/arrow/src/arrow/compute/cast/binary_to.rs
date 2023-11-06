@@ -1,6 +1,6 @@
-use crate::error::Result;
-use crate::offset::{Offset, Offsets};
-use crate::{array::*, datatypes::DataType, types::NativeType};
+use crate::arrow::error::Result;
+use crate::arrow::offset::{Offset, Offsets};
+use crate::arrow::{array::*, datatypes::DataType, types::NativeType};
 
 use super::CastOptions;
 

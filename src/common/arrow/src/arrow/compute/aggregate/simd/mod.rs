@@ -1,6 +1,6 @@
 use std::ops::Add;
 
-use crate::types::simd::{i128x8, NativeSimd};
+use crate::arrow::types::simd::{i128x8, NativeSimd};
 
 use super::{SimdOrd, Sum};
 

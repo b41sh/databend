@@ -1,5 +1,5 @@
 
-use crate::match_integer_type;
+use crate::arrow::match_integer_type;
 
 use ethnum::I256;
 use parquet2::{
@@ -9,8 +9,8 @@ use parquet2::{
     types::int96_to_i64_ns,
 };
 
-use crate::types::i256;
-use crate::{
+use crate::arrow::types::i256;
+use crate::arrow::{
     array::{Array, DictionaryKey, MutablePrimitiveArray, PrimitiveArray},
     datatypes::{DataType, IntervalUnit, TimeUnit},
     error::{Error, Result},

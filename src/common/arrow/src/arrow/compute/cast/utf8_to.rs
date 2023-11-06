@@ -1,6 +1,6 @@
 use chrono::Datelike;
 
-use crate::{
+use crate::arrow::{
     array::*,
     datatypes::DataType,
     error::Result,

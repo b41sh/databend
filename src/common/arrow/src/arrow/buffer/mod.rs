@@ -3,7 +3,7 @@
 mod immutable;
 mod iterator;
 
-use crate::ffi::InternalArrowArray;
+use crate::arrow::ffi::InternalArrowArray;
 use std::ops::Deref;
 
 pub(crate) enum BytesAllocator {

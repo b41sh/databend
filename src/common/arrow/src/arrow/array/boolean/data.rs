@@ -1,6 +1,6 @@
-use crate::array::{Arrow2Arrow, BooleanArray};
-use crate::bitmap::Bitmap;
-use crate::datatypes::DataType;
+use crate::arrow::array::{Arrow2Arrow, BooleanArray};
+use crate::arrow::bitmap::Bitmap;
+use crate::arrow::datatypes::DataType;
 use arrow_buffer::{BooleanBuffer, NullBuffer};
 use arrow_data::{ArrayData, ArrayDataBuilder};
 

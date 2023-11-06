@@ -1,7 +1,7 @@
 use std::ffi::{CStr, CString};
 use std::ops::DerefMut;
 
-use crate::{array::Array, datatypes::Field, error::Error};
+use crate::arrow::{array::Array, datatypes::Field, error::Error};
 
 use super::{export_array_to_c, export_field_to_c, import_array_from_c, import_field_from_c};
 use super::{ArrowArray, ArrowArrayStream, ArrowSchema};

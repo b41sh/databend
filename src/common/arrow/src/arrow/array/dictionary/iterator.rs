@@ -1,6 +1,6 @@
-use crate::bitmap::utils::{BitmapIter, ZipValidity};
-use crate::scalar::Scalar;
-use crate::trusted_len::TrustedLen;
+use crate::arrow::bitmap::utils::{BitmapIter, ZipValidity};
+use crate::arrow::scalar::Scalar;
+use crate::arrow::trusted_len::TrustedLen;
 
 use super::{DictionaryArray, DictionaryKey};
 

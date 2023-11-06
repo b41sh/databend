@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 
-use crate::{
+use crate::arrow::{
     array::{
         MutableArray, MutableBinaryArray, MutableBinaryValuesArray, MutableBooleanArray,
         MutableFixedSizeBinaryArray, MutablePrimitiveArray, MutableUtf8Array,

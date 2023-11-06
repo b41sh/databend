@@ -1,7 +1,7 @@
-use crate::array::{Arrow2Arrow, FixedSizeBinaryArray};
-use crate::bitmap::Bitmap;
-use crate::buffer::Buffer;
-use crate::datatypes::DataType;
+use crate::arrow::array::{Arrow2Arrow, FixedSizeBinaryArray};
+use crate::arrow::bitmap::Bitmap;
+use crate::arrow::buffer::Buffer;
+use crate::arrow::datatypes::DataType;
 use arrow_data::{ArrayData, ArrayDataBuilder};
 
 impl Arrow2Arrow for FixedSizeBinaryArray {

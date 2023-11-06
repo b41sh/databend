@@ -1,6 +1,6 @@
 use std::iter::FromIterator;
 
-use crate::types::NativeType;
+use crate::arrow::types::NativeType;
 
 use super::{MutablePrimitiveArray, PrimitiveArray};
 

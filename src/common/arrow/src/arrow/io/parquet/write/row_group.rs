@@ -3,7 +3,7 @@ use parquet2::schema::types::ParquetType;
 use parquet2::write::Compressor;
 use parquet2::FallibleStreamingIterator;
 
-use crate::{
+use crate::arrow::{
     array::Array,
     chunk::Chunk,
     datatypes::Schema,

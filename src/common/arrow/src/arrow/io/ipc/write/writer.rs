@@ -10,11 +10,11 @@ use super::{
     default_ipc_fields, schema, schema_to_bytes,
 };
 
-use crate::array::Array;
-use crate::chunk::Chunk;
-use crate::datatypes::*;
-use crate::error::{Error, Result};
-use crate::io::ipc::write::common::encode_chunk_amortized;
+use crate::arrow::array::Array;
+use crate::arrow::chunk::Chunk;
+use crate::arrow::datatypes::*;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::io::ipc::write::common::encode_chunk_amortized;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum State {

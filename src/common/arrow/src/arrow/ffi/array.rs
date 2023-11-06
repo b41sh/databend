@@ -1,12 +1,12 @@
 //! Contains functionality to load an ArrayData from the C Data Interface
 use std::sync::Arc;
 
-use crate::match_integer_type;
-use crate::with_match_primitive_type;
+use crate::arrow::match_integer_type;
+use crate::arrow::with_match_primitive_type;
 
-use crate::bitmap::utils::count_zeros;
-use crate::buffer::BytesAllocator;
-use crate::{
+use crate::arrow::bitmap::utils::count_zeros;
+use crate::arrow::buffer::BytesAllocator;
+use crate::arrow::{
     array::*,
     bitmap::{utils::bytes_for, Bitmap},
     buffer::{Buffer, Bytes},

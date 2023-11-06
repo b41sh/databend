@@ -10,10 +10,10 @@ use super::common::{encode_chunk, DictionaryTracker, EncodedData, WriteOptions};
 use super::common_sync::{write_continuation, write_message};
 use super::{default_ipc_fields, schema_to_bytes};
 
-use crate::array::Array;
-use crate::chunk::Chunk;
-use crate::datatypes::*;
-use crate::error::{Error, Result};
+use crate::arrow::array::Array;
+use crate::arrow::chunk::Chunk;
+use crate::arrow::datatypes::*;
+use crate::arrow::error::{Error, Result};
 
 /// Arrow stream writer
 ///

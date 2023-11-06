@@ -1,9 +1,9 @@
 use base64::{engine::general_purpose, Engine as _};
 pub use parquet2::metadata::KeyValue;
 
-use crate::datatypes::{Metadata, Schema};
-use crate::error::{Error, Result};
-use crate::io::ipc::read::deserialize_schema;
+use crate::arrow::datatypes::{Metadata, Schema};
+use crate::arrow::error::{Error, Result};
+use crate::arrow::io::ipc::read::deserialize_schema;
 
 use super::super::super::ARROW_SCHEMA_META_KEY;
 

@@ -15,9 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::bitmap::Bitmap;
-use crate::buffer::Buffer;
-use crate::{
+use crate::arrow::bitmap::Bitmap;
+use crate::arrow::buffer::Buffer;
+use crate::arrow::{
     array::PrimitiveArray,
     bitmap::{utils::SlicesIterator, MutableBitmap},
     types::NativeType,
@@ -165,9 +165,9 @@ where
 mod tests {
     use super::*;
 
-    use crate::array::ord;
-    use crate::array::PrimitiveArray;
-    use crate::datatypes::DataType;
+    use crate::arrow::array::ord;
+    use crate::arrow::array::PrimitiveArray;
+    use crate::arrow::datatypes::DataType;
 
     fn test_sort_primitive_arrays<T>(
         data: &[Option<T>],

@@ -1,4 +1,4 @@
-use crate::{
+use crate::arrow::{
     bitmap::Bitmap,
     datatypes::{DataType, Field},
     error::Error,

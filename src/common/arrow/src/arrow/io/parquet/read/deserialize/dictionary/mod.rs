@@ -9,7 +9,7 @@ use parquet2::{
     schema::Repetition,
 };
 
-use crate::{
+use crate::arrow::{
     array::{Array, DictionaryArray, DictionaryKey, PrimitiveArray},
     bitmap::MutableBitmap,
     datatypes::DataType,

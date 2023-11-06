@@ -14,7 +14,7 @@ mod utils;
 use parquet2::read::get_page_iterator as _get_page_iterator;
 use parquet2::schema::types::PrimitiveType;
 
-use crate::{
+use crate::arrow::{
     array::{Array, DictionaryKey, FixedSizeListArray, ListArray, MapArray},
     datatypes::{DataType, Field, IntervalUnit},
     error::Result,
@@ -158,7 +158,7 @@ where
 
 /// Returns the number of (parquet) columns that a [`DataType`] contains.
 pub fn n_columns(data_type: &DataType) -> usize {
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     match data_type.to_physical_type() {
         Null | Boolean | Primitive(_) | Binary | FixedSizeBinary | LargeBinary | Utf8
         | Dictionary(_) | LargeUtf8 => 1,

@@ -1,6 +1,6 @@
 use super::super::{ffi::ToFfi, Array, FromFfi};
 use super::StructArray;
-use crate::{error::Result, ffi};
+use crate::arrow::{error::Result, ffi};
 
 unsafe impl ToFfi for StructArray {
     fn buffers(&self) -> Vec<Option<*const u8>> {

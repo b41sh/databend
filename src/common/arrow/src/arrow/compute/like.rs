@@ -4,7 +4,7 @@ use ahash::AHashMap;
 use regex::bytes::Regex as BytesRegex;
 use regex::Regex;
 
-use crate::{
+use crate::arrow::{
     array::{BinaryArray, BooleanArray, Utf8Array},
     bitmap::Bitmap,
     compute::utils::combine_validities,

@@ -44,10 +44,10 @@
 //! assert_eq!(result, BooleanArray::from([Some(true), None, Some(false)]));
 //! ```
 
-use crate::array::*;
-use crate::datatypes::{DataType, IntervalUnit};
-use crate::scalar::*;
-use crate::match_integer_type;
+use crate::arrow::array::*;
+use crate::arrow::datatypes::{DataType, IntervalUnit};
+use crate::arrow::scalar::*;
+use crate::arrow::match_integer_type;
 
 
 pub mod binary;
@@ -59,8 +59,8 @@ mod simd;
 pub use simd::{Simd8, Simd8Lanes, Simd8PartialEq, Simd8PartialOrd};
 
 use super::take::take_boolean;
-use crate::bitmap::{binary, Bitmap};
-use crate::compute;
+use crate::arrow::bitmap::{binary, Bitmap};
+use crate::arrow::compute;
 pub(crate) use primitive::{
     compare_values_op as primitive_compare_values_op,
     compare_values_op_scalar as primitive_compare_values_op_scalar,
@@ -70,8 +70,8 @@ macro_rules! match_eq_ord {(
     $key_type:expr, | $_:tt $T:ident | $($body:tt)*
 ) => ({
     macro_rules! __with_ty__ {( $_ $T:ident ) => ( $($body)* )}
-    use crate::datatypes::PrimitiveType::*;
-    use crate::types::i256;
+    use crate::arrow::datatypes::PrimitiveType::*;
+    use crate::arrow::types::i256;
     match $key_type {
         Int8 => __with_ty__! { i8 },
         Int16 => __with_ty__! { i16 },
@@ -95,8 +95,8 @@ macro_rules! match_eq {(
     $key_type:expr, | $_:tt $T:ident | $($body:tt)*
 ) => ({
     macro_rules! __with_ty__ {( $_ $T:ident ) => ( $($body)* )}
-    use crate::datatypes::PrimitiveType::*;
-    use crate::types::{days_ms, months_days_ns, f16, i256};
+    use crate::arrow::datatypes::PrimitiveType::*;
+    use crate::arrow::types::{days_ms, months_days_ns, f16, i256};
     match $key_type {
         Int8 => __with_ty__! { i8 },
         Int16 => __with_ty__! { i16 },
@@ -125,7 +125,7 @@ macro_rules! compare {
             rhs.data_type().to_logical_type()
         );
 
-        use crate::datatypes::PhysicalType::*;
+        use crate::arrow::datatypes::PhysicalType::*;
         match lhs.data_type().to_physical_type() {
             Boolean => {
                 let lhs = lhs.as_any().downcast_ref().unwrap();
@@ -295,7 +295,7 @@ macro_rules! compare_scalar {
             return BooleanArray::new_null(DataType::Boolean, lhs.len());
         }
 
-        use crate::datatypes::PhysicalType::*;
+        use crate::arrow::datatypes::PhysicalType::*;
         match lhs.data_type().to_physical_type() {
             Boolean => {
                 let lhs = lhs.as_any().downcast_ref().unwrap();

@@ -17,7 +17,7 @@
 
 //! Defines kernel for length of composite arrays
 
-use crate::{
+use crate::arrow::{
     array::*,
     datatypes::DataType,
     error::{Error, Result},

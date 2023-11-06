@@ -1,7 +1,7 @@
 //! Definition of basic pow operations with primitive arrays
 use num_traits::{checked_pow, CheckedMul, One, Pow};
 
-use crate::{
+use crate::arrow::{
     array::PrimitiveArray,
     compute::arity::{unary, unary_checked},
 };

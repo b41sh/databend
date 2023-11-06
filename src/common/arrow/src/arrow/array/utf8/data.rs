@@ -1,6 +1,6 @@
-use crate::array::{Arrow2Arrow, Utf8Array};
-use crate::bitmap::Bitmap;
-use crate::offset::{Offset, OffsetsBuffer};
+use crate::arrow::array::{Arrow2Arrow, Utf8Array};
+use crate::arrow::bitmap::Bitmap;
+use crate::arrow::offset::{Offset, OffsetsBuffer};
 use arrow_data::{ArrayData, ArrayDataBuilder};
 
 impl<O: Offset> Arrow2Arrow for Utf8Array<O> {

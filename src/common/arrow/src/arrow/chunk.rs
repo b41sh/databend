@@ -1,8 +1,8 @@
 //! Contains [`Chunk`], a container of [`Array`] where every array has the
 //! same length.
 
-use crate::array::Array;
-use crate::error::{Error, Result};
+use crate::arrow::array::Array;
+use crate::arrow::error::{Error, Result};
 
 /// A vector of trait objects of [`Array`] where every item has
 /// the same length, [`Chunk::len`].

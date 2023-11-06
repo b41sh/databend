@@ -19,11 +19,11 @@
 
 use chrono::{Datelike, Timelike};
 
-use crate::array::*;
-use crate::datatypes::*;
-use crate::error::{Error, Result};
-use crate::temporal_conversions::*;
-use crate::types::NativeType;
+use crate::arrow::array::*;
+use crate::arrow::datatypes::*;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::temporal_conversions::*;
+use crate::arrow::types::NativeType;
 
 use super::arity::unary;
 

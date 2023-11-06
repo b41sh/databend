@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use parquet2::page::DictPage;
 
-use crate::{
+use crate::arrow::{
     array::{Array, BinaryArray, DictionaryArray, DictionaryKey, Utf8Array},
     bitmap::MutableBitmap,
     datatypes::{DataType, PhysicalType},

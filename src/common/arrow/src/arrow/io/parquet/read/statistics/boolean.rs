@@ -1,7 +1,7 @@
-use crate::array::{MutableArray, MutableBooleanArray};
+use crate::arrow::array::{MutableArray, MutableBooleanArray};
 use parquet2::statistics::{BooleanStatistics, Statistics as ParquetStatistics};
 
-use crate::error::Result;
+use crate::arrow::error::Result;
 
 pub(super) fn push(
     from: Option<&dyn ParquetStatistics>,

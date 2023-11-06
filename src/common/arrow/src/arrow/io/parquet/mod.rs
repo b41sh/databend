@@ -1,5 +1,5 @@
 //! APIs to read from and write to Parquet format.
-use crate::error::Error;
+use crate::arrow::error::Error;
 
 pub mod read;
 pub mod write;

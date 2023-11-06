@@ -1,4 +1,4 @@
-use crate::{
+use crate::arrow::{
     array::PrimitiveArray,
     types::{Index, NativeType},
 };
@@ -34,9 +34,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::array::ord;
-    use crate::array::*;
-    use crate::datatypes::DataType;
+    use crate::arrow::array::ord;
+    use crate::arrow::array::*;
+    use crate::arrow::datatypes::DataType;
 
     fn test<T>(
         data: &[Option<T>],

@@ -1,4 +1,4 @@
-pub use crate::types::PrimitiveType;
+pub use crate::arrow::types::PrimitiveType;
 
 #[cfg(feature = "serde_types")]
 use serde_derive::{Deserialize, Serialize};

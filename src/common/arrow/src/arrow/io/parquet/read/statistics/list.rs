@@ -1,7 +1,7 @@
-use crate::array::*;
-use crate::datatypes::DataType;
-use crate::error::Result;
-use crate::offset::Offsets;
+use crate::arrow::array::*;
+use crate::arrow::datatypes::DataType;
+use crate::arrow::error::Result;
+use crate::arrow::offset::Offsets;
 
 use super::make_mutable;
 

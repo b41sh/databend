@@ -1,9 +1,9 @@
-use crate::array::*;
-use crate::bitmap::Bitmap;
-use crate::datatypes::PhysicalType;
+use crate::arrow::array::*;
+use crate::arrow::bitmap::Bitmap;
+use crate::arrow::datatypes::PhysicalType;
 
-use crate::match_integer_type;
-use crate::with_match_primitive_type;
+use crate::arrow::match_integer_type;
+use crate::arrow::with_match_primitive_type;
 
 fn validity_size(validity: Option<&Bitmap>) -> usize {
     validity.as_ref().map(|b| b.as_slice().0.len()).unwrap_or(0)

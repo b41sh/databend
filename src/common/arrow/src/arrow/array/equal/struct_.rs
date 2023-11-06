@@ -1,4 +1,4 @@
-use crate::array::{Array, StructArray};
+use crate::arrow::array::{Array, StructArray};
 
 pub(super) fn equal(lhs: &StructArray, rhs: &StructArray) -> bool {
     lhs.data_type() == rhs.data_type()

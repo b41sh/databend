@@ -7,8 +7,8 @@ use parquet2::{
 
 use super::super::utils;
 use super::super::WriteOptions;
-use crate::array::*;
-use crate::{error::Result, io::parquet::read::schema::is_nullable};
+use crate::arrow::array::*;
+use crate::arrow::{error::Result, io::parquet::read::schema::is_nullable};
 
 fn encode(iterator: impl Iterator<Item = bool>, buffer: &mut Vec<u8>) -> Result<()> {
     // encode values using bitpacking

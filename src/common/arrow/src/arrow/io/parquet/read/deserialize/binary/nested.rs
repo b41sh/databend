@@ -6,7 +6,7 @@ use parquet2::{
     schema::Repetition,
 };
 
-use crate::{
+use crate::arrow::{
     array::Array, bitmap::MutableBitmap, datatypes::DataType, error::Result,
     io::parquet::read::Pages, offset::Offset,
 };

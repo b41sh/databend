@@ -5,13 +5,13 @@ use chrono::{
     Datelike, Duration, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime,
 };
 
-use crate::error::Result;
-use crate::{
+use crate::arrow::error::Result;
+use crate::arrow::{
     array::{PrimitiveArray, Utf8Array},
     error::Error,
     offset::Offset,
 };
-use crate::{
+use crate::arrow::{
     datatypes::{DataType, TimeUnit},
     types::months_days_ns,
 };

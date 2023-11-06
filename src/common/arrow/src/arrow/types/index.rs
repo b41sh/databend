@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use crate::trusted_len::TrustedLen;
+use crate::arrow::trusted_len::TrustedLen;
 
 use super::NativeType;
 

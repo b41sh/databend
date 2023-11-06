@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{
+use crate::arrow::{
     array::{Array, Utf8Array},
     bitmap::MutableBitmap,
     offset::{Offset, Offsets},

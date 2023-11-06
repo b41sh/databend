@@ -1,4 +1,4 @@
-use crate::{datatypes::DataType, error::Error, types::NativeType};
+use crate::arrow::{datatypes::DataType, error::Error, types::NativeType};
 
 use super::Scalar;
 

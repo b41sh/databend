@@ -1,4 +1,4 @@
-use crate::bitmap::Bitmap;
+use crate::arrow::bitmap::Bitmap;
 
 use parquet2::{
     compression::CompressionOptions,
@@ -10,7 +10,7 @@ use parquet2::{
 };
 
 use super::WriteOptions;
-use crate::error::Result;
+use crate::arrow::error::Result;
 
 use super::Version;
 

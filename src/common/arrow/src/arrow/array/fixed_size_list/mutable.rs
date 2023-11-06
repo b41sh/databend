@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::array::PushUnchecked;
-use crate::{
+use crate::arrow::array::PushUnchecked;
+use crate::arrow::{
     array::{
         physical_binary::extend_validity, Array, MutableArray, TryExtend, TryExtendFromSelf,
         TryPush,

@@ -10,7 +10,7 @@ use parquet2::{
     read::{BasicDecompressor, IndexedPageReader, PageMetaData, PageReader},
 };
 
-use crate::{
+use crate::arrow::{
     array::Array, chunk::Chunk, datatypes::Field, error::Result,
     io::parquet::read::column_iter_to_arrays,
 };

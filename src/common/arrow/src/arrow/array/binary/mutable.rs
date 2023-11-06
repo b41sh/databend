@@ -1,6 +1,6 @@
 use std::{iter::FromIterator, sync::Arc};
 
-use crate::{
+use crate::arrow::{
     array::{Array, MutableArray, TryExtend, TryExtendFromSelf, TryPush},
     bitmap::{
         utils::{BitmapIter, ZipValidity},
@@ -13,7 +13,7 @@ use crate::{
 };
 
 use super::{BinaryArray, MutableBinaryValuesArray, MutableBinaryValuesIter};
-use crate::array::physical_binary::*;
+use crate::arrow::array::physical_binary::*;
 
 /// The Arrow's equivalent to `Vec<Option<Vec<u8>>>`.
 /// Converting a [`MutableBinaryArray`] into a [`BinaryArray`] is `O(1)`.

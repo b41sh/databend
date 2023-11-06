@@ -1,9 +1,9 @@
 use std::io::{Read, Seek, SeekFrom};
 use std::{collections::VecDeque, convert::TryInto};
 
-use crate::buffer::Buffer;
-use crate::error::{Error, Result};
-use crate::{bitmap::Bitmap, types::NativeType};
+use crate::arrow::buffer::Buffer;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::{bitmap::Bitmap, types::NativeType};
 
 use super::super::compression;
 use super::super::endianess::is_native_little_endian;

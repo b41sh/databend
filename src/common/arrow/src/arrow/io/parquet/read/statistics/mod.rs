@@ -1,6 +1,6 @@
 //! APIs exposing `parquet2`'s statistics as arrow's statistics.
 
-use crate::with_match_primitive_type;
+use crate::arrow::with_match_primitive_type;
 use ethnum::I256;
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -15,12 +15,12 @@ use parquet2::statistics::{
 };
 use parquet2::types::int96_to_i64_ns;
 
-use crate::array::*;
-use crate::datatypes::IntervalUnit;
-use crate::datatypes::{DataType, Field, PhysicalType};
-use crate::error::Error;
-use crate::error::Result;
-use crate::types::i256;
+use crate::arrow::array::*;
+use crate::arrow::datatypes::IntervalUnit;
+use crate::arrow::datatypes::{DataType, Field, PhysicalType};
+use crate::arrow::error::Error;
+use crate::arrow::error::Result;
+use crate::arrow::types::i256;
 
 mod binary;
 mod boolean;

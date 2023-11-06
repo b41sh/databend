@@ -1,6 +1,6 @@
 //! Comparison functions for [`BooleanArray`]
-use crate::compute::comparison::{finish_eq_validities, finish_neq_validities};
-use crate::{
+use crate::arrow::compute::comparison::{finish_eq_validities, finish_neq_validities};
+use crate::arrow::{
     array::BooleanArray,
     bitmap::{binary, unary, Bitmap},
     datatypes::DataType,

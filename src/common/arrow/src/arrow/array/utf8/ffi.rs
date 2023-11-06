@@ -1,4 +1,4 @@
-use crate::{
+use crate::arrow::{
     array::{FromFfi, ToFfi},
     bitmap::align,
     error::Result,

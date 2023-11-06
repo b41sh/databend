@@ -2,11 +2,11 @@ use std::hash::Hash;
 
 use num_traits::{AsPrimitive, Float, ToPrimitive};
 
-use crate::datatypes::IntervalUnit;
-use crate::error::Result;
-use crate::offset::{Offset, Offsets};
-use crate::types::{days_ms, f16, months_days_ns};
-use crate::{
+use crate::arrow::datatypes::IntervalUnit;
+use crate::arrow::error::Result;
+use crate::arrow::offset::{Offset, Offsets};
+use crate::arrow::types::{days_ms, f16, months_days_ns};
+use crate::arrow::{
     array::*,
     bitmap::Bitmap,
     compute::arity::unary,
@@ -490,7 +490,7 @@ fn chrono_tz_timestamp_to_utf8<O: Offset>(
     _: TimeUnit,
     timezone_str: &str,
 ) -> Result<Utf8Array<O>> {
-    use crate::error::Error;
+    use crate::arrow::error::Error;
     Err(Error::InvalidArgumentError(format!(
         "timezone \"{}\" cannot be parsed (feature chrono-tz is not active)",
         timezone_str

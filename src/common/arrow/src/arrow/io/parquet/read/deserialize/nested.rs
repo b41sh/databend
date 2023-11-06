@@ -1,10 +1,10 @@
-use crate::match_integer_type;
+use crate::arrow::match_integer_type;
 
 use ethnum::I256;
 use parquet2::schema::types::PrimitiveType;
 
-use crate::array::PrimitiveArray;
-use crate::{
+use crate::arrow::array::PrimitiveArray;
+use crate::arrow::{
     datatypes::{DataType, Field},
     error::{Error, Result},
 };
@@ -52,8 +52,8 @@ pub fn columns_to_iter_recursive<'a, I: 'a>(
 where
     I: Pages,
 {
-    use crate::datatypes::PhysicalType::*;
-    use crate::datatypes::PrimitiveType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PrimitiveType::*;
 
     Ok(match field.data_type().to_physical_type() {
         Null => {

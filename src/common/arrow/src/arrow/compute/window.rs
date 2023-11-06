@@ -17,10 +17,10 @@
 
 //! Defines windowing functions, like `shift`ing
 
-use crate::compute::concatenate::concatenate;
+use crate::arrow::compute::concatenate::concatenate;
 use num_traits::{abs, clamp};
 
-use crate::{
+use crate::arrow::{
     array::{new_null_array, Array},
     error::{Error, Result},
 };

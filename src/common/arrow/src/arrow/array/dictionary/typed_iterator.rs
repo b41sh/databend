@@ -1,7 +1,7 @@
-use crate::array::{Array, PrimitiveArray, Utf8Array};
-use crate::error::{Error, Result};
-use crate::trusted_len::TrustedLen;
-use crate::types::Offset;
+use crate::arrow::array::{Array, PrimitiveArray, Utf8Array};
+use crate::arrow::error::{Error, Result};
+use crate::arrow::trusted_len::TrustedLen;
+use crate::arrow::types::Offset;
 
 use super::DictionaryKey;
 

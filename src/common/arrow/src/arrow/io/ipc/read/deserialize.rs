@@ -1,6 +1,6 @@
 
-use crate::match_integer_type;
-use crate::with_match_primitive_type;
+use crate::arrow::match_integer_type;
+use crate::arrow::with_match_primitive_type;
 
 use std::collections::VecDeque;
 use std::io::{Read, Seek};
@@ -8,10 +8,10 @@ use std::io::{Read, Seek};
 use arrow_format::ipc::BodyCompressionRef;
 use arrow_format::ipc::MetadataVersion;
 
-use crate::array::*;
-use crate::datatypes::{DataType, Field, PhysicalType};
-use crate::error::Result;
-use crate::io::ipc::IpcField;
+use crate::arrow::array::*;
+use crate::arrow::datatypes::{DataType, Field, PhysicalType};
+use crate::arrow::error::Result;
+use crate::arrow::io::ipc::IpcField;
 
 use super::{array::*, Dictionaries};
 use super::{IpcBuffer, Node};

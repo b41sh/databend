@@ -1,6 +1,6 @@
 //! APIs to represent [`Chunk`] as a formatted table.
 
-use crate::{
+use crate::arrow::{
     array::{get_display, Array},
     chunk::Chunk,
 };

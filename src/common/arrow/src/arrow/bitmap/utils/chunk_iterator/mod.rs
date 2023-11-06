@@ -3,10 +3,10 @@ use std::convert::TryInto;
 mod chunks_exact;
 mod merge;
 
-pub use crate::types::BitChunk;
+pub use crate::arrow::types::BitChunk;
 pub use chunks_exact::BitChunksExact;
 
-use crate::{trusted_len::TrustedLen, types::BitChunkIter};
+use crate::arrow::{trusted_len::TrustedLen, types::BitChunkIter};
 pub(crate) use merge::merge_reversed;
 
 /// Trait representing an exact iterator over bytes in [`BitChunk`].

@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Formatter, Result, Write};
 
-use crate::array::Array;
+use crate::arrow::array::Array;
 
 use super::super::fmt::{get_display, write_vec};
 use super::{DictionaryArray, DictionaryKey};

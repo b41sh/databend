@@ -16,9 +16,9 @@ mod primitive;
 use std::collections::VecDeque;
 use std::io::{Read, Seek};
 
-use crate::array::UInt64Array;
-use crate::datatypes::{Field, PrimitiveType};
-use crate::{
+use crate::arrow::array::UInt64Array;
+use crate::arrow::datatypes::{Field, PrimitiveType};
+use crate::arrow::{
     array::Array,
     datatypes::{DataType, PhysicalType},
     error::Error,

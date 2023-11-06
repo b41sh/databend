@@ -1,4 +1,4 @@
-use crate::{
+use crate::arrow::{
     array::{BooleanArray, PrimitiveArray},
     types::Index,
 };

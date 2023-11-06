@@ -1,7 +1,7 @@
 //! Defines the division arithmetic kernels for Decimal
 //! `PrimitiveArrays`.
 
-use crate::{
+use crate::arrow::{
     array::PrimitiveArray,
     compute::{
         arithmetics::{ArrayCheckedDiv, ArrayDiv},

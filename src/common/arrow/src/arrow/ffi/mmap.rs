@@ -1,10 +1,10 @@
 //! Functionality to mmap in-memory data regions.
 use std::sync::Arc;
 
-use crate::array::BooleanArray;
-use crate::datatypes::DataType;
-use crate::error::Error;
-use crate::{
+use crate::arrow::array::BooleanArray;
+use crate::arrow::datatypes::DataType;
+use crate::arrow::error::Error;
+use crate::arrow::{
     array::{FromFfi, PrimitiveArray},
     types::NativeType,
 };

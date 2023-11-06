@@ -1,4 +1,4 @@
-use crate::datatypes::DataType;
+use crate::arrow::datatypes::DataType;
 
 use super::Scalar;
 

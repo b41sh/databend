@@ -1,17 +1,17 @@
 //! Contains the operator [`nullif`].
-use crate::array::PrimitiveArray;
-use crate::bitmap::Bitmap;
-use crate::compute::comparison::{
+use crate::arrow::array::PrimitiveArray;
+use crate::arrow::bitmap::Bitmap;
+use crate::arrow::compute::comparison::{
     primitive_compare_values_op, primitive_compare_values_op_scalar, Simd8, Simd8PartialEq,
 };
-use crate::datatypes::DataType;
-use crate::scalar::PrimitiveScalar;
-use crate::scalar::Scalar;
-use crate::{array::Array, types::NativeType};
+use crate::arrow::datatypes::DataType;
+use crate::arrow::scalar::PrimitiveScalar;
+use crate::arrow::scalar::Scalar;
+use crate::arrow::{array::Array, types::NativeType};
 
 use super::utils::combine_validities;
 
-use crate::with_match_primitive_type;
+use crate::arrow::with_match_primitive_type;
 
 
 /// Returns an array whose validity is null iff `lhs == rhs` or `lhs` is null.
@@ -109,7 +109,7 @@ pub fn nullif(lhs: &dyn Array, rhs: &dyn Array) -> Box<dyn Array> {
     assert_eq!(lhs.data_type(), rhs.data_type());
     assert_eq!(lhs.len(), rhs.len());
 
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     match lhs.data_type().to_physical_type() {
         Primitive(primitive) => with_match_primitive_type!(primitive, |$T| {
             Box::new(primitive_nullif::<$T>(
@@ -146,7 +146,7 @@ pub fn nullif(lhs: &dyn Array, rhs: &dyn Array) -> Box<dyn Array> {
 /// ```
 pub fn nullif_scalar(lhs: &dyn Array, rhs: &dyn Scalar) -> Box<dyn Array> {
     assert_eq!(lhs.data_type(), rhs.data_type());
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     match lhs.data_type().to_physical_type() {
         Primitive(primitive) => with_match_primitive_type!(primitive, |$T| {
             let scalar = rhs.as_any().downcast_ref::<PrimitiveScalar<$T>>().unwrap();
@@ -166,6 +166,6 @@ pub fn can_nullif(lhs: &DataType, rhs: &DataType) -> bool {
     if lhs != rhs {
         return false;
     };
-    use crate::datatypes::PhysicalType;
+    use crate::arrow::datatypes::PhysicalType;
     matches!(lhs.to_physical_type(), PhysicalType::Primitive(_))
 }

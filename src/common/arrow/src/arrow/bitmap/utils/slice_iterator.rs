@@ -1,4 +1,4 @@
-use crate::bitmap::Bitmap;
+use crate::arrow::bitmap::Bitmap;
 
 /// Internal state of [`SlicesIterator`]
 #[derive(Debug, Clone, PartialEq)]

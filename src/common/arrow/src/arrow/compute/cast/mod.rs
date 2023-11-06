@@ -7,7 +7,7 @@ mod dictionary_to;
 mod primitive_to;
 mod utf8_to;
 
-use crate::match_integer_type;
+use crate::arrow::match_integer_type;
 
 pub use binary_to::*;
 pub use boolean_to::*;
@@ -16,7 +16,7 @@ pub use dictionary_to::*;
 pub use primitive_to::*;
 pub use utf8_to::*;
 
-use crate::{
+use crate::arrow::{
     array::*,
     datatypes::*,
     error::{Error, Result},

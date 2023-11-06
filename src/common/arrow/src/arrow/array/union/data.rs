@@ -1,6 +1,6 @@
-use crate::array::{from_data, to_data, Arrow2Arrow, UnionArray};
-use crate::buffer::Buffer;
-use crate::datatypes::DataType;
+use crate::arrow::array::{from_data, to_data, Arrow2Arrow, UnionArray};
+use crate::arrow::buffer::Buffer;
+use crate::arrow::datatypes::DataType;
 use arrow_data::{ArrayData, ArrayDataBuilder};
 
 impl Arrow2Arrow for UnionArray {

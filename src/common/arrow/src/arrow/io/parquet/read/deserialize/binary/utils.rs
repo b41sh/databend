@@ -1,4 +1,4 @@
-use crate::offset::{Offset, Offsets};
+use crate::arrow::offset::{Offset, Offsets};
 
 use super::super::utils::Pushable;
 

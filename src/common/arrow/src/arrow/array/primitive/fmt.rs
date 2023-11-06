@@ -1,13 +1,13 @@
 use std::fmt::{Debug, Formatter, Result, Write};
 
-use crate::array::Array;
-use crate::datatypes::{IntervalUnit, TimeUnit};
-use crate::types::{days_ms, i256, months_days_ns};
+use crate::arrow::array::Array;
+use crate::arrow::datatypes::{IntervalUnit, TimeUnit};
+use crate::arrow::types::{days_ms, i256, months_days_ns};
 
 use super::PrimitiveArray;
-use crate::array::fmt::write_vec;
-use crate::temporal_conversions;
-use crate::types::NativeType;
+use crate::arrow::array::fmt::write_vec;
+use crate::arrow::temporal_conversions;
+use crate::arrow::types::NativeType;
 
 macro_rules! dyn_primitive {
     ($array:expr, $ty:ty, $expr:expr) => {{
@@ -22,7 +22,7 @@ macro_rules! dyn_primitive {
 pub fn get_write_value<'a, T: NativeType, F: Write>(
     array: &'a PrimitiveArray<T>,
 ) -> Box<dyn Fn(&mut F, usize) -> Result + 'a> {
-    use crate::datatypes::DataType::*;
+    use crate::arrow::datatypes::DataType::*;
     match array.data_type().to_logical_type() {
         Int8 => Box::new(|f, index| write!(f, "{}", array.value(index))),
         Int16 => Box::new(|f, index| write!(f, "{}", array.value(index))),

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::array::{Array, UnionArray};
+use crate::arrow::array::{Array, UnionArray};
 
 use super::{make_growable, Growable};
 

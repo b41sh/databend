@@ -10,8 +10,8 @@ use super::common::{encode_chunk, DictionaryTracker, EncodedData};
 use super::common_async::{write_continuation, write_message};
 use super::{default_ipc_fields, schema_to_bytes, Record};
 
-use crate::datatypes::*;
-use crate::error::{Error, Result};
+use crate::arrow::datatypes::*;
+use crate::arrow::error::{Error, Result};
 
 /// A sink that writes array [`chunks`](crate::chunk::Chunk) as an IPC stream.
 ///

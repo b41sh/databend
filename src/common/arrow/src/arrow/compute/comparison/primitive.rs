@@ -1,6 +1,6 @@
 //! Comparison functions for [`PrimitiveArray`]
-use crate::compute::comparison::{finish_eq_validities, finish_neq_validities};
-use crate::{
+use crate::arrow::compute::comparison::{finish_eq_validities, finish_neq_validities};
+use crate::arrow::{
     array::{BooleanArray, PrimitiveArray},
     bitmap::MutableBitmap,
     datatypes::DataType,
@@ -265,7 +265,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::array::{Int64Array, Int8Array};
+    use crate::arrow::array::{Int64Array, Int8Array};
 
     /// Evaluate `KERNEL` with two vectors as inputs and assert against the expected output.
     /// `A_VEC` and `B_VEC` can be of type `Vec<i64>` or `Vec<Option<i64>>`.

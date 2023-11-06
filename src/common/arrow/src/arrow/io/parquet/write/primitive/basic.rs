@@ -9,7 +9,7 @@ use parquet2::{
 
 use super::super::utils;
 use super::super::WriteOptions;
-use crate::{
+use crate::arrow::{
     array::{Array, PrimitiveArray},
     error::Error,
     io::parquet::{read::schema::is_nullable, write::utils::ExactSizedIter},

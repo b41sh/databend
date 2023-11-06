@@ -1,6 +1,6 @@
-use crate::array::{Array, StructArray};
-use crate::datatypes::{DataType, Field};
-use crate::error::Error;
+use crate::arrow::array::{Array, StructArray};
+use crate::arrow::datatypes::{DataType, Field};
+use crate::arrow::error::Error;
 
 use super::nested_utils::{NestedArrayIter, NestedState};
 

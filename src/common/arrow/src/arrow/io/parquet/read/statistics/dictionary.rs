@@ -1,9 +1,9 @@
 
-use crate::match_integer_type;
+use crate::arrow::match_integer_type;
 
-use crate::array::*;
-use crate::datatypes::{DataType, PhysicalType};
-use crate::error::Result;
+use crate::arrow::array::*;
+use crate::arrow::datatypes::{DataType, PhysicalType};
+use crate::arrow::error::Result;
 
 use super::make_mutable;
 

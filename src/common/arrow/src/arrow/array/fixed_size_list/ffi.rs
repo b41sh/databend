@@ -1,5 +1,5 @@
 use super::FixedSizeListArray;
-use crate::{
+use crate::arrow::{
     array::{
         ffi::{FromFfi, ToFfi},
         Array,

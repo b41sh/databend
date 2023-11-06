@@ -15,8 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::array::{Array, PrimitiveArray, Utf8Array};
-use crate::offset::Offset;
+use crate::arrow::array::{Array, PrimitiveArray, Utf8Array};
+use crate::arrow::offset::Offset;
 
 use super::generic_binary::*;
 use super::Index;
@@ -43,7 +43,7 @@ pub fn take<O: Offset, I: Index>(
 
 #[cfg(test)]
 mod tests {
-    use crate::array::Int32Array;
+    use crate::arrow::array::Int32Array;
 
     use super::*;
 

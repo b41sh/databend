@@ -1,6 +1,6 @@
-use crate::{array::FromFfi, bitmap::align, error::Result, ffi};
+use crate::arrow::{array::FromFfi, bitmap::align, error::Result, ffi};
 
-use crate::offset::{Offset, OffsetsBuffer};
+use crate::arrow::offset::{Offset, OffsetsBuffer};
 
 use super::super::{ffi::ToFfi, Array};
 use super::ListArray;

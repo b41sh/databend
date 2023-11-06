@@ -1,4 +1,4 @@
-use crate::{
+use crate::arrow::{
     bitmap::{
         utils::{BitmapIter, ZipValidity},
         Bitmap,

@@ -2,10 +2,10 @@ use parquet2::schema::types::{PrimitiveLogicalType, TimeUnit as ParquetTimeUnit}
 use parquet2::statistics::{PrimitiveStatistics, Statistics as ParquetStatistics};
 use parquet2::types::NativeType as ParquetNativeType;
 
-use crate::array::*;
-use crate::datatypes::TimeUnit;
-use crate::error::Result;
-use crate::types::NativeType;
+use crate::arrow::array::*;
+use crate::arrow::datatypes::TimeUnit;
+use crate::arrow::error::Result;
+use crate::arrow::types::NativeType;
 
 pub fn timestamp(logical_type: Option<&PrimitiveLogicalType>, time_unit: TimeUnit, x: i64) -> i64 {
     let unit = if let Some(PrimitiveLogicalType::Timestamp { unit, .. }) = logical_type {

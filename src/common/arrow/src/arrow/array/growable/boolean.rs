@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{
+use crate::arrow::{
     array::{Array, BooleanArray},
     bitmap::MutableBitmap,
     datatypes::DataType,

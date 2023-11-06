@@ -1,5 +1,5 @@
-use crate::bitmap::MutableBitmap;
-use crate::offset::{Offset, Offsets};
+use crate::arrow::bitmap::MutableBitmap;
+use crate::arrow::offset::{Offset, Offsets};
 
 /// # Safety
 /// The caller must ensure that `iterator` is `TrustedLen`.

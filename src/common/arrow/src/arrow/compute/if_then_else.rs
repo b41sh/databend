@@ -1,7 +1,7 @@
 //! Contains the operator [`if_then_else`].
-use crate::array::{growable, Array, BooleanArray};
-use crate::bitmap::utils::SlicesIterator;
-use crate::error::{Error, Result};
+use crate::arrow::array::{growable, Array, BooleanArray};
+use crate::arrow::bitmap::utils::SlicesIterator;
+use crate::arrow::error::{Error, Result};
 
 /// Returns the values from `lhs` if the predicate is `true` or from the `rhs` if the predicate is false
 /// Returns `None` if the predicate is `None`.

@@ -1,6 +1,6 @@
-use crate::array::DictionaryKey;
-use crate::error::{Error, Result};
-use crate::offset::{Offset, Offsets, OffsetsBuffer};
+use crate::arrow::array::DictionaryKey;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::offset::{Offset, Offsets, OffsetsBuffer};
 
 /// Helper trait to support `Offset` and `OffsetBuffer`
 pub(crate) trait OffsetsContainer<O> {

@@ -1,7 +1,7 @@
 use std::{iter::FromIterator, sync::Arc};
 
-use crate::array::{physical_binary::*, TryExtendFromSelf};
-use crate::{
+use crate::arrow::array::{physical_binary::*, TryExtendFromSelf};
+use crate::arrow::{
     array::{Array, MutableArray, TryExtend, TryPush},
     bitmap::{
         utils::{BitmapIter, ZipValidity},

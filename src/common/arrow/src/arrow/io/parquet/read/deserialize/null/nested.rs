@@ -2,9 +2,9 @@ use std::collections::VecDeque;
 
 use parquet2::page::{DataPage, DictPage};
 
-use crate::array::NullArray;
-use crate::io::parquet::read::deserialize::utils::DecodedState;
-use crate::{datatypes::DataType, error::Result};
+use crate::arrow::array::NullArray;
+use crate::arrow::io::parquet::read::deserialize::utils::DecodedState;
+use crate::arrow::{datatypes::DataType, error::Result};
 
 use super::super::nested_utils::*;
 use super::super::utils;

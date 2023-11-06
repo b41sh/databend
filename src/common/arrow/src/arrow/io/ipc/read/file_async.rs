@@ -7,11 +7,11 @@ use futures::{
     stream::BoxStream, AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt, Stream, StreamExt,
 };
 
-use crate::array::*;
-use crate::chunk::Chunk;
-use crate::datatypes::{Field, Schema};
-use crate::error::{Error, Result};
-use crate::io::ipc::{IpcSchema, ARROW_MAGIC_V2, CONTINUATION_MARKER};
+use crate::arrow::array::*;
+use crate::arrow::chunk::Chunk;
+use crate::arrow::datatypes::{Field, Schema};
+use crate::arrow::error::{Error, Result};
+use crate::arrow::io::ipc::{IpcSchema, ARROW_MAGIC_V2, CONTINUATION_MARKER};
 
 use super::common::{apply_projection, prepare_projection, read_dictionary, read_record_batch};
 use super::file::{deserialize_footer, get_record_batch};

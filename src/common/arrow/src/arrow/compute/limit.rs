@@ -1,6 +1,6 @@
 //! Contains the operator [`limit`].
 
-use crate::array::Array;
+use crate::arrow::array::Array;
 
 /// Returns the [`Array`] limited by `num_elements`.
 ///

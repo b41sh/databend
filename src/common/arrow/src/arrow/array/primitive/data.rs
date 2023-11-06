@@ -1,7 +1,7 @@
-use crate::array::{Arrow2Arrow, PrimitiveArray};
-use crate::bitmap::Bitmap;
-use crate::buffer::Buffer;
-use crate::types::NativeType;
+use crate::arrow::array::{Arrow2Arrow, PrimitiveArray};
+use crate::arrow::bitmap::Bitmap;
+use crate::arrow::buffer::Buffer;
+use crate::arrow::types::NativeType;
 use arrow_data::{ArrayData, ArrayDataBuilder};
 
 impl<T: NativeType> Arrow2Arrow for PrimitiveArray<T> {

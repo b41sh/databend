@@ -1,6 +1,6 @@
 use std::ops::Add;
 
-use crate::types::simd::*;
+use crate::arrow::types::simd::*;
 
 use super::super::min_max::SimdOrd;
 use super::super::sum::Sum;

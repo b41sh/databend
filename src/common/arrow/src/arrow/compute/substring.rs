@@ -17,7 +17,7 @@
 
 //! Defines kernel to extract a substring of a \[Large\]StringArray
 
-use crate::{
+use crate::arrow::{
     array::*,
     datatypes::DataType,
     error::{Error, Result},

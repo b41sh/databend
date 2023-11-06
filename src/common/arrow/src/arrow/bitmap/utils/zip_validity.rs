@@ -1,6 +1,6 @@
-use crate::bitmap::utils::BitmapIter;
-use crate::bitmap::Bitmap;
-use crate::trusted_len::TrustedLen;
+use crate::arrow::bitmap::utils::BitmapIter;
+use crate::arrow::bitmap::Bitmap;
+use crate::arrow::trusted_len::TrustedLen;
 
 /// An [`Iterator`] over validity and values.
 #[derive(Debug, Clone)]

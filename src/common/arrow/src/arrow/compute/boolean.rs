@@ -1,8 +1,8 @@
 //! null-preserving operators such as [`and`], [`or`] and [`not`].
-use crate::array::{Array, BooleanArray};
-use crate::bitmap::{Bitmap, MutableBitmap};
-use crate::datatypes::DataType;
-use crate::scalar::BooleanScalar;
+use crate::arrow::array::{Array, BooleanArray};
+use crate::arrow::bitmap::{Bitmap, MutableBitmap};
+use crate::arrow::datatypes::DataType;
+use crate::arrow::scalar::BooleanScalar;
 
 use super::utils::combine_validities;
 

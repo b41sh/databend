@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Formatter, Result, Write};
 
-use crate::offset::Offset;
+use crate::arrow::offset::Offset;
 
 use super::super::fmt::write_vec;
 use super::Utf8Array;

@@ -26,14 +26,14 @@ mod sink;
 mod utf8;
 mod utils;
 
-use crate::match_integer_type;
+use crate::arrow::match_integer_type;
 
-use crate::array::*;
-use crate::datatypes::*;
-use crate::error::{Error, Result};
-use crate::types::days_ms;
-use crate::types::i256;
-use crate::types::NativeType;
+use crate::arrow::array::*;
+use crate::arrow::datatypes::*;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::types::days_ms;
+use crate::arrow::types::i256;
+use crate::arrow::types::NativeType;
 
 pub use nested::{num_values, write_rep_and_def};
 pub use pages::{to_leaves, to_nested, to_parquet_leaves};
@@ -66,7 +66,7 @@ pub struct WriteOptions {
     pub data_pagesize_limit: Option<usize>,
 }
 
-use crate::compute::aggregate::estimated_bytes_size;
+use crate::arrow::compute::aggregate::estimated_bytes_size;
 pub use file::FileWriter;
 pub use row_group::{row_group_iter, RowGroupIterator};
 pub use schema::to_parquet_type;
@@ -824,7 +824,7 @@ fn transverse_recursive<T, F: Fn(&DataType) -> T + Clone>(
     map: F,
     encodings: &mut Vec<T>,
 ) {
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     match data_type.to_physical_type() {
         Null | Boolean | Primitive(_) | Binary | FixedSizeBinary | LargeBinary | Utf8
         | Dictionary(_) | LargeUtf8 => encodings.push(map(data_type)),

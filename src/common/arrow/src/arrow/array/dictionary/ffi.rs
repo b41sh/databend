@@ -1,4 +1,4 @@
-use crate::{
+use crate::arrow::{
     array::{FromFfi, PrimitiveArray, ToFfi},
     error::Error,
     ffi,

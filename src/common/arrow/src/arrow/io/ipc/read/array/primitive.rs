@@ -1,9 +1,9 @@
 use std::io::{Read, Seek};
 use std::{collections::VecDeque, convert::TryInto};
 
-use crate::datatypes::DataType;
-use crate::error::{Error, Result};
-use crate::{array::PrimitiveArray, types::NativeType};
+use crate::arrow::datatypes::DataType;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::{array::PrimitiveArray, types::NativeType};
 
 use super::super::read_basic::*;
 use super::super::{Compression, IpcBuffer, Node, OutOfSpecKind};

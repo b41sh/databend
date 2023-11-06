@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, convert::TryInto, ffi::CStr, ffi::CString, ptr};
 
-use crate::{
+use crate::arrow::{
     datatypes::{
         DataType, Extension, Field, IntegerType, IntervalUnit, Metadata, TimeUnit, UnionMode,
     },

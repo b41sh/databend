@@ -1,7 +1,7 @@
 //! Defines generics suitable to perform operations to [`PrimitiveArray`] in-place.
 
 use super::utils::check_same_len;
-use crate::{array::PrimitiveArray, types::NativeType};
+use crate::arrow::{array::PrimitiveArray, types::NativeType};
 use either::Either;
 
 /// Applies an unary function to a [`PrimitiveArray`], optionally in-place.

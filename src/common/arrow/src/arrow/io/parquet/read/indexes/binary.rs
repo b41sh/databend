@@ -1,6 +1,6 @@
 use parquet2::indexes::PageIndex;
 
-use crate::{
+use crate::arrow::{
     array::{Array, BinaryArray, PrimitiveArray, Utf8Array},
     datatypes::{DataType, PhysicalType},
     error::Error,

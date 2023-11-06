@@ -1,7 +1,7 @@
 use std::hash::Hash;
 use std::hint::unreachable_unchecked;
 
-use crate::{
+use crate::arrow::{
     bitmap::{
         utils::{BitmapIter, ZipValidity},
         Bitmap,
@@ -19,11 +19,11 @@ mod ffi;
 pub(super) mod fmt;
 mod iterator;
 mod mutable;
-use crate::array::specification::check_indexes_unchecked;
+use crate::arrow::array::specification::check_indexes_unchecked;
 mod typed_iterator;
 mod value_map;
 
-use crate::array::dictionary::typed_iterator::{DictValue, DictionaryValuesIterTyped};
+use crate::arrow::array::dictionary::typed_iterator::{DictValue, DictionaryValuesIterTyped};
 pub use iterator::*;
 pub use mutable::*;
 

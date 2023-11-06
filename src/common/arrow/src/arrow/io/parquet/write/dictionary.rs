@@ -6,13 +6,13 @@ use parquet2::{
     write::DynIter,
 };
 
-use crate::io::parquet::write::{slice_nested_leaf, utils};
-use crate::{
+use crate::arrow::io::parquet::write::{slice_nested_leaf, utils};
+use crate::arrow::{
     array::{Array, DictionaryArray, DictionaryKey},
     io::parquet::read::schema::is_nullable,
 };
-use crate::{bitmap::Bitmap, datatypes::DataType};
-use crate::{
+use crate::arrow::{bitmap::Bitmap, datatypes::DataType};
+use crate::arrow::{
     bitmap::MutableBitmap,
     error::{Error, Result},
 };

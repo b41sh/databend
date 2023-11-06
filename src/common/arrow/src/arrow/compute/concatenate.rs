@@ -13,8 +13,8 @@
 //! assert_eq!(arr.len(), 3);
 //! ```
 
-use crate::array::{growable::make_growable, Array};
-use crate::error::{Error, Result};
+use crate::arrow::array::{growable::make_growable, Array};
+use crate::arrow::error::{Error, Result};
 
 /// Concatenate multiple [Array] of the same type into a single [`Array`].
 pub fn concatenate(arrays: &[&dyn Array]) -> Result<Box<dyn Array>> {

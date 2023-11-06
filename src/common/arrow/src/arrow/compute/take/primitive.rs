@@ -1,4 +1,4 @@
-use crate::{
+use crate::arrow::{
     array::{Array, PrimitiveArray},
     bitmap::{Bitmap, MutableBitmap},
     buffer::Buffer,

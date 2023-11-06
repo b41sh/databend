@@ -15,11 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::array::{
+use crate::arrow::array::{
     growable::{Growable, GrowableList},
     ListArray, PrimitiveArray,
 };
-use crate::offset::Offset;
+use crate::arrow::offset::Offset;
 
 use super::Index;
 

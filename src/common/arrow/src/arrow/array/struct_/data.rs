@@ -1,5 +1,5 @@
-use crate::array::{from_data, to_data, Arrow2Arrow, StructArray};
-use crate::bitmap::Bitmap;
+use crate::arrow::array::{from_data, to_data, Arrow2Arrow, StructArray};
+use crate::arrow::bitmap::Bitmap;
 use arrow_data::{ArrayData, ArrayDataBuilder};
 
 impl Arrow2Arrow for StructArray {

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::{
+use crate::arrow::{
     array::{Array, PrimitiveArray, StructArray},
     bitmap::{Bitmap, MutableBitmap},
     error::Result,

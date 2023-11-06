@@ -1,9 +1,9 @@
 use std::collections::VecDeque;
 use std::io::{Read, Seek};
 
-use crate::array::BooleanArray;
-use crate::datatypes::DataType;
-use crate::error::{Error, Result};
+use crate::arrow::array::BooleanArray;
+use crate::arrow::datatypes::DataType;
+use crate::arrow::error::{Error, Result};
 
 use super::super::read_basic::*;
 use super::super::{Compression, IpcBuffer, Node, OutOfSpecKind};

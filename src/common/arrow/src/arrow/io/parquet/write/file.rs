@@ -5,8 +5,8 @@ use parquet2::metadata::SchemaDescriptor;
 use parquet2::write::RowGroupIter;
 use parquet2::write::WriteOptions as FileWriteOptions;
 
-use crate::datatypes::Schema;
-use crate::error::{Error, Result};
+use crate::arrow::datatypes::Schema;
+use crate::arrow::error::{Error, Result};
 
 use super::{schema::schema_to_metadata_key, to_parquet_schema, ThriftFileMetaData, WriteOptions};
 

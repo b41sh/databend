@@ -1,10 +1,10 @@
 use ahash::AHashMap;
 use std::io::{Read, Seek};
 
-use crate::array::Array;
-use crate::chunk::Chunk;
-use crate::datatypes::Schema;
-use crate::error::Result;
+use crate::arrow::array::Array;
+use crate::arrow::chunk::Chunk;
+use crate::arrow::datatypes::Schema;
+use crate::arrow::error::Result;
 
 use super::common::*;
 use super::Dictionaries;

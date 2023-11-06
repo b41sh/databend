@@ -1,7 +1,7 @@
-use crate::match_integer_type;
+use crate::arrow::match_integer_type;
 
 use super::{primitive_as_primitive, primitive_to_primitive, CastOptions};
-use crate::{
+use crate::arrow::{
     array::{Array, DictionaryArray, DictionaryKey, PrimitiveArray},
     compute::{cast::cast, take::take},
     datatypes::DataType,

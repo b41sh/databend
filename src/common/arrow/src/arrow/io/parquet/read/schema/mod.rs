@@ -1,6 +1,6 @@
 //! APIs to handle Parquet <-> Arrow schemas.
-use crate::datatypes::{Schema, TimeUnit};
-use crate::error::Result;
+use crate::arrow::datatypes::{Schema, TimeUnit};
+use crate::arrow::error::Result;
 
 mod convert;
 mod metadata;

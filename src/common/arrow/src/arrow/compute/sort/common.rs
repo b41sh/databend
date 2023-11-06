@@ -1,4 +1,4 @@
-use crate::{array::PrimitiveArray, bitmap::Bitmap, types::Index};
+use crate::arrow::{array::PrimitiveArray, bitmap::Bitmap, types::Index};
 
 use super::SortOptions;
 

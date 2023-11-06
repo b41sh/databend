@@ -1,6 +1,6 @@
-use crate::array::Array;
-use crate::bitmap::utils::{BitmapIter, ZipValidity};
-use crate::trusted_len::TrustedLen;
+use crate::arrow::array::Array;
+use crate::arrow::bitmap::utils::{BitmapIter, ZipValidity};
+use crate::arrow::trusted_len::TrustedLen;
 
 use super::MapArray;
 

@@ -1,7 +1,7 @@
 //! Defines kernels suitable to perform operations to primitive arrays.
 
 use super::utils::{check_same_len, combine_validities};
-use crate::{
+use crate::arrow::{
     array::PrimitiveArray,
     bitmap::{Bitmap, MutableBitmap},
     datatypes::DataType,

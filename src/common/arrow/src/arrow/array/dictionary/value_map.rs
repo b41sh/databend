@@ -5,8 +5,8 @@ use std::hash::{BuildHasher, BuildHasherDefault, Hash, Hasher};
 use hashbrown::hash_map::RawEntryMut;
 use hashbrown::HashMap;
 
-use crate::array::Array;
-use crate::{
+use crate::arrow::array::Array;
+use crate::arrow::{
     array::indexable::{AsIndexed, Indexable},
     array::MutableArray,
     datatypes::DataType,

@@ -6,9 +6,9 @@ use parquet2::{
 };
 
 use super::{binary::ord_binary, utils, WriteOptions};
-use crate::io::parquet::write::{nested, Nested};
-use crate::types::i256;
-use crate::{
+use crate::arrow::io::parquet::write::{nested, Nested};
+use crate::arrow::types::i256;
+use crate::arrow::{
     array::{Array, FixedSizeBinaryArray, PrimitiveArray},
     error::Result,
     io::parquet::read::schema::is_nullable,

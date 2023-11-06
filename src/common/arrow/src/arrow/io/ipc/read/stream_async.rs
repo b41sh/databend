@@ -7,9 +7,9 @@ use futures::AsyncReadExt;
 use futures::FutureExt;
 use futures::Stream;
 
-use crate::array::*;
-use crate::chunk::Chunk;
-use crate::error::{Error, Result};
+use crate::arrow::array::*;
+use crate::arrow::chunk::Chunk;
+use crate::arrow::error::{Error, Result};
 
 use super::super::CONTINUATION_MARKER;
 use super::common::{read_dictionary, read_record_batch};

@@ -4,12 +4,12 @@ use std::io::{Read, Seek};
 
 use arrow_format;
 
-use crate::array::*;
-use crate::chunk::Chunk;
-use crate::datatypes::{DataType, Field};
-use crate::error::{Error, Result};
-use crate::io::ipc::read::OutOfSpecKind;
-use crate::io::ipc::{IpcField, IpcSchema};
+use crate::arrow::array::*;
+use crate::arrow::chunk::Chunk;
+use crate::arrow::datatypes::{DataType, Field};
+use crate::arrow::error::{Error, Result};
+use crate::arrow::io::ipc::read::OutOfSpecKind;
+use crate::arrow::io::ipc::{IpcField, IpcSchema};
 
 use super::deserialize::{read, skip};
 use super::Dictionaries;

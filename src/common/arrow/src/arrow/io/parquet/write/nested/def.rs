@@ -1,4 +1,4 @@
-use crate::{bitmap::Bitmap, offset::Offset};
+use crate::arrow::{bitmap::Bitmap, offset::Offset};
 
 use super::super::pages::{ListNested, Nested};
 use super::rep::num_values;

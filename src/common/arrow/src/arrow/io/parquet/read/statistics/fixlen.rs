@@ -1,10 +1,10 @@
 use ethnum::I256;
 use parquet2::statistics::{FixedLenStatistics, Statistics as ParquetStatistics};
 
-use crate::array::*;
-use crate::error::Result;
-use crate::io::parquet::read::convert_i256;
-use crate::types::{days_ms, i256};
+use crate::arrow::array::*;
+use crate::arrow::error::Result;
+use crate::arrow::io::parquet::read::convert_i256;
+use crate::arrow::types::{days_ms, i256};
 
 use super::super::{convert_days_ms, convert_i128};
 

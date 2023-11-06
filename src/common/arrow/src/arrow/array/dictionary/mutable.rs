@@ -1,8 +1,8 @@
 use std::hash::Hash;
 use std::sync::Arc;
 
-use crate::array::indexable::{AsIndexed, Indexable};
-use crate::{
+use crate::arrow::array::indexable::{AsIndexed, Indexable};
+use crate::arrow::{
     array::{primitive::MutablePrimitiveArray, Array, MutableArray, TryExtend, TryPush},
     bitmap::MutableBitmap,
     datatypes::DataType,

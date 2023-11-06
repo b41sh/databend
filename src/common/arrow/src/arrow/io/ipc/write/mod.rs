@@ -24,12 +24,12 @@ pub mod stream_async;
 #[cfg_attr(docsrs, doc(cfg(feature = "io_ipc_write_async")))]
 pub mod file_async;
 
-use crate::datatypes::{DataType, Field};
+use crate::arrow::datatypes::{DataType, Field};
 
 use super::IpcField;
 
 fn default_ipc_field(data_type: &DataType, current_id: &mut i64) -> IpcField {
-    use crate::datatypes::DataType::*;
+    use crate::arrow::datatypes::DataType::*;
     match data_type.to_logical_type() {
         // single child => recurse
         Map(inner, ..) | FixedSizeList(inner, _) | LargeList(inner) | List(inner) => IpcField {

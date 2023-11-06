@@ -2,7 +2,7 @@ use arrow_format::ipc::{
     planus::ReadAsRoot, FieldRef, FixedSizeListRef, MapRef, TimeRef, TimestampRef, UnionRef,
 };
 
-use crate::{
+use crate::arrow::{
     datatypes::{
         get_extension, DataType, Extension, Field, IntegerType, IntervalUnit, Metadata, Schema,
         TimeUnit, UnionMode,

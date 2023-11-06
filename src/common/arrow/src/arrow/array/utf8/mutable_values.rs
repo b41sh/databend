@@ -1,6 +1,6 @@
 use std::{iter::FromIterator, sync::Arc};
 
-use crate::{
+use crate::arrow::{
     array::{
         specification::{try_check_offsets_bounds, try_check_utf8},
         Array, ArrayValuesIter, MutableArray, TryExtend, TryExtendFromSelf, TryPush,
@@ -13,7 +13,7 @@ use crate::{
 };
 
 use super::{MutableUtf8Array, StrAsBytes, Utf8Array};
-use crate::array::physical_binary::*;
+use crate::arrow::array::physical_binary::*;
 
 /// A [`MutableArray`] that builds a [`Utf8Array`]. It differs
 /// from [`MutableUtf8Array`] in that it builds non-null [`Utf8Array`].

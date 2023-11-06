@@ -1,7 +1,7 @@
 use std::iter::FromIterator;
 use std::sync::Arc;
 
-use crate::{
+use crate::arrow::{
     array::{
         physical_binary::extend_validity, Array, MutableArray, TryExtend, TryExtendFromSelf,
         TryPush,

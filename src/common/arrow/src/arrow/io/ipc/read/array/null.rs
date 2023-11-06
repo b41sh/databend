@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::{
+use crate::arrow::{
     array::NullArray,
     datatypes::DataType,
     error::{Error, Result},

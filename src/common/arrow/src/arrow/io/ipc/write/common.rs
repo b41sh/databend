@@ -1,15 +1,15 @@
 use std::borrow::{Borrow, Cow};
 
-use crate::match_integer_type;
+use crate::arrow::match_integer_type;
 
 use arrow_format::ipc::planus::Builder;
 
-use crate::array::*;
-use crate::chunk::Chunk;
-use crate::datatypes::*;
-use crate::error::{Error, Result};
-use crate::io::ipc::endianess::is_native_little_endian;
-use crate::io::ipc::read::Dictionaries;
+use crate::arrow::array::*;
+use crate::arrow::chunk::Chunk;
+use crate::arrow::datatypes::*;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::io::ipc::endianess::is_native_little_endian;
+use crate::arrow::io::ipc::read::Dictionaries;
 
 use super::super::IpcField;
 use super::{write, write_dictionary};

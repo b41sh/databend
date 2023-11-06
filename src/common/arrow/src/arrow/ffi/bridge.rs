@@ -1,7 +1,7 @@
-use crate::array::*;
+use crate::arrow::array::*;
 
-use crate::match_integer_type;
-use crate::with_match_primitive_type;
+use crate::arrow::match_integer_type;
+use crate::arrow::with_match_primitive_type;
 
 
 macro_rules! ffi_dyn {
@@ -16,7 +16,7 @@ macro_rules! ffi_dyn {
 }
 
 pub fn align_to_c_data_interface(array: Box<dyn Array>) -> Box<dyn Array> {
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     match array.data_type().to_physical_type() {
         Null => ffi_dyn!(array, NullArray),
         Boolean => ffi_dyn!(array, BooleanArray),

@@ -1,6 +1,6 @@
 //! Comparison functions for [`Utf8Array`]
-use crate::compute::comparison::{finish_eq_validities, finish_neq_validities};
-use crate::{
+use crate::arrow::compute::comparison::{finish_eq_validities, finish_neq_validities};
+use crate::arrow::{
     array::{BooleanArray, Utf8Array},
     bitmap::Bitmap,
     datatypes::DataType,

@@ -1,9 +1,9 @@
 use std::{iter::FromIterator, sync::Arc};
 
-use crate::array::physical_binary::extend_validity;
-use crate::array::TryExtendFromSelf;
-use crate::bitmap::Bitmap;
-use crate::{
+use crate::arrow::array::physical_binary::extend_validity;
+use crate::arrow::array::TryExtendFromSelf;
+use crate::arrow::bitmap::Bitmap;
+use crate::arrow::{
     array::{Array, MutableArray, TryExtend, TryPush},
     bitmap::MutableBitmap,
     datatypes::DataType,

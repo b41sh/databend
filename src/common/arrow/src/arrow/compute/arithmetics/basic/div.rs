@@ -3,8 +3,8 @@ use std::ops::Div;
 
 use num_traits::{CheckedDiv, NumCast};
 
-use crate::datatypes::PrimitiveType;
-use crate::{
+use crate::arrow::datatypes::PrimitiveType;
+use crate::arrow::{
     array::{Array, PrimitiveArray},
     compute::{
         arithmetics::{ArrayCheckedDiv, ArrayDiv},

@@ -2,10 +2,10 @@
 //! as well as concrete implementations such as [`BooleanScalar`].
 use std::any::Any;
 
-use crate::match_integer_type;
-use crate::with_match_primitive_type;
+use crate::arrow::match_integer_type;
+use crate::arrow::with_match_primitive_type;
 
-use crate::{array::*, datatypes::*};
+use crate::arrow::{array::*, datatypes::*};
 
 mod dictionary;
 pub use dictionary::*;

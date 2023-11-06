@@ -2,11 +2,11 @@ use ahash::AHashMap;
 use std::convert::TryInto;
 use std::io::{Read, Seek, SeekFrom};
 
-use crate::array::Array;
-use crate::chunk::Chunk;
-use crate::datatypes::Schema;
-use crate::error::{Error, Result};
-use crate::io::ipc::IpcSchema;
+use crate::arrow::array::Array;
+use crate::arrow::chunk::Chunk;
+use crate::arrow::datatypes::Schema;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::io::ipc::IpcSchema;
 
 use super::super::{ARROW_MAGIC_V1, ARROW_MAGIC_V2, CONTINUATION_MARKER};
 use super::common::*;

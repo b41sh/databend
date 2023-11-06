@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{array::*, datatypes::DataType, offset::Offset};
+use crate::arrow::{array::*, datatypes::DataType, offset::Offset};
 
 use super::Scalar;
 

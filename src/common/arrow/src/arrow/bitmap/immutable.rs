@@ -2,7 +2,7 @@ use std::{iter::FromIterator, ops::Deref, sync::Arc};
 
 use either::Either;
 
-use crate::{buffer::Bytes, error::Error, trusted_len::TrustedLen};
+use crate::arrow::{buffer::Bytes, error::Error, trusted_len::TrustedLen};
 
 use super::{
     chunk_iter_to_vec,

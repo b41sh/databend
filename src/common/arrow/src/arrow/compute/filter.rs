@@ -1,14 +1,14 @@
 //! Contains operators to filter arrays such as [`filter`].
-use crate::array::growable::{make_growable, Growable};
-use crate::bitmap::utils::{BitChunkIterExact, BitChunksExact};
-use crate::bitmap::{utils::SlicesIterator, Bitmap, MutableBitmap};
-use crate::chunk::Chunk;
-use crate::datatypes::DataType;
-use crate::error::Result;
-use crate::types::simd::Simd;
-use crate::types::BitChunkOnes;
-use crate::{array::*, types::NativeType};
-use crate::with_match_primitive_type;
+use crate::arrow::array::growable::{make_growable, Growable};
+use crate::arrow::bitmap::utils::{BitChunkIterExact, BitChunksExact};
+use crate::arrow::bitmap::{utils::SlicesIterator, Bitmap, MutableBitmap};
+use crate::arrow::chunk::Chunk;
+use crate::arrow::datatypes::DataType;
+use crate::arrow::error::Result;
+use crate::arrow::types::simd::Simd;
+use crate::arrow::types::BitChunkOnes;
+use crate::arrow::{array::*, types::NativeType};
+use crate::arrow::with_match_primitive_type;
 
 
 /// Function that can filter arbitrary arrays
@@ -217,7 +217,7 @@ pub fn build_filter(filter: &BooleanArray) -> Result<Filter> {
     let filter_count = iter.slots();
     let chunks = iter.collect::<Vec<_>>();
 
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     Ok(Box::new(move |array: &dyn Array| {
         match array.data_type().to_physical_type() {
             Primitive(primitive) => with_match_primitive_type!(primitive, |$T| {
@@ -292,7 +292,7 @@ pub fn filter(array: &dyn Array, filter: &BooleanArray) -> Result<Box<dyn Array>
         return Ok(array.to_boxed());
     }
 
-    use crate::datatypes::PhysicalType::*;
+    use crate::arrow::datatypes::PhysicalType::*;
     match array.data_type().to_physical_type() {
         Primitive(primitive) => with_match_primitive_type!(primitive, |$T| {
             let array = array.as_any().downcast_ref().unwrap();

@@ -10,7 +10,7 @@ use parquet2::{
     },
 };
 
-use crate::{
+use crate::arrow::{
     datatypes::{DataType, Field, Schema, TimeUnit},
     error::{Error, Result},
     io::ipc::write::default_ipc_fields,

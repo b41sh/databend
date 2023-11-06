@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::{
+use crate::arrow::{
     array::PrimitiveArray,
     compute::sort::SortOptions,
     types::{f16, i256, NativeType},

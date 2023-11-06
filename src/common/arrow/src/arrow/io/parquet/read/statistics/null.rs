@@ -1,5 +1,5 @@
-use crate::array::*;
-use crate::error::Result;
+use crate::arrow::array::*;
+use crate::arrow::error::Result;
 
 pub(super) fn push(min: &mut dyn MutableArray, max: &mut dyn MutableArray) -> Result<()> {
     let min = min.as_mut_any().downcast_mut::<MutableNullArray>().unwrap();

@@ -12,8 +12,8 @@ pub use mul::*;
 mod sub;
 pub use sub::*;
 
-use crate::datatypes::DataType;
-use crate::error::{Error, Result};
+use crate::arrow::datatypes::DataType;
+use crate::arrow::error::{Error, Result};
 
 /// Maximum value that can exist with a selected precision
 #[inline]

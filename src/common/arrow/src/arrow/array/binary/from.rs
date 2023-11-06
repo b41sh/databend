@@ -1,6 +1,6 @@
 use std::iter::FromIterator;
 
-use crate::offset::Offset;
+use crate::arrow::offset::Offset;
 
 use super::{BinaryArray, MutableBinaryArray};
 

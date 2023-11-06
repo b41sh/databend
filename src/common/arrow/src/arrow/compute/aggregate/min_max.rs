@@ -1,11 +1,11 @@
-use crate::bitmap::utils::{BitChunkIterExact, BitChunksExact};
-use crate::datatypes::{DataType, PhysicalType, PrimitiveType};
-use crate::error::{Error, Result};
-use crate::offset::Offset;
-use crate::scalar::*;
-use crate::types::simd::*;
-use crate::types::NativeType;
-use crate::{
+use crate::arrow::bitmap::utils::{BitChunkIterExact, BitChunksExact};
+use crate::arrow::datatypes::{DataType, PhysicalType, PrimitiveType};
+use crate::arrow::error::{Error, Result};
+use crate::arrow::offset::Offset;
+use crate::arrow::scalar::*;
+use crate::arrow::types::simd::*;
+use crate::arrow::types::NativeType;
+use crate::arrow::{
     array::{Array, BinaryArray, BooleanArray, PrimitiveArray, Utf8Array},
     bitmap::Bitmap,
 };
@@ -319,7 +319,7 @@ macro_rules! with_match_primitive_type {(
     $key_type:expr, | $_:tt $T:ident | $($body:tt)*
 ) => ({
     macro_rules! __with_ty__ {( $_ $T:ident ) => ( $($body)* )}
-    use crate::datatypes::PrimitiveType::*;
+    use crate::arrow::datatypes::PrimitiveType::*;
     match $key_type {
         Int8 => __with_ty__! { i8 },
         Int16 => __with_ty__! { i16 },

@@ -1,9 +1,9 @@
-use crate::{bitmap::Bitmap, datatypes::DataType};
+use crate::arrow::{bitmap::Bitmap, datatypes::DataType};
 use std::any::Any;
 
-use crate::array::MutableArray;
-use crate::bitmap::MutableBitmap;
-use crate::{
+use crate::arrow::array::MutableArray;
+use crate::arrow::bitmap::MutableBitmap;
+use crate::arrow::{
     array::{Array, FromFfi, ToFfi},
     datatypes::PhysicalType,
     error::Error,

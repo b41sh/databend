@@ -1,6 +1,6 @@
 //! Defines the subtract arithmetic kernels for Decimal `PrimitiveArrays`.
 
-use crate::{
+use crate::arrow::{
     array::PrimitiveArray,
     compute::{
         arithmetics::{ArrayCheckedSub, ArraySaturatingSub, ArraySub},

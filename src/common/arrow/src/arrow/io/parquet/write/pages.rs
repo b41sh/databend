@@ -2,12 +2,12 @@ use parquet2::schema::types::{ParquetType, PrimitiveType as ParquetPrimitiveType
 use parquet2::{page::Page, write::DynIter};
 use std::fmt::Debug;
 
-use crate::array::{ListArray, MapArray, StructArray};
-use crate::bitmap::Bitmap;
-use crate::datatypes::PhysicalType;
-use crate::io::parquet::read::schema::is_nullable;
-use crate::offset::{Offset, OffsetsBuffer};
-use crate::{
+use crate::arrow::array::{ListArray, MapArray, StructArray};
+use crate::arrow::bitmap::Bitmap;
+use crate::arrow::datatypes::PhysicalType;
+use crate::arrow::io::parquet::read::schema::is_nullable;
+use crate::arrow::offset::{Offset, OffsetsBuffer};
+use crate::arrow::{
     array::Array,
     error::{Error, Result},
 };
@@ -263,9 +263,9 @@ mod tests {
 
     use super::*;
 
-    use crate::array::*;
-    use crate::bitmap::Bitmap;
-    use crate::datatypes::*;
+    use crate::arrow::array::*;
+    use crate::arrow::bitmap::Bitmap;
+    use crate::arrow::datatypes::*;
 
     use super::super::{FieldInfo, ParquetPhysicalType, ParquetPrimitiveType};
 

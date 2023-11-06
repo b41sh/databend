@@ -6,7 +6,7 @@ use parquet2::metadata::KeyValue;
 use parquet2::write::FileStreamer;
 use parquet2::write::WriteOptions as ParquetWriteOptions;
 
-use crate::{array::Array, chunk::Chunk, datatypes::Schema, error::Error};
+use crate::arrow::{array::Array, chunk::Chunk, datatypes::Schema, error::Error};
 
 use super::file::add_arrow_schema;
 use super::{Encoding, SchemaDescriptor, WriteOptions};

@@ -9,9 +9,9 @@ use super::common::{encode_chunk, DictionaryTracker, EncodedData, WriteOptions};
 use super::common_async::{write_continuation, write_message};
 use super::schema::serialize_schema;
 use super::{default_ipc_fields, schema_to_bytes, Record};
-use crate::datatypes::*;
-use crate::error::{Error, Result};
-use crate::io::ipc::{IpcField, ARROW_MAGIC_V2};
+use crate::arrow::datatypes::*;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::io::ipc::{IpcField, ARROW_MAGIC_V2};
 
 type WriteOutput<W> = (usize, Option<Block>, Vec<Block>, Option<W>);
 

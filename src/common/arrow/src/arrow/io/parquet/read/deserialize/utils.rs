@@ -8,9 +8,9 @@ use parquet2::indexes::Interval;
 use parquet2::page::{split_buffer, DataPage, DictPage, Page};
 use parquet2::schema::Repetition;
 
-use crate::bitmap::utils::BitmapIter;
-use crate::bitmap::MutableBitmap;
-use crate::error::Error;
+use crate::arrow::bitmap::utils::BitmapIter;
+use crate::arrow::bitmap::MutableBitmap;
+use crate::arrow::error::Error;
 
 use super::super::Pages;
 

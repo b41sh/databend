@@ -8,14 +8,14 @@ use parquet2::{
 
 use super::super::utils::{not_implemented, MaybeNext, PageState};
 use super::utils::FixedSizeBinary;
-use crate::array::FixedSizeBinaryArray;
-use crate::io::parquet::read::deserialize::fixed_size_binary::basic::{
+use crate::arrow::array::FixedSizeBinaryArray;
+use crate::arrow::io::parquet::read::deserialize::fixed_size_binary::basic::{
     finish, Dict, Optional, OptionalDictionary, Required, RequiredDictionary,
 };
-use crate::io::parquet::read::deserialize::nested_utils::{next, NestedDecoder};
-use crate::io::parquet::read::deserialize::utils::Pushable;
-use crate::io::parquet::read::{InitNested, NestedState};
-use crate::{bitmap::MutableBitmap, datatypes::DataType, error::Result, io::parquet::read::Pages};
+use crate::arrow::io::parquet::read::deserialize::nested_utils::{next, NestedDecoder};
+use crate::arrow::io::parquet::read::deserialize::utils::Pushable;
+use crate::arrow::io::parquet::read::{InitNested, NestedState};
+use crate::arrow::{bitmap::MutableBitmap, datatypes::DataType, error::Result, io::parquet::read::Pages};
 
 #[derive(Debug)]
 enum State<'a> {

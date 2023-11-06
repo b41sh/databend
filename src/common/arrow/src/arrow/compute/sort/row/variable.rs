@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::compute::sort::SortOptions;
+use crate::arrow::compute::sort::SortOptions;
 
 use super::{null_sentinel, Rows};
 

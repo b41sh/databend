@@ -7,7 +7,7 @@ use parquet2::{
 
 use super::super::utils;
 use super::super::WriteOptions;
-use crate::{
+use crate::arrow::{
     array::{Array, BinaryArray},
     bitmap::Bitmap,
     error::{Error, Result},

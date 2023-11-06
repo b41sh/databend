@@ -2,11 +2,11 @@ use std::io::{Read, Seek};
 
 use parquet2::indexes::FilteredPage;
 
-use crate::array::Array;
-use crate::chunk::Chunk;
-use crate::datatypes::Schema;
-use crate::error::Result;
-use crate::io::parquet::read::read_columns_many;
+use crate::arrow::array::Array;
+use crate::arrow::chunk::Chunk;
+use crate::arrow::datatypes::Schema;
+use crate::arrow::error::Result;
+use crate::arrow::io::parquet::read::read_columns_many;
 
 use super::{RowGroupDeserializer, RowGroupMetaData};
 

@@ -37,15 +37,15 @@ use std::{
     sync::Arc,
 };
 
-use crate::match_integer_type;
+use crate::arrow::match_integer_type;
 
 
-use crate::{
+use crate::arrow::{
     array::{Array, BinaryArray, BooleanArray, DictionaryArray, PrimitiveArray, Utf8Array},
     datatypes::PhysicalType,
     error::*,
 };
-use crate::{compute::sort::SortOptions, datatypes::DataType};
+use crate::arrow::{compute::sort::SortOptions, datatypes::DataType};
 
 use self::{
     dictionary::{compute_dictionary_mapping, encode_dictionary},
@@ -638,7 +638,7 @@ mod tests {
     };
 
     use super::*;
-    use crate::{
+    use crate::arrow::{
         array::{Array, DictionaryKey, Float32Array, Int16Array, NullArray},
         compute::sort::build_compare,
         datatypes::DataType,

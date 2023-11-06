@@ -3,10 +3,10 @@ use parquet2::indexes::PageIndex;
 use parquet2::schema::types::{PrimitiveLogicalType, PrimitiveType, TimeUnit as ParquetTimeUnit};
 use parquet2::types::int96_to_i64_ns;
 
-use crate::array::{Array, MutablePrimitiveArray, PrimitiveArray};
-use crate::datatypes::{DataType, TimeUnit};
-use crate::trusted_len::TrustedLen;
-use crate::types::{i256, NativeType};
+use crate::arrow::array::{Array, MutablePrimitiveArray, PrimitiveArray};
+use crate::arrow::datatypes::{DataType, TimeUnit};
+use crate::arrow::trusted_len::TrustedLen;
+use crate::arrow::types::{i256, NativeType};
 
 use super::ColumnPageStatistics;
 

@@ -2,10 +2,10 @@
 
 use std::cmp::Ordering;
 
-use crate::datatypes::*;
-use crate::error::{Error, Result};
-use crate::offset::Offset;
-use crate::{array::*, types::NativeType};
+use crate::arrow::datatypes::*;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::offset::Offset;
+use crate::arrow::{array::*, types::NativeType};
 
 /// Compare the values at two arbitrary indices in two arrays.
 pub type DynComparator = Box<dyn Fn(usize, usize) -> Ordering + Send + Sync>;

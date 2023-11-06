@@ -2,9 +2,9 @@ use std::collections::{HashSet, VecDeque};
 use std::convert::TryInto;
 use std::io::{Read, Seek};
 
-use crate::array::{DictionaryArray, DictionaryKey};
-use crate::datatypes::DataType;
-use crate::error::{Error, Result};
+use crate::arrow::array::{DictionaryArray, DictionaryKey};
+use crate::arrow::datatypes::DataType;
+use crate::arrow::error::{Error, Result};
 
 use super::super::Dictionaries;
 use super::super::{Compression, IpcBuffer, Node};

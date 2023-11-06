@@ -3,11 +3,11 @@
 use ahash::AHashMap;
 use regex::Regex;
 
-use crate::array::{BooleanArray, Utf8Array};
-use crate::bitmap::Bitmap;
-use crate::datatypes::DataType;
-use crate::error::{Error, Result};
-use crate::offset::Offset;
+use crate::arrow::array::{BooleanArray, Utf8Array};
+use crate::arrow::bitmap::Bitmap;
+use crate::arrow::datatypes::DataType;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::offset::Offset;
 
 use super::utils::combine_validities;
 

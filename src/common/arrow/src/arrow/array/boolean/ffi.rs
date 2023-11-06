@@ -1,10 +1,10 @@
-use crate::{
+use crate::arrow::{
     array::{FromFfi, ToFfi},
     bitmap::align,
     ffi,
 };
 
-use crate::error::Result;
+use crate::arrow::error::Result;
 
 use super::BooleanArray;
 

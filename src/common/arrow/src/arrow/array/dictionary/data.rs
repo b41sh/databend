@@ -1,7 +1,7 @@
-use crate::array::{
+use crate::arrow::array::{
     from_data, to_data, Arrow2Arrow, DictionaryArray, DictionaryKey, PrimitiveArray,
 };
-use crate::datatypes::{DataType, PhysicalType};
+use crate::arrow::datatypes::{DataType, PhysicalType};
 use arrow_data::{ArrayData, ArrayDataBuilder};
 
 impl<K: DictionaryKey> Arrow2Arrow for DictionaryArray<K> {

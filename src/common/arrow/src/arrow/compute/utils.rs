@@ -1,4 +1,4 @@
-use crate::{
+use crate::arrow::{
     array::Array,
     bitmap::Bitmap,
     error::{Error, Result},
