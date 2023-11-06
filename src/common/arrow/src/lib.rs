@@ -16,6 +16,9 @@ mod parquet_read;
 mod parquet_write;
 pub mod schema_projection;
 
+pub use arrow2;
+pub use native2;
+
 pub use arrow;
 pub use arrow_format;
 pub use native;
