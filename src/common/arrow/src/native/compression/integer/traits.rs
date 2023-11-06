@@ -1,4 +1,4 @@
-use crate::types::{i256, NativeType};
+use crate::arrow::types::{i256, NativeType};
 
 use std::hash::Hash;
 

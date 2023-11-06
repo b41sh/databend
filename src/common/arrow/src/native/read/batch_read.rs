@@ -16,13 +16,13 @@
 // under the License.
 
 use super::{array::*, NativeReadBuf};
-use crate::PageMeta;
+use crate::native::PageMeta;
 use crate::with_match_integer_double_type2;
-use crate::array::*;
-use crate::compute::concatenate::concatenate;
-use crate::datatypes::{DataType, Field, PhysicalType};
-use crate::error::Result;
-use crate::io::parquet::read::{create_list, create_map, n_columns, InitNested, NestedState};
+use crate::arrow::array::*;
+use crate::arrow::compute::concatenate::concatenate;
+use crate::arrow::datatypes::{DataType, Field, PhysicalType};
+use crate::arrow::error::Result;
+use crate::arrow::io::parquet::read::{create_list, create_map, n_columns, InitNested, NestedState};
 use parquet2::metadata::ColumnDescriptor;
 
 pub fn read_simple<R: NativeReadBuf>(

@@ -15,16 +15,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::array::BooleanArray;
-use crate::bitmap::MutableBitmap;
-use crate::error::Error;
+use crate::arrow::array::BooleanArray;
+use crate::arrow::bitmap::MutableBitmap;
+use crate::arrow::error::Error;
 
-use crate::error::Result;
+use crate::arrow::error::Result;
 
-use crate::compression::integer::OneValue;
+use crate::native::compression::integer::OneValue;
 
-use crate::compression::Compression;
-use crate::general_err;
+use crate::native::compression::Compression;
+use crate::native::general_err;
 
 use super::BooleanCompression;
 

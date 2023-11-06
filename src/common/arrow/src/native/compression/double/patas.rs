@@ -18,16 +18,16 @@
 use std::collections::HashMap;
 use std::io::{BufRead, Read};
 
-use crate::array::PrimitiveArray;
-use crate::types::NativeType;
+use crate::arrow::array::PrimitiveArray;
+use crate::arrow::types::NativeType;
 
-use crate::error::Result;
+use crate::arrow::error::Result;
 use byteorder::{LittleEndian, ReadBytesExt};
 
 use ringbuffer::{AllocRingBuffer, RingBuffer};
 
-use crate::compression::{SAMPLE_COUNT, SAMPLE_SIZE};
-use crate::{compression::Compression, util::ByteWriter, write::WriteOptions};
+use crate::native::compression::{SAMPLE_COUNT, SAMPLE_SIZE};
+use crate::native::{compression::Compression, util::ByteWriter, write::WriteOptions};
 
 use super::{compress_sample_ratio, DoubleCompression, DoubleStats, DoubleType};
 

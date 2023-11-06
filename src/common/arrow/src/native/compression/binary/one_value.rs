@@ -17,19 +17,19 @@
 
 use std::io::BufRead;
 
-use crate::array::BinaryArray;
+use crate::arrow::array::BinaryArray;
 
-use crate::error::Error;
+use crate::arrow::error::Error;
 
-use crate::error::Result;
-use crate::types::Offset;
+use crate::arrow::error::Result;
+use crate::arrow::types::Offset;
 use byteorder::{LittleEndian, ReadBytesExt};
 
-use crate::compression::integer::OneValue;
+use crate::native::compression::integer::OneValue;
 
-use crate::compression::Compression;
-use crate::general_err;
-use crate::write::WriteOptions;
+use crate::native::compression::Compression;
+use crate::native::general_err;
+use crate::native::write::WriteOptions;
 
 use super::BinaryCompression;
 use super::BinaryStats;

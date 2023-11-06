@@ -17,13 +17,13 @@
 
 use std::io::{Read, Write};
 
-use crate::array::PrimitiveArray;
-use crate::bitmap::Bitmap;
+use crate::arrow::array::PrimitiveArray;
+use crate::arrow::bitmap::Bitmap;
 
-use crate::error::Result;
+use crate::arrow::error::Result;
 use byteorder::{LittleEndian, ReadBytesExt};
 
-use crate::{
+use crate::native::{
     compression::{integer::RLE, is_valid, Compression, SAMPLE_COUNT, SAMPLE_SIZE},
     write::WriteOptions,
 };

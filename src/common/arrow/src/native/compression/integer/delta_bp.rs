@@ -17,13 +17,13 @@
 
 use std::io::BufRead;
 
-use crate::array::PrimitiveArray;
+use crate::arrow::array::PrimitiveArray;
 use bitpacking::{BitPacker, BitPacker4x};
 
-use crate::error::Result;
+use crate::arrow::error::Result;
 use byteorder::ReadBytesExt;
 
-use crate::{
+use crate::native::{
     compression::{Compression, SAMPLE_COUNT, SAMPLE_SIZE},
     write::WriteOptions,
 };

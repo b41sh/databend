@@ -17,11 +17,11 @@
 
 use std::io::{Read, Seek, SeekFrom};
 
-use crate::datatypes::{DataType, PhysicalType, Schema};
-use crate::error::Result;
-use crate::io::ipc::read::deserialize_schema;
+use crate::arrow::datatypes::{DataType, PhysicalType, Schema};
+use crate::arrow::error::Result;
+use crate::arrow::io::ipc::read::deserialize_schema;
 
-use crate::{ColumnMeta, PageMeta};
+use crate::native::{ColumnMeta, PageMeta};
 
 use super::{
     read_basic::{read_u32, read_u32_async, read_u64},

@@ -1,4 +1,4 @@
-use crate::types::NativeType;
+use crate::arrow::types::NativeType;
 use num::Float;
 use ordered_float::OrderedFloat;
 
@@ -7,7 +7,7 @@ use std::{
     ops::{BitXor, Shl, ShlAssign, Shr, ShrAssign},
 };
 
-use crate::util::AsBytes;
+use crate::native::util::AsBytes;
 
 pub trait DoubleType: AsBytes + Copy + Clone + NativeType + Float {
     type OrderType: std::fmt::Debug

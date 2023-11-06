@@ -15,15 +15,15 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::array::BooleanArray;
-use crate::bitmap::MutableBitmap;
+use crate::arrow::array::BooleanArray;
+use crate::arrow::bitmap::MutableBitmap;
 
-use crate::error::Result;
+use crate::arrow::error::Result;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
-use crate::compression::{integer::RLE, SAMPLE_SIZE};
-use crate::compression::{Compression, SAMPLE_COUNT};
+use crate::native::compression::{integer::RLE, SAMPLE_SIZE};
+use crate::native::compression::{Compression, SAMPLE_COUNT};
 
 use super::{compress_sample_ratio, BooleanCompression, BooleanStats};
 

@@ -34,7 +34,7 @@ macro_rules! with_match_primitive_type2 {(
     $key_type:expr, | $_:tt $T:ident | $($body:tt)*
 ) => ({
     macro_rules! __with_ty__ {( $_ $T:ident ) => ( $($body)* )}
-    use crate::datatypes::PrimitiveType::*;
+    use crate::arrow::datatypes::PrimitiveType::*;
     use crate::types::{days_ms, months_days_ns, f16, i256};
     match $key_type {
         Int8 => __with_ty__! { i8 },
@@ -70,7 +70,7 @@ macro_rules! with_match_integer_double_type2 {
                 $body_primitive
             };
         }
-        use crate::datatypes::PrimitiveType::*;
+        use crate::arrow::datatypes::PrimitiveType::*;
         use crate::types::i256;
         match $key_type {
             Int8 => __with_ty__! { i8 },

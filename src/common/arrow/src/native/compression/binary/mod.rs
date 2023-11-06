@@ -4,14 +4,14 @@ mod one_value;
 
 use std::{collections::HashMap, hash::Hash, marker::PhantomData};
 
-use crate::{
+use crate::arrow::{
     array::BinaryArray,
     buffer::Buffer,
     error::{Error, Result},
     types::Offset,
 };
 
-use crate::{
+use crate::arrow::{
     read::{read_basic::read_compress_header, NativeReadBuf},
     util::env::{check_dict_env, check_freq_env},
     write::WriteOptions,

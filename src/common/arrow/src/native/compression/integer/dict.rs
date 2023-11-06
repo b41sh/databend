@@ -15,11 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::array::PrimitiveArray;
+use crate::arrow::array::PrimitiveArray;
 
-use crate::error::Error;
-use crate::error::Result;
-use crate::types::NativeType;
+use crate::arrow::error::Error;
+use crate::arrow::error::Result;
+use crate::arrow::types::NativeType;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::hash::Hash;
 

@@ -15,10 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::array::{Array, StructArray};
-use crate::datatypes::{DataType, Field};
-use crate::error::Result;
-use crate::io::parquet::read::NestedState;
+use crate::arrow::array::{Array, StructArray};
+use crate::arrow::datatypes::{DataType, Field};
+use crate::arrow::error::Result;
+use crate::arrow::io::parquet::read::NestedState;
 
 use crate::read::deserialize::NestedIters;
 

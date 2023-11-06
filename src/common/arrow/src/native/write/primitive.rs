@@ -17,13 +17,13 @@
 
 use std::io::Write;
 
-use crate::array::Array;
-use crate::error::Result;
-use crate::types::i256;
-use crate::{array::PrimitiveArray, types::NativeType};
+use crate::arrow::array::Array;
+use crate::arrow::error::Result;
+use crate::arrow::types::i256;
+use crate::arrow::{array::PrimitiveArray, types::NativeType};
 
-use crate::compression::double::compress_double;
-use crate::compression::integer::compress_integer;
+use crate::native::compression::double::compress_double;
+use crate::native::compression::integer::compress_integer;
 
 use super::WriteOptions;
 

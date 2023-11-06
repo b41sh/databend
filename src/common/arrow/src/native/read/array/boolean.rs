@@ -20,11 +20,11 @@ use std::io::Cursor;
 use crate::compression::boolean::decompress_boolean;
 use crate::read::{read_basic::*, BufReader, NativeReadBuf, PageIterator};
 use crate::PageMeta;
-use crate::array::{Array, BooleanArray};
-use crate::bitmap::MutableBitmap;
-use crate::datatypes::DataType;
-use crate::error::Result;
-use crate::io::parquet::read::{InitNested, NestedState};
+use crate::arrow::array::{Array, BooleanArray};
+use crate::arrow::bitmap::MutableBitmap;
+use crate::arrow::datatypes::DataType;
+use crate::arrow::error::Result;
+use crate::arrow::io::parquet::read::{InitNested, NestedState};
 use parquet2::metadata::ColumnDescriptor;
 
 #[derive(Debug)]

@@ -22,7 +22,7 @@ pub mod boolean;
 pub mod double;
 pub mod integer;
 
-use crate::{bitmap::Bitmap, error::Result};
+use crate::arrow::{bitmap::Bitmap, error::Result};
 
 pub use basic::CommonCompression;
 

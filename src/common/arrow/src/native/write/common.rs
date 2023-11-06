@@ -17,18 +17,18 @@
 
 use std::io::Write;
 
-use crate::array::*;
-use crate::chunk::Chunk;
-use crate::error::Result;
-use crate::io::parquet::write::{
+use crate::arrow::array::*;
+use crate::arrow::chunk::Chunk;
+use crate::arrow::error::Result;
+use crate::arrow::io::parquet::write::{
     num_values, slice_parquet_array, to_leaves, to_nested, to_parquet_leaves, SchemaDescriptor,
 };
 
-use crate::compression::CommonCompression;
-use crate::compression::Compression;
-use crate::ColumnMeta;
-use crate::PageMeta;
-use crate::CONTINUATION_MARKER;
+use crate::native::compression::CommonCompression;
+use crate::native::compression::Compression;
+use crate::native::ColumnMeta;
+use crate::native::PageMeta;
+use crate::native::CONTINUATION_MARKER;
 
 use super::{write, NativeWriter};
 

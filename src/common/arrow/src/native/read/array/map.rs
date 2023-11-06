@@ -15,10 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::array::Array;
-use crate::datatypes::Field;
-use crate::error::Result;
-use crate::io::parquet::read::{create_map, NestedState};
+use crate::arrow::array::Array;
+use crate::arrow::datatypes::Field;
+use crate::arrow::error::Result;
+use crate::arrow::io::parquet::read::{create_map, NestedState};
 
 use crate::read::deserialize::DynIter;
 

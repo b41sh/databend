@@ -17,10 +17,10 @@
 
 use super::{array::*, PageIterator};
 use crate::with_match_integer_double_type2;
-use crate::array::*;
-use crate::datatypes::{DataType, Field, PhysicalType};
-use crate::error::Result;
-use crate::io::parquet::read::{n_columns, InitNested, NestedState};
+use crate::arrow::array::*;
+use crate::arrow::datatypes::{DataType, Field, PhysicalType};
+use crate::arrow::error::Result;
+use crate::arrow::io::parquet::read::{n_columns, InitNested, NestedState};
 use parquet2::metadata::ColumnDescriptor;
 
 /// [`DynIter`] is an iterator adapter adds a custom `nth` method implementation.

@@ -8,13 +8,13 @@ mod traits;
 
 use std::collections::HashMap;
 
-use crate::{
-    array::{Array, MutablePrimitiveArray, PrimitiveArray},
+use crate::arrow::{
+    arrow::array::{Array, MutablePrimitiveArray, PrimitiveArray},
     error::{Error, Result},
 };
 use rand::{thread_rng, Rng};
 
-use crate::{
+use crate::native::{
     read::{read_basic::read_compress_header, NativeReadBuf},
     util::env::{check_bitpack_env, check_dict_env, check_freq_env, check_rle_env},
     write::WriteOptions,

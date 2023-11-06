@@ -15,21 +15,21 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::array::PrimitiveArray;
+use crate::arrow::array::PrimitiveArray;
 
-use crate::error::Error;
-use crate::error::Result;
+use crate::arrow::error::Error;
+use crate::arrow::error::Result;
 use byteorder::{LittleEndian, ReadBytesExt};
 
-use crate::compression::get_bits_needed;
-use crate::compression::integer::compress_integer;
-use crate::compression::integer::decompress_integer;
-use crate::compression::integer::Dict;
-use crate::compression::integer::DictEncoder;
-use crate::compression::integer::RawNative;
-use crate::compression::Compression;
-use crate::general_err;
-use crate::write::WriteOptions;
+use crate::native::compression::get_bits_needed;
+use crate::native::compression::integer::compress_integer;
+use crate::native::compression::integer::decompress_integer;
+use crate::native::compression::integer::Dict;
+use crate::native::compression::integer::DictEncoder;
+use crate::native::compression::integer::RawNative;
+use crate::native::compression::Compression;
+use crate::native::general_err;
+use crate::native::write::WriteOptions;
 
 use super::traits::DoubleType;
 use super::DoubleCompression;

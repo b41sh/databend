@@ -17,13 +17,13 @@
 
 use std::io::{BufRead, Read};
 
-use crate::array::PrimitiveArray;
+use crate::arrow::array::PrimitiveArray;
 
-use crate::error::Result;
+use crate::arrow::error::Result;
 use byteorder::{LittleEndian, ReadBytesExt};
 use roaring::RoaringBitmap;
 
-use crate::{
+use crate::native::{
     compression::{double::decompress_double, integer::Freq, Compression},
     write::WriteOptions,
 };

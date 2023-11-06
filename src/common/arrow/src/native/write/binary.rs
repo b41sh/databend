@@ -17,11 +17,11 @@
 
 use std::io::Write;
 
-use crate::array::BinaryArray;
-use crate::error::Result;
-use crate::types::Offset;
+use crate::arrow::array::BinaryArray;
+use crate::arrow::error::Result;
+use crate::arrow::types::Offset;
 
-use crate::compression::binary::compress_binary;
+use crate::native::compression::binary::compress_binary;
 
 use super::WriteOptions;
 

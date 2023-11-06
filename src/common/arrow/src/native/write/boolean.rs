@@ -17,10 +17,10 @@
 
 use std::io::Write;
 
-use crate::array::BooleanArray;
-use crate::error::Result;
+use crate::arrow::array::BooleanArray;
+use crate::arrow::error::Result;
 
-use crate::compression::boolean::compress_boolean;
+use crate::native::compression::boolean::compress_boolean;
 
 use super::WriteOptions;
 

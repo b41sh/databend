@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::error::{Error, Result};
+use crate::arrow::error::{Error, Result};
 
 use super::Compression;
 

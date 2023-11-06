@@ -18,7 +18,7 @@
 use std::io::Write;
 
 //use arrow::{
-use crate::{
+use crate::arrow::{
     array::*,
     bitmap::Bitmap,
     datatypes::{DataType, PhysicalType},
@@ -32,7 +32,7 @@ use parquet2::schema::{
 
 use super::{boolean::write_bitmap, primitive::write_primitive, WriteOptions};
 use crate::with_match_primitive_type;
-use crate::write::binary::write_binary;
+use crate::native::write::binary::write_binary;
 
 /// Writes an [`Array`] to the file
 pub fn write<W: Write>(

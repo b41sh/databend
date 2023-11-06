@@ -1,14 +1,14 @@
 mod one_value;
 mod rle;
 
-use crate::{
+use crate::arrow::{
     array::{BooleanArray, MutableBooleanArray},
     bitmap::{Bitmap, MutableBitmap},
     error::{Error, Result},
 };
 use rand::{thread_rng, Rng};
 
-use crate::{
+use crate::native::{
     read::{read_basic::read_compress_header, NativeReadBuf},
     util::env::check_rle_env,
     write::WriteOptions,

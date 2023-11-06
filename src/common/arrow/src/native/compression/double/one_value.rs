@@ -17,11 +17,11 @@
 
 use std::io::{Read, Write};
 
-use crate::array::PrimitiveArray;
+use crate::arrow::array::PrimitiveArray;
 
-use crate::error::Result;
+use crate::arrow::error::Result;
 
-use crate::{compression::Compression, write::WriteOptions};
+use crate::native::{compression::Compression, write::WriteOptions};
 
 use super::{DoubleCompression, DoubleStats, DoubleType};
 

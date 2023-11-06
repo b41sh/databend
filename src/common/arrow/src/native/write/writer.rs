@@ -19,16 +19,16 @@ use std::io::Write;
 
 use super::common::write_continuation;
 use super::{super::ARROW_MAGIC, common::WriteOptions};
-use crate::datatypes::Schema;
+use crate::arrow::datatypes::Schema;
 
-use crate::array::Array;
-use crate::chunk::Chunk;
-use crate::error::{Error, Result};
-use crate::io::ipc::write::{default_ipc_fields, schema_to_bytes};
+use crate::arrow::array::Array;
+use crate::arrow::chunk::Chunk;
+use crate::arrow::error::{Error, Result};
+use crate::arrow::io::ipc::write::{default_ipc_fields, schema_to_bytes};
 
-use crate::io::parquet::write::to_parquet_schema;
+use crate::arrow::io::parquet::write::to_parquet_schema;
 
-use crate::ColumnMeta;
+use crate::native::ColumnMeta;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum State {

@@ -15,8 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::{compression::Compression, read::PageIterator, CommonCompression};
-use crate::{
+use crate::native::{compression::Compression, read::PageIterator, CommonCompression};
+use crate::arrow::{
     datatypes::{Field, PhysicalType},
     error::Result,
     types::PrimitiveType,

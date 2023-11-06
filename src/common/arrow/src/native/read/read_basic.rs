@@ -20,7 +20,7 @@ use std::io::Read;
 
 use super::NativeReadBuf;
 
-use crate::{
+use crate::arrow::{
     bitmap::{Bitmap, MutableBitmap},
     error::Result,
     io::parquet::read::{init_nested, InitNested, NestedState},

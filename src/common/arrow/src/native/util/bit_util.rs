@@ -17,9 +17,9 @@
 
 use std::mem::size_of;
 
-use crate::buffer::Buffer;
-use crate::error::Error;
-use crate::error::Result;
+use crate::arrow::buffer::Buffer;
+use crate::arrow::error::Error;
+use crate::arrow::error::Result;
 
 #[inline]
 pub fn from_le_slice<T: FromBytes>(bs: &[u8]) -> T {
