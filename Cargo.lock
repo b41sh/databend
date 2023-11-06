@@ -525,51 +525,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "arrow2"
-version = "0.17.4"
-source = "git+https://github.com/jorgecarleitao/arrow2?rev=b073454#b0734542c2fef5d2d0c7b6ffce5d094de371168a"
-dependencies = [
- "ahash 0.8.3",
- "arrow-array",
- "arrow-buffer",
- "arrow-data",
- "arrow-format",
- "arrow-schema",
- "base64 0.21.0",
- "bytemuck",
- "chrono",
- "csv",
- "csv-core",
- "dyn-clone",
- "either",
- "ethnum",
- "fallible-streaming-iterator",
- "foreign_vec",
- "futures",
- "getrandom 0.2.8",
- "hash_hasher",
- "hashbrown 0.14.0",
- "indexmap 1.9.2",
- "itertools 0.10.5",
- "json-deserializer",
- "lexical-core",
- "lz4",
- "memchr",
- "multiversion",
- "num-traits",
- "parquet2",
- "rand 0.8.5",
- "regex",
- "regex-syntax 0.7.4",
- "rustc_version",
- "serde",
- "serde_derive",
- "simdutf8",
- "streaming-iterator",
- "strength_reduce",
-]
-
-[[package]]
 name = "assert-json-diff"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1697,11 +1652,46 @@ dependencies = [
 name = "common-arrow"
 version = "0.1.0"
 dependencies = [
+ "ahash 0.8.3",
  "arrow-format",
- "arrow2",
+ "base64 0.21.0",
+ "bitpacking",
+ "bytemuck",
+ "byteorder",
+ "bytes",
+ "chrono",
+ "chrono-tz",
+ "comfy-table 6.1.4",
+ "dyn-clone",
+ "either",
+ "env_logger 0.9.3",
+ "ethnum",
+ "foreign_vec",
  "futures",
+ "hashbrown 0.13.2",
+ "itertools 0.10.5",
+ "lexical-core",
+ "log",
+ "lz4",
+ "memchr",
+ "multiversion",
+ "num",
+ "num-traits",
+ "ordered-float 3.7.0",
  "parquet2",
- "strawboat",
+ "rand 0.8.5",
+ "regex",
+ "regex-syntax 0.7.4",
+ "ringbuffer",
+ "roaring",
+ "seq-macro",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "simdutf8",
+ "snap",
+ "strength_reduce",
+ "zstd 0.11.2+zstd.1.5.2",
 ]
 
 [[package]]
@@ -1861,7 +1851,7 @@ dependencies = [
  "brotli",
  "bytes",
  "common-exception",
- "env_logger",
+ "env_logger 0.10.0",
  "futures",
  "log",
  "pin-project",
@@ -3814,7 +3804,7 @@ dependencies = [
  "common-metrics",
  "common-tracing",
  "derive_more",
- "env_logger",
+ "env_logger 0.10.0",
  "futures",
  "futures-async-stream",
  "itertools 0.10.5",
@@ -4018,7 +4008,7 @@ dependencies = [
  "async-trait",
  "clap 4.4.2",
  "common-exception",
- "env_logger",
+ "env_logger 0.10.0",
  "futures-util",
  "lazy_static",
  "mysql_async",
@@ -4516,6 +4506,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.29",
+]
+
+[[package]]
+name = "env_logger"
+version = "0.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a12e6657c4c97ebab115a42dcee77225f7f482cdd841cf7088c657a42e9e00e7"
+dependencies = [
+ "atty",
+ "humantime",
+ "log",
+ "regex",
+ "termcolor",
 ]
 
 [[package]]
@@ -5104,10 +5107,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c05aeb6a22b8f62540c194aac980f2115af067bfe15a0734d7277a768d396b31"
 dependencies = [
  "cfg-if",
- "js-sys",
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -6529,12 +6530,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hash_hasher"
-version = "2.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74721d007512d0cb3338cd20f0654ac913920061a4c4d0d8708edb3f2a698c0c"
-
-[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7191,15 +7186,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c5f195fe497f702db0f318b07fdd68edb16955aed830df8363d837542f8f935a"
 dependencies = [
  "wasm-bindgen",
-]
-
-[[package]]
-name = "json-deserializer"
-version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f63b421e16eb4100beb677af56f0b4f3a4f08bab74ef2af079ce5bb92c2683f"
-dependencies = [
- "indexmap 1.9.2",
 ]
 
 [[package]]
@@ -8854,7 +8840,6 @@ source = "git+https://github.com/jorgecarleitao/parquet2?rev=b0e6545#b0e654526ce
 dependencies = [
  "async-stream",
  "brotli",
- "flate2",
  "futures",
  "lz4",
  "parquet-format-safe",
@@ -8862,7 +8847,6 @@ dependencies = [
  "serde",
  "snap",
  "streaming-decompression",
- "xxhash-rust",
  "zstd 0.12.3+zstd.1.5.2",
 ]
 
@@ -11361,34 +11345,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9091b6114800a5f2141aee1d1b9d6ca3592ac062dc5decb3764ec5895a47b4eb"
 
 [[package]]
-name = "strawboat"
-version = "0.2.6"
-source = "git+https://github.com/sundy-li/strawboat?rev=f3114b#f3114b28cf817f880221ae6c3100f87c83e850e5"
-dependencies = [
- "ahash 0.8.3",
- "arrow2",
- "bitpacking",
- "bytemuck",
- "byteorder",
- "bytes",
- "futures",
- "hashbrown 0.13.2",
- "log",
- "lz4",
- "num",
- "ordered-float 3.7.0",
- "parquet2",
- "rand 0.8.5",
- "ringbuffer",
- "roaring",
- "seq-macro",
- "serde",
- "serde_json",
- "snap",
- "zstd 0.11.2+zstd.1.5.2",
-]
-
-[[package]]
 name = "stream-more"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11408,12 +11364,6 @@ checksum = "bf6cc3b19bfb128a8ad11026086e31d3ce9ad23f8ea37354b31383a187c44cf3"
 dependencies = [
  "fallible-streaming-iterator",
 ]
-
-[[package]]
-name = "streaming-iterator"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b2231b7c3057d5e4ad0156fb3dc807d900806020c5ffa3ee6ff2c8c76fb8520"
 
 [[package]]
 name = "streaming_algorithms"
@@ -13063,12 +13013,6 @@ source = "git+https://github.com/datafuse-extras/xorfilter?tag=databend-alpha.4#
 dependencies = [
  "cbordata",
 ]
-
-[[package]]
-name = "xxhash-rust"
-version = "0.8.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "735a71d46c4d68d71d4b24d03fdc2b98e38cea81730595801db779c04fe80d70"
 
 [[package]]
 name = "xz2"
