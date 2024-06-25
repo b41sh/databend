@@ -146,16 +146,13 @@ impl<'a> Binder {
             files: stmt.files.clone(),
             pattern: stmt.pattern.clone(),
         };
-        let required_values_schema: DataSchemaRef = Arc::new(
-            match &stmt.dst_columns {
-                Some(cols) => self.schema_project(&table.schema(), cols)?,
-                None => self.schema_project(&table.schema(), &[])?,
-            }
-            .into(),
-        );
+        let stage_schema = match &stmt.dst_columns {
+            Some(cols) => self.schema_project(&table.schema(), cols)?,
+            None => self.schema_project(&table.schema(), &[])?,
+        };
+        let required_values_schema: DataSchemaRef = Arc::new(stage_schema.clone().into());
 
-        let stage_schema = infer_table_schema(&required_values_schema)?;
-
+ 
         let default_values = if stage_info.file_format_params.need_field_default() {
             Some(
                 self.prepare_default_values(bind_context, &required_values_schema)
