@@ -104,8 +104,13 @@ pub fn try_rewrite(
         let mut is_agg = false;
         let mut num_agg_funcs = 0;
 
+type AggregationInfo<'a> = (&'a Aggregate, HashMap<IndexType, &'a ScalarExpr>);
+
         match (&query_info.aggregation, &index_info.aggregation) {
             (Some((query_agg, _)), Some(_)) => {
+                // 1. 都有 agg
+                // group 必须相同
+
                 is_agg = true;
                 // Check if group items are the same.
                 let index_group_items = index_info.formatted_group_items();
@@ -150,6 +155,7 @@ pub fn try_rewrite(
                 }
             }
             (Some((_, input)), None) => {
+                // query 有 agg， index 没有 agg
                 // Check if we can use the output of the index as the input of the query's `Aggregate` operators.
                 for (index, scalar) in input {
                     if let Some(rewritten) =
@@ -167,9 +173,12 @@ pub fn try_rewrite(
             }
 
             (None, Some(_)) => {
+                // query 没有 agg，index 有 agg
+                // 不合法的，忽略
                 continue;
             }
             (None, None) => {
+                // 都没有 agg
                 // If the query is not an aggregation query, the index selection is to rewrite the final output `EvalScalar` operator.
                 // In another word, is to rewrite `query_info.selection`.
                 for item in query_info.selection.items.iter() {
@@ -309,7 +318,8 @@ fn rewrite_index_plan(
                     columns,
                     s_expr.child(0).unwrap(),
                 )),
-            )
+ 
+           )
         }
         RelOperator::Filter(filter) => {
             let mut new_expr = filter.clone();
