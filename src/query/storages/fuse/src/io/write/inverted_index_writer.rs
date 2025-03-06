@@ -109,15 +109,16 @@ impl InvertedIndexWriter {
                     ScalarRef::String(text) => doc.add_text(field, text),
                     ScalarRef::Variant(jsonb_val) => {
                         // only support object JSON, other JSON type will not add index.
-                        if let Ok(Some(obj_val)) = jsonb::to_serde_json_object(jsonb_val) {
-                            let object: BTreeMap<String, OwnedValue> = obj_val
-                                .into_iter()
-                                .map(|(key, value)| (key, OwnedValue::from(value)))
-                                .collect();
-                            doc.add_object(field, object);
-                        } else {
-                            doc.add_object(field, BTreeMap::new());
-                        }
+                        //if let Ok(Some(obj_val)) = jsonb::to_serde_json_object(jsonb_val) {
+                        //    let object: BTreeMap<String, OwnedValue> = obj_val
+                        //        .into_iter()
+                        //        .map(|(key, value)| (key, OwnedValue::from(value)))
+                        //        .collect();
+                        //    doc.add_object(field, object);
+                        //} else {
+                        //    doc.add_object(field, BTreeMap::new());
+                        //}
+                        todo!()
                     }
                     _ => {
                         if ty == &DataType::Variant {

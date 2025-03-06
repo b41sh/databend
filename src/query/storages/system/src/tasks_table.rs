@@ -80,7 +80,7 @@ pub fn parse_tasks_to_datablock(tasks: Vec<Task>) -> Result<DataBlock> {
         let serialized_params = serde_json::to_vec(&tsk.session_params).unwrap();
         session_params.push(Some(serialized_params));
     }
-
+/**
     Ok(DataBlock::new_from_columns(vec![
         TimestampType::from_data(created_on),
         StringType::from_data(name),
@@ -100,6 +100,8 @@ pub fn parse_tasks_to_datablock(tasks: Vec<Task>) -> Result<DataBlock> {
         TimestampType::from_opt_data(last_suspended_on),
         VariantType::from_opt_data(session_params),
     ]))
+*/
+    todo!()
 }
 
 pub struct TasksTable {

@@ -110,6 +110,7 @@ impl AsyncSystemTable for BackgroundTaskTable {
             create_timestamps.push(seq_task.created_at.timestamp_micros());
             update_timestamps.push(seq_task.last_updated.unwrap_or_default().timestamp_micros());
         }
+/**
         Ok(DataBlock::new_from_columns(vec![
             StringType::from_data(names),
             StringType::from_data(types),
@@ -125,6 +126,8 @@ impl AsyncSystemTable for BackgroundTaskTable {
             TimestampType::from_data(create_timestamps),
             TimestampType::from_data(update_timestamps),
         ]))
+*/
+        todo!()
     }
 }
 

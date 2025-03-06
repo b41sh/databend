@@ -82,6 +82,7 @@ const ALL_FALSE_DOMAIN: BooleanDomain = BooleanDomain {
 };
 
 fn register_variant_cmp(registry: &mut FunctionRegistry) {
+/**
     registry.register_comparison_2_arg::<VariantType, VariantType, _, _>(
         "eq",
         |_, _, _| FunctionDomain::Full,
@@ -124,6 +125,8 @@ fn register_variant_cmp(registry: &mut FunctionRegistry) {
             jsonb::compare(lhs, rhs).expect("unable to parse jsonb value") != Ordering::Greater
         },
     );
+*/
+    todo!()
 }
 
 macro_rules! register_simple_domain_type_cmp {
@@ -639,10 +642,12 @@ fn variant_vectorize_like(
 ) -> impl Fn(Value<VariantType>, Value<StringType>, &mut EvalContext) -> Value<BooleanType> + Copy {
     move |arg1, arg2, _ctx| match (arg1, arg2) {
         (Value::Scalar(arg1), Value::Scalar(arg2)) => {
-            let pattern_type = generate_like_pattern(arg2.as_bytes(), 1);
-            Value::Scalar(func(&arg1, &pattern_type))
+            //let pattern_type = generate_like_pattern(arg2.as_bytes(), 1);
+            //Value::Scalar(func(&arg1, &pattern_type))
+            todo!()
         }
         (Value::Column(arg1), Value::Scalar(arg2)) => {
+            /**
             let arg1_iter = VariantType::iter_column(&arg1);
 
             let pattern_type = generate_like_pattern(arg2.as_bytes(), arg1.total_bytes_len());
@@ -651,8 +656,11 @@ fn variant_vectorize_like(
                 builder.push(func(arg1, &pattern_type));
             }
             Value::Column(builder.into())
+            */
+            todo!()
         }
         (Value::Scalar(arg1), Value::Column(arg2)) => {
+            /**
             let arg2_iter = StringType::iter_column(&arg2);
             let mut builder = MutableBitmap::with_capacity(arg2.len());
             for arg2 in arg2_iter {
@@ -660,8 +668,11 @@ fn variant_vectorize_like(
                 builder.push(func(&arg1, &pattern_type));
             }
             Value::Column(builder.into())
+            */
+            todo!()
         }
         (Value::Column(arg1), Value::Column(arg2)) => {
+            /**
             let arg1_iter = VariantType::iter_column(&arg1);
             let arg2_iter = StringType::iter_column(&arg2);
             let mut builder = MutableBitmap::with_capacity(arg2.len());
@@ -670,6 +681,8 @@ fn variant_vectorize_like(
                 builder.push(func(arg1, &pattern_type));
             }
             Value::Column(builder.into())
+            */
+            todo!()
         }
     }
 }

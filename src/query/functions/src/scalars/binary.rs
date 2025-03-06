@@ -67,6 +67,7 @@ pub fn register(registry: &mut FunctionRegistry) {
         error_to_null(eval_binary_to_string),
     );
 
+/**
     registry.register_passthrough_nullable_1_arg::<VariantType, BinaryType, _, _>(
         "to_binary",
         |_, _| FunctionDomain::Full,
@@ -87,6 +88,7 @@ pub fn register(registry: &mut FunctionRegistry) {
             }
         },
     );
+*/
 
     registry.register_passthrough_nullable_1_arg::<BitmapType, BinaryType, _, _>(
         "to_binary",

@@ -111,7 +111,9 @@ pub unsafe fn serialize_column_to_rowformat(
                 }
             }
         }
-        Column::Binary(v) | Column::Bitmap(v) | Column::Variant(v) | Column::Geometry(v) => {
+        //Column::Binary(v) | Column::Bitmap(v) | Column::Variant(v) | Column::Geometry(v) => {
+        Column::Variant(v) => todo!(),
+        Column::Binary(v) | Column::Bitmap(v) | Column::Geometry(v) => {
             for index in select_vector.iter().take(rows).copied() {
                 let data = arena.alloc_slice_copy(v.index_unchecked(index));
                 store(&(data.len() as u32), address[index].add(offset) as *mut u8);
@@ -317,7 +319,9 @@ pub unsafe fn row_match_column(
             no_match,
             no_match_count,
         ),
-        Column::Bitmap(v) | Column::Binary(v) | Column::Variant(v) | Column::Geometry(v) => {
+        //Column::Bitmap(v) | Column::Binary(v) | Column::Variant(v) | Column::Geometry(v) => {
+        Column::Variant(v) => todo!(),
+        Column::Binary(v) | Column::Bitmap(v) | Column::Geometry(v) => {
             row_match_binary_column(
                 v,
                 validity,

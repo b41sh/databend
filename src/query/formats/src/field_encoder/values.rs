@@ -157,7 +157,8 @@ impl FieldEncoderValues {
             Column::Interval(c) => self.write_interval(c, row_index, out_buf, in_nested),
             Column::Timestamp(c) => self.write_timestamp(c, row_index, out_buf, in_nested),
             Column::Bitmap(b) => self.write_bitmap(b, row_index, out_buf, in_nested),
-            Column::Variant(c) => self.write_variant(c, row_index, out_buf, in_nested),
+            //Column::Variant(c) => self.write_variant(c, row_index, out_buf, in_nested),
+            Column::Variant(c) => todo!(),
             Column::Geometry(c) => self.write_geometry(c, row_index, out_buf, in_nested),
             Column::Geography(c) => self.write_geography(c, row_index, out_buf, in_nested),
 
@@ -321,9 +322,10 @@ impl FieldEncoderValues {
         out_buf: &mut Vec<u8>,
         in_nested: bool,
     ) {
-        let v = unsafe { column.index_unchecked(row_index) };
-        let s = jsonb::to_string(v);
-        self.write_string_inner(s.as_bytes(), out_buf, in_nested);
+        //let v = unsafe { column.index_unchecked(row_index) };
+        //let s = jsonb::to_string(v);
+        //self.write_string_inner(s.as_bytes(), out_buf, in_nested);
+        todo!()
     }
 
     fn write_geometry(

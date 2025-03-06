@@ -613,11 +613,12 @@ impl Column {
                 ColumnVec::Tuple(fields)
             }
             Column::Variant(_) => {
-                let columns = columns
-                    .iter()
-                    .map(|col| VariantType::try_downcast_column(col).unwrap())
-                    .collect_vec();
-                ColumnVec::Variant(columns)
+                //let columns = columns
+                //    .iter()
+                //    .map(|col| VariantType::try_downcast_column(col).unwrap())
+                //    .collect_vec();
+                //ColumnVec::Variant(columns)
+                todo!()
             }
             Column::Geometry(_) => {
                 let columns = columns
@@ -772,7 +773,8 @@ impl Column {
                 Column::Tuple(fields)
             }
             ColumnVec::Variant(columns) => {
-                VariantType::upcast_column(Self::take_block_vec_binary_types(columns, indices))
+                //VariantType::upcast_column(Self::take_block_vec_binary_types(columns, indices))
+                todo!()
             }
             ColumnVec::Geometry(columns) => {
                 GeometryType::upcast_column(Self::take_block_vec_binary_types(columns, indices))

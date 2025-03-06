@@ -309,9 +309,9 @@ impl ValueVisitor for FilterVisitor<'_> {
     }
 
     fn visit_variant(&mut self, column: BinaryColumn) -> Result<()> {
-        self.result = Some(Value::Column(VariantType::upcast_column(
-            self.filter_binary_types(&column),
-        )));
+        //self.result = Some(Value::Column(VariantType::upcast_column(
+        //    self.filter_binary_types(&column),
+        //)));
         Ok(())
     }
 }

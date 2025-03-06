@@ -240,9 +240,9 @@ where I: databend_common_column::types::Index
     }
 
     fn visit_variant(&mut self, column: BinaryColumn) -> Result<()> {
-        self.result = Some(Value::Column(VariantType::upcast_column(
-            self.take_binary_types(&column),
-        )));
+        //self.result = Some(Value::Column(VariantType::upcast_column(
+        //    self.take_binary_types(&column),
+        //)));
         Ok(())
     }
 }

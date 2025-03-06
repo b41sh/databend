@@ -103,27 +103,28 @@ use crate::with_number_type;
 )]
 pub enum VariantScalar {
     Jsonb(Vec<u8>),
-    Native(Scalar),
+    Native(Box<Scalar>),
     PathGroup {
         paths: Vec<Vec<String>>,
         values: Vec<Scalar>,
     }
 }
 
-#[derive(Clone, PartialEq, Eq, EnumAsInner)]
+#[derive(Clone, Debug, PartialEq, Eq, EnumAsInner)]
 pub enum VariantScalarRef<'a> {
     Jsonb(&'a [u8]),
-    Native(ScalarRef<'a>),
+    Native(Box<ScalarRef<'a>>),
     PathGroup {
         paths: Vec<Vec<&'a str>>,
         values: Vec<ScalarRef<'a>>,
     }
 }
 
-#[derive(Clone, EnumAsInner)]
+#[derive(Clone, Debug, PartialEq, Eq, EnumAsInner)]
 pub enum VariantColumn {
-    Jsonb(BinaryColumn),
-    Native(Column),
+    // need eq
+    //Jsonb(BinaryColumn),
+    Native(Box<Column>),
     PathGroup {
         paths: Vec<Vec<String>>,
         values: Vec<Column>,
@@ -156,7 +157,7 @@ pub enum Scalar {
     Map(Column),
     Bitmap(Vec<u8>),
     Tuple(Vec<Scalar>),
-    Variant(Vec<u8>),
+    Variant(Box<VariantScalar>),
     Geometry(Vec<u8>),
     Geography(Geography),
 }
@@ -179,7 +180,7 @@ pub enum ScalarRef<'a> {
     Map(Column),
     Bitmap(&'a [u8]),
     Tuple(Vec<ScalarRef<'a>>),
-    Variant(&'a [u8]),
+    Variant(Box<VariantScalarRef<'a>>),
     Geometry(&'a [u8]),
     Geography(GeographyRef<'a>),
 }
@@ -202,7 +203,7 @@ pub enum Column {
     Bitmap(BinaryColumn),
     Nullable(Box<NullableColumn<AnyType>>),
     Tuple(Vec<Column>),
-    Variant(BinaryColumn),
+    Variant(Box<VariantColumn>),
     Geometry(BinaryColumn),
     Geography(GeographyColumn),
 }
@@ -417,7 +418,8 @@ impl Scalar {
             Scalar::Map(col) => ScalarRef::Map(col.clone()),
             Scalar::Bitmap(b) => ScalarRef::Bitmap(b.as_slice()),
             Scalar::Tuple(fields) => ScalarRef::Tuple(fields.iter().map(Scalar::as_ref).collect()),
-            Scalar::Variant(s) => ScalarRef::Variant(s.as_slice()),
+            //Scalar::Variant(s) => ScalarRef::Variant(s.as_slice()),
+            Scalar::Variant(s) => todo!(),
             Scalar::Geometry(s) => ScalarRef::Geometry(s.as_slice()),
             Scalar::Geography(g) => ScalarRef::Geography(g.as_ref()),
         }
@@ -460,7 +462,8 @@ impl Scalar {
             }
             DataType::Bitmap => Scalar::Bitmap(vec![]),
             DataType::Tuple(tys) => Scalar::Tuple(tys.iter().map(Scalar::default_value).collect()),
-            DataType::Variant => Scalar::Variant(vec![]),
+            //DataType::Variant => Scalar::Variant(vec![]),
+            DataType::Variant => todo!(),
             DataType::Geometry => Scalar::Geometry(vec![]),
             DataType::Geography => Scalar::Geography(Geography::default()),
 
@@ -538,7 +541,8 @@ impl ScalarRef<'_> {
             ScalarRef::Tuple(fields) => {
                 Scalar::Tuple(fields.iter().map(ScalarRef::to_owned).collect())
             }
-            ScalarRef::Variant(s) => Scalar::Variant(s.to_vec()),
+            //ScalarRef::Variant(s) => Scalar::Variant(s.to_vec()),
+            ScalarRef::Variant(s) => todo!(),
             ScalarRef::Geometry(s) => Scalar::Geometry(s.to_vec()),
             ScalarRef::Geography(s) => Scalar::Geography(s.to_owned()),
         }
@@ -636,7 +640,8 @@ impl ScalarRef<'_> {
             ScalarRef::Map(col) => col.memory_size(),
             ScalarRef::Bitmap(b) => b.len(),
             ScalarRef::Tuple(scalars) => scalars.iter().map(|s| s.memory_size()).sum(),
-            ScalarRef::Variant(buf) => buf.len(),
+            //ScalarRef::Variant(buf) => buf.len(),
+            ScalarRef::Variant(buf) => todo!(),
             ScalarRef::Geometry(buf) => buf.len(),
             ScalarRef::Geography(s) => s.0.len(),
         }
@@ -800,7 +805,8 @@ impl PartialOrd for Scalar {
             (Scalar::Bitmap(b1), Scalar::Bitmap(b2)) => b1.partial_cmp(b2),
             (Scalar::Tuple(t1), Scalar::Tuple(t2)) => t1.partial_cmp(t2),
             (Scalar::Variant(v1), Scalar::Variant(v2)) => {
-                jsonb::compare(v1.as_slice(), v2.as_slice()).ok()
+                //jsonb::compare(v1.as_slice(), v2.as_slice()).ok()
+                todo!()
             }
             (Scalar::Geometry(g1), Scalar::Geometry(g2)) => compare_geometry(g1, g2),
             (Scalar::Geography(g1), Scalar::Geography(g2)) => g1.partial_cmp(g2),
@@ -838,7 +844,8 @@ impl<'b> PartialOrd<ScalarRef<'b>> for ScalarRef<'_> {
             (ScalarRef::Map(m1), ScalarRef::Map(m2)) => m1.partial_cmp(m2),
             (ScalarRef::Bitmap(b1), ScalarRef::Bitmap(b2)) => b1.partial_cmp(b2),
             (ScalarRef::Tuple(t1), ScalarRef::Tuple(t2)) => t1.partial_cmp(t2),
-            (ScalarRef::Variant(v1), ScalarRef::Variant(v2)) => jsonb::compare(v1, v2).ok(),
+            //(ScalarRef::Variant(v1), ScalarRef::Variant(v2)) => jsonb::compare(v1, v2).ok(),
+            (ScalarRef::Variant(v1), ScalarRef::Variant(v2)) => todo!(),
             (ScalarRef::Geometry(g1), ScalarRef::Geometry(g2)) => compare_geometry(g1, g2),
             (ScalarRef::Geography(g1), ScalarRef::Geography(g2)) => g1.partial_cmp(g2),
             (ScalarRef::Interval(i1), ScalarRef::Interval(i2)) => i1.partial_cmp(i2),
@@ -895,7 +902,8 @@ impl Hash for ScalarRef<'_> {
             ScalarRef::Tuple(v) => {
                 v.hash(state);
             }
-            ScalarRef::Variant(v) => v.hash(state),
+            //ScalarRef::Variant(v) => v.hash(state),
+            ScalarRef::Variant(v) => todo!(),
             ScalarRef::Geometry(v) => v.hash(state),
             ScalarRef::Geography(v) => v.hash(state),
         }
@@ -937,9 +945,10 @@ impl PartialOrd for Column {
                 col1.iter().partial_cmp(col2.iter())
             }
             (Column::Tuple(fields1), Column::Tuple(fields2)) => fields1.partial_cmp(fields2),
-            (Column::Variant(col1), Column::Variant(col2)) => col1
-                .iter()
-                .partial_cmp_by(col2.iter(), |v1, v2| jsonb::compare(v1, v2).ok()),
+            //(Column::Variant(col1), Column::Variant(col2)) => col1
+            //    .iter()
+            //    .partial_cmp_by(col2.iter(), |v1, v2| jsonb::compare(v1, v2).ok()),
+            (Column::Variant(col1), Column::Variant(col2)) => todo!(),
             (Column::Geometry(col1), Column::Geometry(col2)) => {
                 col1.iter().partial_cmp_by(col2.iter(), compare_geometry)
             }
@@ -994,7 +1003,8 @@ impl Column {
             Column::Bitmap(col) => col.len(),
             Column::Nullable(col) => col.len(),
             Column::Tuple(fields) => fields[0].len(),
-            Column::Variant(col) => col.len(),
+            //Column::Variant(col) => col.len(),
+            Column::Variant(col) => todo!(),
             Column::Geometry(col) => col.len(),
             Column::Geography(col) => col.len(),
         }
@@ -1023,7 +1033,8 @@ impl Column {
                     .map(|field| field.index(index))
                     .collect::<Option<Vec<_>>>()?,
             )),
-            Column::Variant(col) => Some(ScalarRef::Variant(col.index(index)?)),
+            //Column::Variant(col) => Some(ScalarRef::Variant(col.index(index)?)),
+            Column::Variant(col) => todo!(),
             Column::Geometry(col) => Some(ScalarRef::Geometry(col.index(index)?)),
             Column::Geography(col) => Some(ScalarRef::Geography(col.index(index)?)),
         }
@@ -1055,7 +1066,8 @@ impl Column {
                     .map(|field| field.index_unchecked(index))
                     .collect::<Vec<_>>(),
             ),
-            Column::Variant(col) => ScalarRef::Variant(col.index_unchecked(index)),
+            //Column::Variant(col) => ScalarRef::Variant(col.index_unchecked(index)),
+            Column::Variant(col) => todo!(),
             Column::Geometry(col) => ScalarRef::Geometry(col.index_unchecked(index)),
             Column::Geography(col) => ScalarRef::Geography(col.index_unchecked(index)),
         }
@@ -1112,7 +1124,8 @@ impl Column {
                     .map(|field| field.slice(range.clone()))
                     .collect(),
             ),
-            Column::Variant(col) => Column::Variant(col.slice(range)),
+            //Column::Variant(col) => Column::Variant(col.slice(range)),
+            Column::Variant(col) => todo!(),
             Column::Geometry(col) => Column::Geometry(col.slice(range)),
             Column::Geography(col) => Column::Geography(col.slice(range)),
         }
@@ -1264,7 +1277,8 @@ impl Column {
     pub fn check_valid(&self) -> Result<()> {
         match self {
             Column::Binary(x) => Ok(x.check_valid()?),
-            Column::Variant(x) => Ok(x.check_valid()?),
+            //Column::Variant(x) => Ok(x.check_valid()?),
+            Column::Variant(x) => todo!(),
             Column::Geometry(x) => Ok(x.check_valid()?),
             Column::Geography(x) => Ok(x.check_valid()?),
             Column::Bitmap(x) => Ok(x.check_valid()?),
@@ -1454,7 +1468,8 @@ impl Column {
                     let val = jsonb::rand_value();
                     data.push(val.to_vec());
                 }
-                VariantType::from_data(data)
+                //VariantType::from_data(data)
+                todo!()
             }
             DataType::Geometry => {
                 let mut data = Vec::with_capacity(len);
@@ -1538,7 +1553,8 @@ impl Column {
             Column::Bitmap(col) => col.memory_size(),
             Column::Nullable(c) => c.column.memory_size() + c.validity.as_slice().0.len(),
             Column::Tuple(fields) => fields.iter().map(|f| f.memory_size()).sum(),
-            Column::Variant(col) => col.memory_size(),
+            //Column::Variant(col) => col.memory_size(),
+            Column::Variant(col) => todo!(),
             Column::Geometry(col) => col.memory_size(),
             Column::Geography(col) => GeographyType::column_memory_size(col),
         }
@@ -1562,10 +1578,11 @@ impl Column {
             Column::Decimal(DecimalColumn::Decimal256(col, _)) => col.len() * 32,
             Column::Geography(col) => GeographyType::column_memory_size(col),
             Column::Boolean(c) => c.len(),
+            Column::Variant(col) => todo!(),
             // 8 * len + size of bytes
             Column::Binary(col)
             | Column::Bitmap(col)
-            | Column::Variant(col)
+            //| Column::Variant(col)
             | Column::Geometry(col) => col.memory_size(),
             Column::String(col) => col.len() * 8 + col.total_bytes_len(),
             Column::Array(col) | Column::Map(col) => col.values.serialize_size() + col.len() * 8,
@@ -1674,7 +1691,8 @@ impl ColumnBuilder {
                     .map(|col| ColumnBuilder::from_column(col.clone()))
                     .collect(),
             ),
-            Column::Variant(col) => ColumnBuilder::Variant(BinaryColumnBuilder::from_column(col)),
+            //Column::Variant(col) => ColumnBuilder::Variant(BinaryColumnBuilder::from_column(col)),
+            Column::Variant(col) => todo!(),
             Column::Geometry(col) => ColumnBuilder::Geometry(BinaryColumnBuilder::from_column(col)),
             Column::Geography(col) => {
                 ColumnBuilder::Geography(GeographyType::column_to_builder(col))
@@ -1735,7 +1753,8 @@ impl ColumnBuilder {
                         .collect(),
                 )
             }
-            ScalarRef::Variant(s) => ColumnBuilder::Variant(BinaryColumnBuilder::repeat(s, n)),
+            //ScalarRef::Variant(s) => ColumnBuilder::Variant(BinaryColumnBuilder::repeat(s, n)),
+            ScalarRef::Variant(s) => todo!(),
             ScalarRef::Geometry(s) => ColumnBuilder::Geometry(BinaryColumnBuilder::repeat(s, n)),
             ScalarRef::Geography(s) => {
                 ColumnBuilder::Geography(BinaryColumnBuilder::repeat(s.0, n))
@@ -1761,7 +1780,8 @@ impl ColumnBuilder {
             ColumnBuilder::Bitmap(builder) => builder.len(),
             ColumnBuilder::Nullable(builder) => builder.len(),
             ColumnBuilder::Tuple(fields) => fields[0].len(),
-            ColumnBuilder::Variant(builder) => builder.len(),
+            //ColumnBuilder::Variant(builder) => builder.len(),
+            ColumnBuilder::Variant(builder) => todo!(),
             ColumnBuilder::Geometry(builder) => builder.len(),
             ColumnBuilder::Geography(builder) => builder.len(),
         }
@@ -1799,7 +1819,8 @@ impl ColumnBuilder {
             ColumnBuilder::Bitmap(col) => col.data.len() + col.offsets.len() * 8,
             ColumnBuilder::Nullable(c) => c.builder.memory_size() + c.validity.as_slice().len(),
             ColumnBuilder::Tuple(fields) => fields.iter().map(|f| f.memory_size()).sum(),
-            ColumnBuilder::Variant(col) => col.data.len() + col.offsets.len() * 8,
+            //ColumnBuilder::Variant(col) => col.data.len() + col.offsets.len() * 8,
+            ColumnBuilder::Variant(col) => todo!(),
             ColumnBuilder::Geometry(col) => col.data.len() + col.offsets.len() * 8,
             ColumnBuilder::Geography(builder) => builder.memory_size(),
         }
@@ -1908,8 +1929,9 @@ impl ColumnBuilder {
                 ColumnBuilder::Bitmap(BinaryColumnBuilder::with_capacity(capacity, data_capacity))
             }
             DataType::Variant => {
-                let data_capacity = if enable_datasize_hint { 0 } else { capacity };
-                ColumnBuilder::Variant(BinaryColumnBuilder::with_capacity(capacity, data_capacity))
+                //let data_capacity = if enable_datasize_hint { 0 } else { capacity };
+                //ColumnBuilder::Variant(BinaryColumnBuilder::with_capacity(capacity, data_capacity))
+                todo!()
             }
             DataType::Geometry => {
                 let data_capacity = if enable_datasize_hint { 0 } else { capacity };
@@ -1958,7 +1980,8 @@ impl ColumnBuilder {
             DataType::Binary => ColumnBuilder::Binary(BinaryColumnBuilder::repeat_default(len)),
             DataType::String => ColumnBuilder::String(StringColumnBuilder::repeat_default(len)),
             DataType::Bitmap => ColumnBuilder::Bitmap(BinaryColumnBuilder::repeat_default(len)),
-            DataType::Variant => ColumnBuilder::Variant(BinaryColumnBuilder::repeat_default(len)),
+            //DataType::Variant => ColumnBuilder::Variant(BinaryColumnBuilder::repeat_default(len)),
+            DataType::Variant => todo!(),
             DataType::Geometry => ColumnBuilder::Geometry(BinaryColumnBuilder::repeat_default(len)),
             DataType::Geography => {
                 ColumnBuilder::Geography(BinaryColumnBuilder::repeat_default(len))
@@ -2035,7 +2058,8 @@ impl ColumnBuilder {
                 }
             }
             (ColumnBuilder::Variant(builder), ScalarRef::Variant(value)) => {
-                VariantType::push_item(builder, value);
+                //VariantType::push_item(builder, value);
+                todo!()
             }
             (ColumnBuilder::Geometry(builder), ScalarRef::Geometry(value)) => {
                 GeometryType::push_item(builder, value);
@@ -2097,7 +2121,8 @@ impl ColumnBuilder {
                 }
             }
             (ColumnBuilder::Variant(builder), ScalarRef::Variant(value)) => {
-                VariantType::push_item_repeat(builder, value, n);
+                //VariantType::push_item_repeat(builder, value, n);
+                todo!()
             }
             (ColumnBuilder::Geometry(builder), ScalarRef::Geometry(value)) => {
                 GeometryType::push_item_repeat(builder, value, n);
@@ -2132,8 +2157,9 @@ impl ColumnBuilder {
                 }
             }
             ColumnBuilder::Variant(builder) => {
-                builder.put_slice(JSONB_NULL);
-                builder.commit_row();
+                //builder.put_slice(JSONB_NULL);
+                //builder.commit_row();
+                todo!()
             }
             ColumnBuilder::Geometry(builder) => builder.commit_row(),
             ColumnBuilder::Geography(builder) => builder.commit_row(),
@@ -2161,8 +2187,9 @@ impl ColumnBuilder {
                 let v: bool = reader.read_scalar()?;
                 builder.push(v);
             }
+            ColumnBuilder::Variant(builder) => todo!(),
             ColumnBuilder::Binary(builder)
-            | ColumnBuilder::Variant(builder)
+            //| ColumnBuilder::Variant(builder)
             | ColumnBuilder::Bitmap(builder)
             | ColumnBuilder::Geometry(builder) => {
                 let offset = reader.read_scalar::<u64>()? as usize;
@@ -2270,8 +2297,9 @@ impl ColumnBuilder {
                     builder.push(v);
                 }
             }
+            ColumnBuilder::Variant(builder) => todo!(),
             ColumnBuilder::Binary(builder)
-            | ColumnBuilder::Variant(builder)
+            //| ColumnBuilder::Variant(builder)
             | ColumnBuilder::Bitmap(builder)
             | ColumnBuilder::Geometry(builder)
             | ColumnBuilder::Geography(builder) => {
@@ -2403,7 +2431,8 @@ impl ColumnBuilder {
                     None
                 }
             }
-            ColumnBuilder::Variant(builder) => builder.pop().map(Scalar::Variant),
+            //ColumnBuilder::Variant(builder) => builder.pop().map(Scalar::Variant),
+            ColumnBuilder::Variant(builder) => todo!(),
             ColumnBuilder::Geometry(builder) => builder.pop().map(Scalar::Geometry),
             ColumnBuilder::Geography(builder) => {
                 builder.pop().map(Geography).map(Scalar::Geography)
@@ -2438,7 +2467,8 @@ impl ColumnBuilder {
                 builder.append_column(other);
             }
             (ColumnBuilder::Variant(builder), Column::Variant(other)) => {
-                builder.append_column(other);
+                //builder.append_column(other);
+                todo!()
             }
             (ColumnBuilder::Geometry(builder), Column::Geometry(other)) => {
                 builder.append_column(other);
@@ -2503,7 +2533,8 @@ impl ColumnBuilder {
             ColumnBuilder::Date(b) => Column::Date(DateType::build_column(b)),
             ColumnBuilder::Interval(b) => Column::Interval(IntervalType::build_column(b)),
             ColumnBuilder::Bitmap(b) => Column::Bitmap(BitmapType::build_column(b)),
-            ColumnBuilder::Variant(b) => Column::Variant(VariantType::build_column(b)),
+            //ColumnBuilder::Variant(b) => Column::Variant(VariantType::build_column(b)),
+            ColumnBuilder::Variant(b) => todo!(),
             ColumnBuilder::Geometry(b) => Column::Geometry(GeometryType::build_column(b)),
             ColumnBuilder::Geography(b) => Column::Geography(GeographyType::build_column(b)),
         }
@@ -2534,7 +2565,8 @@ impl ColumnBuilder {
             ColumnBuilder::Date(b) => Scalar::Date(DateType::build_scalar(b)),
             ColumnBuilder::Interval(b) => Scalar::Interval(IntervalType::build_scalar(b)),
             ColumnBuilder::Bitmap(b) => Scalar::Bitmap(BitmapType::build_scalar(b)),
-            ColumnBuilder::Variant(b) => Scalar::Variant(VariantType::build_scalar(b)),
+            //ColumnBuilder::Variant(b) => Scalar::Variant(VariantType::build_scalar(b)),
+            ColumnBuilder::Variant(b) => todo!(),
             ColumnBuilder::Geometry(b) => Scalar::Geometry(GeometryType::build_scalar(b)),
             ColumnBuilder::Geography(b) => Scalar::Geography(GeographyType::build_scalar(b)),
         }
@@ -2602,3 +2634,4 @@ macro_rules! impl_scalar_from {
 }
 
 for_all_number_varints! {impl_scalar_from}
+

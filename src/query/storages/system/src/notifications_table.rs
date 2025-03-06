@@ -66,7 +66,7 @@ pub fn parse_notifications_to_datablock(notification: Vec<Notification>) -> Resu
             }
         }
     }
-
+/**
     Ok(DataBlock::new_from_columns(vec![
         TimestampType::from_data(created_on),
         StringType::from_data(name),
@@ -76,6 +76,8 @@ pub fn parse_notifications_to_datablock(notification: Vec<Notification>) -> Resu
         VariantType::from_opt_data(webhook_options),
         StringType::from_opt_data(comment),
     ]))
+*/
+    todo!()
 }
 
 pub struct NotificationsTable {

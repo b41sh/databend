@@ -101,6 +101,7 @@ impl Interpreter for PresignInterpreter {
                 .collect(),
         );
 
+/**
         let block = DataBlock::new(
             vec![
                 BlockEntry::new(
@@ -120,5 +121,7 @@ impl Interpreter for PresignInterpreter {
         );
 
         PipelineBuildResult::from_blocks(vec![block])
+*/
+        todo!()
     }
 }

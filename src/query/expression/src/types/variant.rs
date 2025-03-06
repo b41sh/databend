@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::iter::TrustedLen;
+
 use core::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::ops::Range;
@@ -42,6 +44,32 @@ use crate::values::Scalar;
 use crate::values::ScalarRef;
 use crate::ColumnBuilder;
 
+use crate::VariantScalar;
+use crate::VariantScalarRef;
+use crate::VariantColumn;
+
+#[derive(Debug, Clone)]
+pub struct VariantColumnIter<'a> {
+    data: &'a str,
+}
+
+impl<'a> Iterator for VariantColumnIter<'a> {
+    type Item = VariantScalarRef<'a>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        todo!()
+    }
+}
+
+unsafe impl<'a> TrustedLen for VariantColumnIter<'a> {}
+
+
 /// JSONB bytes representation of `null`.
 pub const JSONB_NULL: &[u8] = &[0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
@@ -49,32 +77,42 @@ pub const JSONB_NULL: &[u8] = &[0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 pub struct VariantType;
 
 impl ValueType for VariantType {
-    type Scalar = Vec<u8>;
-    type ScalarRef<'a> = &'a [u8];
-    type Column = BinaryColumn;
+    //type Scalar = Vec<u8>;
+    type Scalar = VariantScalar;
+    //type ScalarRef<'a> = &'a [u8];
+    type ScalarRef<'a> = VariantScalarRef<'a>;
+    //type Column = BinaryColumn;
+    type Column = VariantColumn;
     type Domain = ();
-    type ColumnIterator<'a> = BinaryColumnIter<'a>;
+    //type ColumnIterator<'a> = BinaryColumnIter<'a>;
+    type ColumnIterator<'a> = VariantColumnIter<'a>;
     type ColumnBuilder = BinaryColumnBuilder;
+    //type ColumnBuilder = VariantColumnBuilder;
 
     #[inline]
-    fn upcast_gat<'short, 'long: 'short>(long: &'long [u8]) -> &'short [u8] {
+    //fn upcast_gat<'short, 'long: 'short>(long: &'long [u8]) -> &'short [u8] {
+    fn upcast_gat<'short, 'long: 'short>(long: VariantScalarRef<'long>) -> VariantScalarRef<'short> {
         long
     }
 
     fn to_owned_scalar(scalar: Self::ScalarRef<'_>) -> Self::Scalar {
-        scalar.to_vec()
+        //scalar.to_vec()
+        todo!()
     }
 
     fn to_scalar_ref(scalar: &Self::Scalar) -> Self::ScalarRef<'_> {
-        scalar
+        //scalar
+        todo!()
     }
 
     fn try_downcast_scalar<'a>(scalar: &'a ScalarRef) -> Option<Self::ScalarRef<'a>> {
-        scalar.as_variant().cloned()
+        //scalar.as_variant().cloned()
+        todo!()
     }
 
     fn try_downcast_column(col: &Column) -> Option<Self::Column> {
-        col.as_variant().cloned()
+        //col.as_variant().cloned()
+        todo!()
     }
 
     fn try_downcast_domain(domain: &Domain) -> Option<Self::Domain> {
@@ -86,32 +124,37 @@ impl ValueType for VariantType {
     }
 
     fn try_downcast_builder(builder: &mut ColumnBuilder) -> Option<&mut Self::ColumnBuilder> {
-        match builder {
-            ColumnBuilder::Variant(builder) => Some(builder),
-            _ => None,
-        }
+        //match builder {
+        //    ColumnBuilder::Variant(builder) => Some(builder),
+        //    _ => None,
+        //}
+        todo!()
     }
 
     fn try_downcast_owned_builder(builder: ColumnBuilder) -> Option<Self::ColumnBuilder> {
-        match builder {
-            ColumnBuilder::Variant(builder) => Some(builder),
-            _ => None,
-        }
+        //match builder {
+        //    ColumnBuilder::Variant(builder) => Some(builder),
+        //    _ => None,
+        //}
+        todo!()
     }
 
     fn try_upcast_column_builder(
         builder: Self::ColumnBuilder,
         _decimal_size: Option<DecimalSize>,
     ) -> Option<ColumnBuilder> {
-        Some(ColumnBuilder::Variant(builder))
+        //Some(ColumnBuilder::Variant(builder))
+        todo!()
     }
 
     fn upcast_scalar(scalar: Self::Scalar) -> Scalar {
-        Scalar::Variant(scalar)
+        //Scalar::Variant(scalar)
+        todo!()
     }
 
     fn upcast_column(col: Self::Column) -> Column {
-        Column::Variant(col)
+        //Column::Variant(col)
+        todo!()
     }
 
     fn upcast_domain(_domain: Self::Domain) -> Domain {
@@ -119,70 +162,86 @@ impl ValueType for VariantType {
     }
 
     fn column_len(col: &Self::Column) -> usize {
-        col.len()
+        //col.len()
+        todo!()
     }
 
     fn index_column(col: &Self::Column, index: usize) -> Option<Self::ScalarRef<'_>> {
-        col.index(index)
+        //col.index(index)
+        todo!()
     }
 
     #[inline(always)]
     unsafe fn index_column_unchecked(col: &Self::Column, index: usize) -> Self::ScalarRef<'_> {
-        col.index_unchecked(index)
+        //col.index_unchecked(index)
+        todo!()
     }
 
     fn slice_column(col: &Self::Column, range: Range<usize>) -> Self::Column {
-        col.slice(range)
+        //col.slice(range)
+        todo!()
     }
 
     fn iter_column(col: &Self::Column) -> Self::ColumnIterator<'_> {
-        col.iter()
+        //col.iter()
+        todo!()
     }
 
     fn column_to_builder(col: Self::Column) -> Self::ColumnBuilder {
-        BinaryColumnBuilder::from_column(col)
+        //BinaryColumnBuilder::from_column(col)
+        todo!()
     }
 
     fn builder_len(builder: &Self::ColumnBuilder) -> usize {
-        builder.len()
+        //builder.len()
+        todo!()
     }
 
     fn push_item(builder: &mut Self::ColumnBuilder, item: Self::ScalarRef<'_>) {
-        builder.put_slice(item);
-        builder.commit_row();
+        //builder.put_slice(item);
+        //builder.commit_row();
+        todo!()
     }
 
     fn push_item_repeat(builder: &mut Self::ColumnBuilder, item: Self::ScalarRef<'_>, n: usize) {
-        builder.push_repeat(item, n);
+        //builder.push_repeat(item, n);
+        todo!()
     }
 
     fn push_default(builder: &mut Self::ColumnBuilder) {
-        builder.commit_row();
+        //builder.commit_row();
+        todo!()
     }
 
     fn append_column(builder: &mut Self::ColumnBuilder, other_builder: &Self::Column) {
-        builder.append_column(other_builder)
+        //builder.append_column(other_builder)
+        todo!()
     }
 
     fn build_column(builder: Self::ColumnBuilder) -> Self::Column {
-        builder.build()
+        //builder.build()
+        todo!()
     }
 
     fn build_scalar(builder: Self::ColumnBuilder) -> Self::Scalar {
-        builder.build_scalar()
+        //builder.build_scalar()
+        todo!()
     }
 
     fn scalar_memory_size(scalar: &Self::ScalarRef<'_>) -> usize {
-        scalar.len()
+        //scalar.len()
+        todo!()
     }
 
     fn column_memory_size(col: &Self::Column) -> usize {
-        col.memory_size()
+        //col.memory_size()
+        todo!()
     }
 
     #[inline(always)]
     fn compare(lhs: Self::ScalarRef<'_>, rhs: Self::ScalarRef<'_>) -> Ordering {
-        jsonb::compare(lhs, rhs).expect("unable to parse jsonb value")
+        //jsonb::compare(lhs, rhs).expect("unable to parse jsonb value")
+        todo!()
     }
 }
 
@@ -194,18 +253,22 @@ impl ArgType for VariantType {
     fn full_domain() -> Self::Domain {}
 
     fn create_builder(capacity: usize, _: &GenericMap) -> Self::ColumnBuilder {
-        BinaryColumnBuilder::with_capacity(capacity, 0)
+        //BinaryColumnBuilder::with_capacity(capacity, 0)
+        todo!()
     }
 }
 
 impl VariantType {
     pub fn create_column_from_variants(variants: &[Value]) -> BinaryColumn {
+        /**
         let mut builder = BinaryColumnBuilder::with_capacity(variants.len(), 0);
         for v in variants {
             v.write_to_vec(&mut builder.data);
             builder.commit_row();
         }
         builder.build()
+        */
+        todo!()
     }
 }
 
@@ -283,8 +346,9 @@ pub fn cast_scalar_to_variant(scalar: ScalarRef, tz: &TimeZone, buf: &mut Vec<u8
             return;
         }
         ScalarRef::Variant(bytes) => {
-            buf.extend_from_slice(bytes);
-            return;
+            //buf.extend_from_slice(bytes);
+            //return;
+            todo!()
         }
         ScalarRef::Geometry(bytes) => {
             let geom = Ewkb(bytes).to_json().expect("failed to decode wkb data");

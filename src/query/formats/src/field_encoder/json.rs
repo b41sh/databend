@@ -80,8 +80,9 @@ impl FieldEncoderJSON {
             }
 
             Column::Variant(c) => {
-                let v = unsafe { c.index_unchecked(row_index) };
-                out_buf.extend_from_slice(jsonb::to_string(v).as_bytes());
+                //let v = unsafe { c.index_unchecked(row_index) };
+                //out_buf.extend_from_slice(jsonb::to_string(v).as_bytes());
+                todo!()
             }
             Column::Geometry(c) => {
                 let v = unsafe { c.index_unchecked(row_index) };

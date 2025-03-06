@@ -337,9 +337,10 @@ impl From<&Column> for ArrayData {
 
             Column::Binary(col)
             | Column::Bitmap(col)
-            | Column::Variant(col)
+            //| Column::Variant(col)
             | Column::Geometry(col)
             | Column::Geography(GeographyColumn(col)) => col.clone().into(),
+            Column::Variant(col) => todo!(),
         }
     }
 }

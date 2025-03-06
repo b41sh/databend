@@ -105,7 +105,8 @@ pub trait ValueVisitor {
     }
 
     fn visit_variant(&mut self, column: BinaryColumn) -> Result<()> {
-        self.visit_typed_column::<VariantType>(column)
+        //self.visit_typed_column::<VariantType>(column)
+        todo!()
     }
 
     fn visit_geometry(&mut self, column: BinaryColumn) -> Result<()> {
@@ -143,7 +144,8 @@ pub trait ValueVisitor {
             Column::Tuple(columns) => self.visit_tuple(columns),
             Column::Bitmap(column) => self.visit_bitmap(column),
             Column::Nullable(column) => self.visit_nullable(column),
-            Column::Variant(column) => self.visit_variant(column),
+            //Column::Variant(column) => self.visit_variant(column),
+            Column::Variant(column) => todo!(),
             Column::Geometry(column) => self.visit_geometry(column),
             Column::Geography(column) => self.visit_geography(column),
         }

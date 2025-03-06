@@ -130,10 +130,12 @@ pub fn from_scalar(datavalue: &DataValue, datatype: &DataType) -> Scalar {
             Scalar::String(String::from_utf8_lossy(datavalue.as_string().unwrap()).into_owned())
         }
         DataType::Variant => match datavalue {
-            DataValue::String(x) => Scalar::Variant(x.clone()),
+            //DataValue::String(x) => Scalar::Variant(x.clone()),
+            DataValue::String(x) => todo!(),
             DataValue::Variant(x) => {
                 let v: Vec<u8> = serde_json::to_vec(x).unwrap();
-                Scalar::Variant(v)
+                //Scalar::Variant(v)
+                todo!()
             }
             _ => unreachable!(),
         },

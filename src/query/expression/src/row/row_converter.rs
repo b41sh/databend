@@ -172,6 +172,7 @@ impl RowConverter {
                     }
                 }
                 DataType::Variant => {
+                    /**
                     let col = col.remove_nullable();
                     if all_null {
                         lengths.iter_mut().for_each(|x| *x += 1)
@@ -193,6 +194,8 @@ impl RowConverter {
                                 *length += variable::encoded_len(bytes, false) as u64
                             })
                     }
+                    */
+                    todo!()
                 }
                 _ => unimplemented!(),
             }
@@ -269,7 +272,8 @@ fn encode_column(out: &mut BinaryColumnBuilder, column: &Column, asc: bool, null
             asc,
             nulls_first,
         ),
-        Column::Variant(col) => variable::encode(out, col.iter(), validity, asc, nulls_first),
+        //Column::Variant(col) => variable::encode(out, col.iter(), validity, asc, nulls_first),
+        Column::Variant(col) => todo!(),
         _ => unimplemented!(),
     }
 }

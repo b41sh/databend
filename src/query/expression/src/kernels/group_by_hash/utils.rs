@@ -65,7 +65,9 @@ pub unsafe fn serialize_column_binary(column: &Column, row: usize, row_space: &m
             })
         }
         Column::Boolean(v) => row_space.push_unchecked(v.get_bit(row) as u8),
-        Column::Binary(v) | Column::Bitmap(v) | Column::Variant(v) | Column::Geometry(v) => {
+        //Column::Binary(v) | Column::Bitmap(v) | Column::Variant(v) | Column::Geometry(v) => {
+        Column::Variant(v) => todo!(),
+        Column::Binary(v) | Column::Bitmap(v) | Column::Geometry(v) => {
             let value = unsafe { v.index_unchecked(row) };
             let len = value.len();
 

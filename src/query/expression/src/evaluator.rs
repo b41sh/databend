@@ -543,6 +543,7 @@ impl<'a> Evaluator<'a> {
                 other => unreachable!("source: {}", other),
             },
             (DataType::Variant, DataType::Array(inner_dest_ty)) => {
+                /**
                 let empty_vec = vec![];
                 let mut temp_array: jsonb::Value;
                 match value {
@@ -626,10 +627,13 @@ impl<'a> Evaluator<'a> {
                     }
                     other => unreachable!("source: {}", other),
                 }
+                */
+                todo!()
             }
             (DataType::Variant, DataType::Map(box DataType::Tuple(fields_dest_ty)))
                 if fields_dest_ty.len() == 2 && fields_dest_ty[0] == DataType::String =>
             {
+                /**
                 let empty_obj = BTreeMap::new();
                 let mut temp_obj: jsonb::Value;
                 match value {
@@ -725,6 +729,8 @@ impl<'a> Evaluator<'a> {
                     }
                     other => unreachable!("source: {}", other),
                 }
+                */
+                todo!()
             }
             (DataType::EmptyMap, DataType::Map(inner_dest_ty)) => match value {
                 Value::Scalar(Scalar::EmptyMap) => {

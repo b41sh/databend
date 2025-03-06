@@ -163,11 +163,12 @@ impl Debug for ScalarRef<'_> {
                 write!(f, ")")
             }
             ScalarRef::Variant(s) => {
-                write!(f, "0x")?;
-                for c in *s {
-                    write!(f, "{c:02x}")?;
-                }
-                Ok(())
+                //write!(f, "0x")?;
+                //for c in *s {
+                //    write!(f, "{c:02x}")?;
+                //}
+                //Ok(())
+                todo!()
             }
             ScalarRef::Geometry(s) => {
                 let geom = ewkb_to_geo(&mut Ewkb(s))
@@ -262,8 +263,9 @@ impl Display for ScalarRef<'_> {
                 write!(f, ")")
             }
             ScalarRef::Variant(s) => {
-                let value = jsonb::to_string(s);
-                write!(f, "'{value}'")
+                //let value = jsonb::to_string(s);
+                //write!(f, "'{value}'")
+                todo!()
             }
             ScalarRef::Geometry(s) => {
                 let geom = ewkb_to_geo(&mut Ewkb(s))

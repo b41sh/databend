@@ -128,8 +128,9 @@ pub(crate) fn update_bitmap_with_bloom_filter(
         HashMethodKind::SingleBinary(method) => {
             let key_state = method.build_keys_state(group_columns, num_rows)?;
             match key_state {
+                KeysState::Column(Column::Variant(col)) => todo!(),
                 KeysState::Column(Column::Binary(col))
-                | KeysState::Column(Column::Variant(col))
+                //| KeysState::Column(Column::Variant(col))
                 | KeysState::Column(Column::Bitmap(col)) => col.iter().for_each(|key| {
                     let hash = key.fast_hash();
                     if filter.contains(&hash) {

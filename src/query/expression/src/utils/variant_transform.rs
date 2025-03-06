@@ -95,6 +95,7 @@ fn transform_scalar(scalar: ScalarRef<'_>, decode: bool) -> Result<Scalar> {
             Scalar::Tuple(scalars)
         }
         ScalarRef::Variant(data) => {
+/**
             if decode {
                 Scalar::Variant(to_string(data).into_bytes())
             } else {
@@ -103,6 +104,8 @@ fn transform_scalar(scalar: ScalarRef<'_>, decode: bool) -> Result<Scalar> {
                 })?;
                 Scalar::Variant(value.to_vec())
             }
+*/
+            todo!()
         }
     };
     Ok(scalar)

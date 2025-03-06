@@ -492,7 +492,8 @@ impl HashJoinBuildState {
                     // safe to unwrap(): offset.len() >= 1.
                     KeysState::Column(Column::String(col)) => col.total_bytes_len(),
                     KeysState::Column(
-                        Column::Binary(col) | Column::Variant(col) | Column::Bitmap(col),
+                        //Column::Binary(col) | Column::Variant(col) | Column::Bitmap(col),
+                        Column::Binary(col) | Column::Bitmap(col),
                     ) => col.data().len(),
                     _ => unreachable!(),
                 };

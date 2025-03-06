@@ -365,6 +365,7 @@ impl<'a> ClusteringInformation<'a> {
     }
 
     fn build_block(&self, info: ClusteringStatistics) -> Result<DataBlock> {
+/**
         Ok(DataBlock::new(
             vec![
                 BlockEntry::new(
@@ -410,6 +411,8 @@ impl<'a> ClusteringInformation<'a> {
             ],
             1,
         ))
+*/
+        todo!()
     }
 
     pub fn schema() -> Arc<TableSchema> {

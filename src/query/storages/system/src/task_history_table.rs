@@ -90,6 +90,7 @@ pub fn parse_task_runs_to_datablock(task_runs: Vec<TaskRun>) -> Result<DataBlock
         let serialized_params = serde_json::to_vec(&tr.session_params).unwrap();
         session_params.push(Some(serialized_params));
     }
+/**
     Ok(DataBlock::new_from_columns(vec![
         StringType::from_data(name),
         UInt64Type::from_data(id),
@@ -110,6 +111,8 @@ pub fn parse_task_runs_to_datablock(task_runs: Vec<TaskRun>) -> Result<DataBlock
         StringType::from_data(root_task_id),
         VariantType::from_opt_data(session_params),
     ]))
+*/
+    todo!()
 }
 
 pub struct TaskHistoryTable {

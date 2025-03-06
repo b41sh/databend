@@ -119,7 +119,7 @@ impl SyncSystemTable for QueriesProfilingTable {
                 statistics.push(serde_json::to_vec(&statistics_map).unwrap());
             }
         }
-
+/**
         Ok(DataBlock::new_from_columns(vec![
             StringType::from_data(node),
             StringType::from_data(queries_id),
@@ -129,6 +129,8 @@ impl SyncSystemTable for QueriesProfilingTable {
             VariantType::from_data(errors),
             VariantType::from_data(statistics),
         ]))
+*/
+        todo!()
     }
 }
 

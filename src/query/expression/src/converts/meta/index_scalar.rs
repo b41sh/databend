@@ -59,7 +59,8 @@ impl TryFrom<IndexScalar> for Scalar {
                 ErrorCode::InvalidUtf8String(format!("invalid utf8 data for string type: {}", e))
             })?),
             IndexScalar::BinaryV2(s) => Scalar::Binary(s),
-            IndexScalar::Variant(s) => Scalar::Variant(s),
+            //IndexScalar::Variant(s) => Scalar::Variant(s),
+            IndexScalar::Variant(s) => todo!(),
             IndexScalar::Tuple(tuple) => Scalar::Tuple(
                 tuple
                     .into_iter()

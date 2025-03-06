@@ -87,7 +87,7 @@ impl AsyncSystemTable for UserFunctionsTable {
             definitions.push(user_function.definition.as_str());
             created_on.push(user_function.created_on.timestamp_micros());
         }
-
+/**
         Ok(DataBlock::new_from_columns(vec![
             StringType::from_data(names),
             BooleanType::from_opt_data(is_aggregate),
@@ -97,6 +97,8 @@ impl AsyncSystemTable for UserFunctionsTable {
             StringType::from_data(definitions),
             TimestampType::from_data(created_on),
         ]))
+*/
+        todo!()
     }
 }
 

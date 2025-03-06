@@ -1447,10 +1447,10 @@ pub fn register(registry: &mut FunctionRegistry) {
                     return;
                 }
             }
-            match json_to_geometry_impl(json, None) {
-                Ok(data) => builder.put_slice(data.as_slice()),
-                Err(e) => ctx.set_error(builder.len(), e.to_string()),
-            }
+            //match json_to_geometry_impl(json, None) {
+            //    Ok(data) => builder.put_slice(data.as_slice()),
+            //    Err(e) => ctx.set_error(builder.len(), e.to_string()),
+            //}
             builder.commit_row();
         }),
     );
@@ -1466,10 +1466,10 @@ pub fn register(registry: &mut FunctionRegistry) {
                         return;
                     }
                 }
-                match json_to_geometry_impl(json, Some(srid)) {
-                    Ok(data) => builder.put_slice(data.as_slice()),
-                    Err(e) => ctx.set_error(builder.len(), e.to_string()),
-                }
+                //match json_to_geometry_impl(json, Some(srid)) {
+                //    Ok(data) => builder.put_slice(data.as_slice()),
+                //    Err(e) => ctx.set_error(builder.len(), e.to_string()),
+                //}
                 builder.commit_row();
             },
         ),
@@ -1486,12 +1486,12 @@ pub fn register(registry: &mut FunctionRegistry) {
                         return;
                     }
                 }
-                match json_to_geometry_impl(json, None) {
-                    Ok(data) => {
-                        output.push(data.as_slice());
-                    }
-                    Err(_) => output.push_null(),
-                }
+                //match json_to_geometry_impl(json, None) {
+                //    Ok(data) => {
+                //        output.push(data.as_slice());
+                //    }
+                //    Err(_) => output.push_null(),
+                //}
             },
         ),
     );
@@ -1507,12 +1507,12 @@ pub fn register(registry: &mut FunctionRegistry) {
                         return;
                     }
                 }
-                match json_to_geometry_impl(json, Some(srid)) {
-                    Ok(data) => {
-                        output.push(data.as_slice());
-                    }
-                    Err(_) => output.push_null(),
-                }
+                //match json_to_geometry_impl(json, Some(srid)) {
+                //    Ok(data) => {
+                //        output.push(data.as_slice());
+                //    }
+                //    Err(_) => output.push_null(),
+                //}
             },
         ),
     );

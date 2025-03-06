@@ -85,7 +85,8 @@ pub fn combine_group_hash_column<const IS_FIRST: bool>(c: &Column, values: &mut 
         DataType::Binary => combine_group_hash_string_column::<IS_FIRST, BinaryType>(c, values),
         DataType::String => combine_group_hash_string_column::<IS_FIRST, StringType>(c, values),
         DataType::Bitmap => combine_group_hash_string_column::<IS_FIRST, BitmapType>(c, values),
-        DataType::Variant => combine_group_hash_string_column::<IS_FIRST, VariantType>(c, values),
+        //DataType::Variant => combine_group_hash_string_column::<IS_FIRST, VariantType>(c, values),
+        DataType::Variant => todo!(),
         DataType::Geometry => combine_group_hash_string_column::<IS_FIRST, GeometryType>(c, values),
         DataType::Geography => {
             combine_group_hash_string_column::<IS_FIRST, GeographyType>(c, values)
@@ -206,7 +207,8 @@ where I: Index
             Scalar::Boolean(v) => v.agg_hash(),
             Scalar::Binary(v) => v.agg_hash(),
             Scalar::String(v) => v.as_bytes().agg_hash(),
-            Scalar::Variant(v) => v.agg_hash(),
+            //Scalar::Variant(v) => v.agg_hash(),
+            Scalar::Variant(v) => todo!(),
             Scalar::Geometry(v) => v.agg_hash(),
             Scalar::Geography(v) => v.0.agg_hash(),
             v => v.as_ref().agg_hash(),

@@ -345,7 +345,8 @@ impl Column {
 
             DataType::Binary => Column::Binary(try_to_binary_column(array)?),
             DataType::Bitmap => Column::Bitmap(try_to_binary_column(array)?),
-            DataType::Variant => Column::Variant(try_to_binary_column(array)?),
+            //DataType::Variant => Column::Variant(try_to_binary_column(array)?),
+            DataType::Variant => todo!(),
             DataType::Geometry => Column::Geometry(try_to_binary_column(array)?),
             DataType::Geography => Column::Geography(GeographyColumn(try_to_binary_column(array)?)),
             DataType::Generic(_) => unreachable!("Generic type is not supported"),

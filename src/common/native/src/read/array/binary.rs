@@ -143,7 +143,8 @@ fn binary_column_to_column(
     let col = match data_type.remove_nullable() {
         TableDataType::Binary => Column::Binary(column),
         TableDataType::Bitmap => Column::Bitmap(column),
-        TableDataType::Variant => Column::Variant(column),
+        //TableDataType::Variant => Column::Variant(column),
+        TableDataType::Variant => todo!(),
         TableDataType::Geometry => Column::Geometry(column),
         TableDataType::Geography => Column::Geography(GeographyColumn(column)),
         _ => unreachable!(),

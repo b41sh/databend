@@ -109,7 +109,8 @@ impl From<LegacyScalar> for Scalar {
             LegacyScalar::Map(col) => Scalar::Map(col.into()),
             LegacyScalar::Bitmap(bmp) => Scalar::Bitmap(bmp),
             LegacyScalar::Tuple(tuple) => Scalar::Tuple(tuple),
-            LegacyScalar::Variant(variant) => Scalar::Variant(variant),
+            //LegacyScalar::Variant(variant) => Scalar::Variant(variant),
+            LegacyScalar::Variant(variant) => todo!(),
         }
     }
 }
@@ -162,7 +163,8 @@ impl From<LegacyColumn> for Column {
             LegacyColumn::Tuple(tuple) => {
                 Column::Tuple(tuple.into_iter().map(|c| c.into()).collect())
             }
-            LegacyColumn::Variant(variant) => Column::Variant(BinaryColumn::from(variant)),
+            //LegacyColumn::Variant(variant) => Column::Variant(BinaryColumn::from(variant)),
+            LegacyColumn::Variant(variant) => todo!(),
         }
     }
 }
@@ -185,7 +187,8 @@ impl From<Scalar> for LegacyScalar {
             Scalar::Map(column) => LegacyScalar::Map(column.into()),
             Scalar::Bitmap(bitmap) => LegacyScalar::Bitmap(bitmap),
             Scalar::Tuple(tuple) => LegacyScalar::Tuple(tuple),
-            Scalar::Variant(variant) => LegacyScalar::Variant(variant),
+            //Scalar::Variant(variant) => LegacyScalar::Variant(variant),
+            Scalar::Variant(variant) => todo!(),
         }
     }
 }
@@ -224,7 +227,8 @@ impl From<Column> for LegacyColumn {
             Column::Tuple(tuple) => {
                 LegacyColumn::Tuple(tuple.into_iter().map(|c| c.into()).collect())
             }
-            Column::Variant(variant) => LegacyColumn::Variant(LegacyBinaryColumn::from(variant)),
+            //Column::Variant(variant) => LegacyColumn::Variant(LegacyBinaryColumn::from(variant)),
+            Column::Variant(variant) => todo!(),
         }
     }
 }

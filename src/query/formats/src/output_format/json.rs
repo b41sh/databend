@@ -147,8 +147,9 @@ fn scalar_to_json(s: ScalarRef<'_>, format: &FormatSettings) -> JsonValue {
             JsonValue::Object(vals)
         }
         ScalarRef::Variant(x) => {
-            let b = jsonb::from_slice(x).unwrap();
-            b.into()
+            //let b = jsonb::from_slice(x).unwrap();
+            //b.into()
+            todo!()
         }
         ScalarRef::Geometry(x) => {
             let geom = Ewkb(x).to_json().expect("failed to convert ewkb to json");

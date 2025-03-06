@@ -239,10 +239,11 @@ impl BloomIndex {
                         );
                         for val in column.iter() {
                             if let ScalarRef::Variant(v) = val {
-                                if let Ok(str_val) = jsonb::to_str(v) {
-                                    builder.push(ScalarRef::String(str_val.as_str()));
-                                    continue;
-                                }
+                                //if let Ok(str_val) = jsonb::to_str(v) {
+                                //    builder.push(ScalarRef::String(str_val.as_str()));
+                                //    continue;
+                                //}
+                                todo!()
                             }
                             builder.push_default();
                         }

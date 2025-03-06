@@ -572,6 +572,7 @@ impl SystemLogElement for QueryLogElement {
             .next()
             .unwrap()
             .push(Scalar::Boolean(self.has_profiles).as_ref());
+/**
         columns.next().unwrap().push(
             Scalar::Variant(
                 jsonb::Value::from(jsonb::Object::from_iter(
@@ -583,6 +584,7 @@ impl SystemLogElement for QueryLogElement {
             )
             .as_ref(),
         );
+*/
         Ok(())
     }
 }

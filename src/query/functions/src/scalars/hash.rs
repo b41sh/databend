@@ -54,7 +54,7 @@ pub fn register(registry: &mut FunctionRegistry) {
     registry.register_aliases("siphash64", &["siphash"]);
     registry.register_aliases("sha", &["sha1"]);
 
-    register_simple_domain_type_hash::<VariantType>(registry);
+    //register_simple_domain_type_hash::<VariantType>(registry);
     register_simple_domain_type_hash::<StringType>(registry);
     register_simple_domain_type_hash::<DateType>(registry);
     register_simple_domain_type_hash::<TimestampType>(registry);
@@ -376,7 +376,9 @@ impl DFHash for Scalar {
                     DFHash::hash(v, state);
                 }
             }),
-            Scalar::Binary(vals) | Scalar::Variant(vals) => {
+            //Scalar::Binary(vals) | Scalar::Variant(vals) => {
+            Scalar::Variant(vals) => todo!(),
+            Scalar::Binary(vals) => {
                 DFHash::hash(vals.as_slice(), state);
             }
             Scalar::String(vals) => {

@@ -84,10 +84,11 @@ impl RowConverter<BinaryColumn> for CommonRowConverter {
                 Value::Scalar(s) => match s {
                     Scalar::Variant(val) => {
                         // convert variant value to comparable format.
-                        let mut buf = Vec::new();
-                        convert_to_comparable(val, &mut buf);
-                        let s = Scalar::Variant(buf);
-                        ColumnBuilder::repeat(&s.as_ref(), num_rows, &entry.data_type).build()
+                        //let mut buf = Vec::new();
+                        //convert_to_comparable(val, &mut buf);
+                        //let s = Scalar::Variant(buf);
+                        //ColumnBuilder::repeat(&s.as_ref(), num_rows, &entry.data_type).build()
+                        todo!()
                     }
                     _ => ColumnBuilder::repeat(&s.as_ref(), num_rows, &entry.data_type).build(),
                 },
@@ -95,6 +96,7 @@ impl RowConverter<BinaryColumn> for CommonRowConverter {
                     let data_type = c.data_type();
                     match data_type.remove_nullable() {
                         DataType::Variant => {
+                            /**
                             // convert variant value to comparable format.
                             let (_, validity) = c.validity();
                             let col = c.remove_nullable();
@@ -121,6 +123,8 @@ impl RowConverter<BinaryColumn> for CommonRowConverter {
                             } else {
                                 Column::Variant(builder.build())
                             }
+                            */
+                            todo!()
                         }
                         _ => c.clone(),
                     }

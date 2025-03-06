@@ -42,7 +42,7 @@ impl HashMethod for HashMethodSingleBinary {
     fn build_keys_iter<'a>(&self, keys_state: &'a KeysState) -> Result<Self::HashKeyIter<'a>> {
         match keys_state {
             KeysState::Column(Column::Binary(col))
-            | KeysState::Column(Column::Variant(col))
+            //| KeysState::Column(Column::Variant(col))
             | KeysState::Column(Column::Bitmap(col)) => Ok(col.iter()),
             _ => unreachable!(),
         }
@@ -54,7 +54,7 @@ impl HashMethod for HashMethodSingleBinary {
     ) -> Result<Box<dyn KeyAccessor<Key = Self::HashKey>>> {
         match keys_state {
             KeysState::Column(Column::Binary(col))
-            | KeysState::Column(Column::Variant(col))
+            //| KeysState::Column(Column::Variant(col))
             | KeysState::Column(Column::Bitmap(col)) => Ok(Box::new(col)),
             _ => unreachable!(),
         }
@@ -63,7 +63,7 @@ impl HashMethod for HashMethodSingleBinary {
     fn build_keys_hashes(&self, keys_state: &KeysState, hashes: &mut Vec<u64>) {
         match keys_state {
             KeysState::Column(Column::Binary(col))
-            | KeysState::Column(Column::Variant(col))
+            //| KeysState::Column(Column::Variant(col))
             | KeysState::Column(Column::Bitmap(col)) => {
                 hashes.extend(col.iter().map(hash_join_fast_string_hash));
             }

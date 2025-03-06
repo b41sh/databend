@@ -71,9 +71,10 @@ pub fn write<W: Write>(
             let column: Buffer<i128> = unsafe { std::mem::transmute(column) };
             write_primitive::<i128, W>(w, &column, validity, write_options, scratch)
         }
+        Column::Variant(b) => todo!(),
         Column::Binary(b)
         | Column::Bitmap(b)
-        | Column::Variant(b)
+        //| Column::Variant(b)
         | Column::Geography(GeographyColumn(b))
         | Column::Geometry(b) => write_binary::<W>(w, &b, validity, write_options, scratch),
 
