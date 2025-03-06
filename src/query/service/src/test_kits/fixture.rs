@@ -677,9 +677,10 @@ impl TestFixture {
                         val.write_to_vec(&mut builder.data);
                         builder.commit_row();
                     }
-                    let variant_column = Column::Variant(builder.build());
+                    //let variant_column = Column::Variant(builder.build());
 
-                    let columns = vec![id_column, variant_column];
+                    //let columns = vec![id_column, variant_column];
+                    let columns = vec![id_column];
 
                     Ok(DataBlock::new_from_columns(columns))
                 })

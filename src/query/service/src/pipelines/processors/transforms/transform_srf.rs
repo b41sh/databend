@@ -488,6 +488,7 @@ fn push_variant_column(
     if let Column::Nullable(box nullable_column) = column {
         if let Column::Variant(variant_column) = nullable_column.column {
             let validity = nullable_column.validity;
+            /**
             if validity.null_count() == 0 {
                 for idx in 0..repeat_times {
                     builder.push(unsafe { variant_column.index_unchecked(idx) });
@@ -505,6 +506,8 @@ fn push_variant_column(
                 }
                 builder.push_repeat_null(num_rows - repeat_times);
             }
+            */
+            todo!()
         } else {
             unreachable!();
         }

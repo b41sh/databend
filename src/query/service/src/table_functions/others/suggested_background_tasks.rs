@@ -212,6 +212,7 @@ impl SuggestedBackgroundTasksSource {
                 }
             }
         }
+/**
         Ok(DataBlock::new_from_columns(vec![
             StringType::from_data(suggestion_type),
             StringType::from_data(database_name),
@@ -220,6 +221,8 @@ impl SuggestedBackgroundTasksSource {
             BooleanType::from_opt_data(should_do_segment_compact),
             BooleanType::from_opt_data(should_do_compact),
         ]))
+*/
+        todo!()
     }
 }
 
