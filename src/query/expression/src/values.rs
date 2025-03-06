@@ -97,6 +97,40 @@ use crate::with_decimal_type;
 use crate::with_number_mapped_type;
 use crate::with_number_type;
 
+
+#[derive(
+    Debug, Clone, EnumAsInner, PartialEq, Eq, Serialize, Deserialize, BorshSerialize, BorshDeserialize,
+)]
+pub enum VariantScalar {
+    Jsonb(Vec<u8>),
+    Native(Scalar),
+    PathGroup {
+        paths: Vec<Vec<String>>,
+        values: Vec<Scalar>,
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, EnumAsInner)]
+pub enum VariantScalarRef<'a> {
+    Jsonb(&'a [u8]),
+    Native(ScalarRef<'a>),
+    PathGroup {
+        paths: Vec<Vec<&'a str>>,
+        values: Vec<ScalarRef<'a>>,
+    }
+}
+
+#[derive(Clone, EnumAsInner)]
+pub enum VariantColumn {
+    Jsonb(BinaryColumn),
+    Native(Column),
+    PathGroup {
+        paths: Vec<Vec<String>>,
+        values: Vec<Column>,
+    }
+}
+
+
 #[derive(Debug, Clone, PartialEq, EnumAsInner)]
 pub enum Value<T: ValueType> {
     Scalar(T::Scalar),

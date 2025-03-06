@@ -91,6 +91,7 @@ impl Planner {
 
     #[fastrace::trace]
     pub fn parse_sql(&self, sql: &str) -> Result<PlanExtras> {
+        println!("{sql}");
         let settings = self.ctx.get_settings();
         let sql_dialect = settings.get_sql_dialect()?;
         // compile prql to sql for prql dialect

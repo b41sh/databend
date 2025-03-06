@@ -42,7 +42,7 @@ mod other;
 mod string;
 mod string_multi_args;
 mod tuple;
-mod variant;
+//mod variant;
 mod vector;
 
 pub use comparison::ALL_COMP_FUNC_NAMES;
@@ -51,7 +51,7 @@ use databend_functions_scalar_numeric_basic_arithmetic::register_numeric_basic_a
 pub use string::ALL_STRING_FUNC_NAMES;
 
 pub fn register(registry: &mut FunctionRegistry) {
-    variant::register(registry);
+    //variant::register(registry);
     arithmetic::register(registry);
     // register basic arithmetic operation (+ - * / %)
     databend_functions_scalar_decimal::register_decimal_arithmetic(registry);
