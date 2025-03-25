@@ -20,10 +20,12 @@ use std::ops::Range;
 use arrow_array::ArrayRef;
 use databend_common_exception::ErrorCode;
 use databend_common_exception::Result;
+use serde::ser::SerializeSeq;
 
 use crate::schema::DataSchema;
 use crate::types::AnyType;
 use crate::types::DataType;
+use crate::types::NumberScalar;
 use crate::Column;
 use crate::ColumnBuilder;
 use crate::DataField;
@@ -700,4 +702,56 @@ macro_rules! local_block_meta_serde {
             }
         }
     };
+}
+
+impl serde::Serialize for DataBlock {
+    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
+    where S: serde::Serializer {
+        let mut serialize_seq = serializer.serialize_seq(Some(self.num_rows))?;
+
+        for row_index in 0..self.num_rows {
+            // Serialize each row as a sequence
+            serialize_seq.serialize_element(&RowSerializer {
+                data_block: self,
+                row_index,
+            })?;
+        }
+
+        serialize_seq.end()
+    }
+}
+
+struct RowSerializer<'a> {
+    data_block: &'a DataBlock,
+    row_index: usize,
+}
+
+impl<'a> serde::Serialize for RowSerializer<'a> {
+    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
+    where S: serde::Serializer {
+        let mut serialize_seq = serializer.serialize_seq(Some(self.data_block.num_columns()))?;
+        for column in &self.data_block.columns {
+            let value = unsafe { column.value.index_unchecked(self.row_index) };
+
+            match value {
+                ScalarRef::Null => serialize_seq.serialize_element(&())?,
+                ScalarRef::Boolean(v) => serialize_seq.serialize_element(&v)?,
+                ScalarRef::Number(v) => match v {
+                    NumberScalar::UInt8(n) => serialize_seq.serialize_element(&n)?,
+                    NumberScalar::UInt16(n) => serialize_seq.serialize_element(&n)?,
+                    NumberScalar::UInt32(n) => serialize_seq.serialize_element(&n)?,
+                    NumberScalar::UInt64(n) => serialize_seq.serialize_element(&n)?,
+                    NumberScalar::Int8(n) => serialize_seq.serialize_element(&n)?,
+                    NumberScalar::Int16(n) => serialize_seq.serialize_element(&n)?,
+                    NumberScalar::Int32(n) => serialize_seq.serialize_element(&n)?,
+                    NumberScalar::Int64(n) => serialize_seq.serialize_element(&n)?,
+                    NumberScalar::Float32(n) => serialize_seq.serialize_element(&n.0)?,
+                    NumberScalar::Float64(n) => serialize_seq.serialize_element(&n.0)?,
+                },
+                ScalarRef::String(v) => serialize_seq.serialize_element(&v)?,
+                _ => todo!(),
+            }
+        }
+        serialize_seq.end()
+    }
 }
