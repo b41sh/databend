@@ -16,6 +16,7 @@ use std::any::Any;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::ops::Range;
+use serde::de::Visitor;
 
 use arrow_array::ArrayRef;
 use databend_common_exception::ErrorCode;
@@ -35,6 +36,7 @@ use crate::Scalar;
 use crate::ScalarRef;
 use crate::TableSchemaRef;
 use crate::Value;
+use jsonb::RawJsonb;
 
 pub type SendableDataBlockStream =
     std::pin::Pin<Box<dyn futures::stream::Stream<Item = Result<DataBlock>> + Send>>;
@@ -732,7 +734,7 @@ impl<'a> serde::Serialize for RowSerializer<'a> {
         let mut serialize_seq = serializer.serialize_seq(Some(self.data_block.num_columns()))?;
         for column in &self.data_block.columns {
             let value = unsafe { column.value.index_unchecked(self.row_index) };
-
+/**
             match value {
                 ScalarRef::Null => serialize_seq.serialize_element(&())?,
                 ScalarRef::Boolean(v) => serialize_seq.serialize_element(&v)?,
@@ -749,9 +751,61 @@ impl<'a> serde::Serialize for RowSerializer<'a> {
                     NumberScalar::Float64(n) => serialize_seq.serialize_element(&n.0)?,
                 },
                 ScalarRef::String(v) => serialize_seq.serialize_element(&v)?,
-                _ => todo!(),
+                ScalarRef::Variant(v) => serialize_seq.serialize_element(&RawJsonb::new(v))?,
+                _ => serialize_seq.serialize_element(&())?,
+            }
+*/
+            match value {
+                ScalarRef::Null => serialize_seq.serialize_element(&())?,
+                ScalarRef::Boolean(v) => {
+                    if v {
+                        serialize_seq.serialize_element(&"1")?
+                    } else {
+                        serialize_seq.serialize_element(&"0")?
+                    }
+                }
+                ScalarRef::Number(v) => {
+                    let n = format!("{v}");
+                    serialize_seq.serialize_element(&n)?
+                }
+                ScalarRef::String(v) => serialize_seq.serialize_element(&v)?,
+                ScalarRef::Variant(v) => {
+                    let s = RawJsonb::new(v).to_string();
+                    serialize_seq.serialize_element(&s)?
+                }
+                _ => serialize_seq.serialize_element(&())?,
             }
         }
         serialize_seq.end()
     }
 }
+
+impl<'de> serde::Deserialize<'de> for DataBlock {
+    fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct DataBlockVisitor;
+
+        impl<'de> Visitor<'de> for DataBlockVisitor {
+            type Value = DataBlock;
+
+            fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
+                formatter.write_str("a sequence of sequences representing a DataBlock")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> core::result::Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let mut columns: Vec<BlockEntry> = Vec::new();
+                let mut num_rows = 0;
+
+                Ok(DataBlock::empty_with_rows(0))
+            }
+        }
+
+        deserializer.deserialize_seq(DataBlockVisitor)
+    }
+}
+

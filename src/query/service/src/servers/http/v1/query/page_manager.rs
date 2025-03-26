@@ -16,6 +16,8 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Instant;
 
+use serde::Serialize;
+
 use databend_common_base::base::tokio;
 use databend_common_exception::ErrorCode;
 use databend_common_exception::Result;
@@ -37,7 +39,7 @@ pub enum Wait {
 
 #[derive(Clone)]
 pub struct Page {
-    pub data: StringBlock,
+    pub data: DataBlock,
 }
 
 pub struct ResponseData {
@@ -53,6 +55,7 @@ pub struct PageManager {
     block_end: bool,
     last_page: Option<Page>,
     row_buffer: VecDeque<Vec<Option<String>>>,
+    block_buffer: VecDeque<DataBlock>,
     block_receiver: SizedChannelReceiver<DataBlock>,
     format_settings: Arc<RwLock<Option<FormatSettings>>>,
 }
@@ -70,6 +73,7 @@ impl PageManager {
             end: false,
             block_end: false,
             row_buffer: Default::default(),
+            block_buffer: VecDeque::new(),
             block_receiver,
             max_rows_per_page,
             format_settings,
@@ -89,7 +93,7 @@ impl PageManager {
         let next_no = self.total_pages;
         if page_no == next_no {
             if !self.end {
-                let (block, end) = self.collect_new_page(tp).await?;
+                let (block, end) = self.collect_new_page2(tp).await?;
                 let num_row = block.num_rows();
                 self.total_rows += num_row;
                 let page = Page { data: block };
@@ -104,7 +108,8 @@ impl PageManager {
                 // but the response may be lost and client will retry,
                 // we simply return an empty page.
                 let page = Page {
-                    data: StringBlock::default(),
+                    //data: StringBlock::default(),
+                    data: DataBlock::empty_with_rows(0),
                 };
                 Ok(page)
             }
@@ -129,6 +134,24 @@ impl PageManager {
         remain_rows: &mut usize,
         remain_size: &mut usize,
     ) -> Result<()> {
+        println!("\n\n---block={:?}", block);
+
+        let mut buf = Vec::with_capacity(block.memory_size());
+        let formatter = serde_json::ser::CompactFormatter {};
+        let mut ser = serde_json::Serializer::with_formatter(&mut buf, formatter);
+        match block.serialize(&mut ser) {
+            Ok(_) => {
+                let ss = String::from_utf8(buf).unwrap();
+                println!("ss={:?}", ss);
+            }
+            Err(e) => {
+                println!("err={:?}", e);
+            }
+        }
+        *remain_rows = 0;
+        *remain_size = 0;
+
+/**
         let format_settings = {
             let guard = self.format_settings.read();
             guard.as_ref().unwrap().clone()
@@ -150,8 +173,66 @@ impl PageManager {
         }
         res.extend_from_slice(&rows[..i]);
         self.row_buffer = rows[i..].iter().cloned().collect();
+*/
+        self.block_buffer.push_back(block);
         Ok(())
     }
+
+    #[async_backtrace::framed]
+    async fn collect_new_page2(&mut self, tp: &Wait) -> Result<(DataBlock, bool)> {
+        let mut res: Vec<Vec<Option<String>>> = Vec::with_capacity(self.max_rows_per_page);
+        let mut remain_size = 10;
+        let mut remain_rows = 10;
+
+        while remain_rows > 0 && remain_size > 0 {
+            match tp {
+                Wait::Async => match self.block_receiver.try_recv() {
+                    Some(block) => {
+                        self.append_block(&mut res, block, &mut remain_rows, &mut remain_size)?
+                    }
+                    None => break,
+                },
+                Wait::Deadline(t) => {
+                    let now = Instant::now();
+                    let d = *t - now;
+                    if d.is_zero() {
+                        // timeout() will return Ok if the future completes immediately
+                        break;
+                    }
+                    match tokio::time::timeout(d, self.block_receiver.recv()).await {
+                        Ok(Some(block)) => {
+                            debug!("http query got new block with {} rows", block.num_rows());
+                            self.append_block(&mut res, block, &mut remain_rows, &mut remain_size)?;
+                        }
+                        Ok(None) => {
+                            info!("http query reach end of blocks");
+                            break;
+                        }
+                        Err(_) => {
+                            debug!("http query long pulling timeout");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        //let block = if let Some(block) = self.block_buf.pop_front() {
+        let block = if let Some(block) = self.block_buffer.pop_front() {
+            block
+        } else {
+            DataBlock::empty_with_rows(0)
+        };
+
+        // try to report 'no more data' earlier to client to avoid unnecessary http call
+        if !self.block_end {
+            self.block_end = self.block_receiver.is_empty();
+        }
+        let end = self.block_end && self.block_buffer.is_empty();
+        Ok((block, end))
+    }
+
+
 
     #[async_backtrace::framed]
     async fn collect_new_page(&mut self, tp: &Wait) -> Result<(StringBlock, bool)> {

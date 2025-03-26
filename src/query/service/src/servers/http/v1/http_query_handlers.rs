@@ -24,6 +24,7 @@ use databend_common_base::version::DATABEND_SEMVER;
 use databend_common_config::GlobalConfig;
 use databend_common_exception::ErrorCode;
 use databend_common_expression::DataSchemaRef;
+use databend_common_expression::DataBlock;
 use databend_common_metrics::http::metrics_incr_http_response_errors_count;
 use fastrace::func_path;
 use fastrace::prelude::*;
@@ -143,7 +144,8 @@ pub struct QueryResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub has_result_set: Option<bool>,
     pub schema: Vec<QueryResponseField>,
-    pub data: Vec<Vec<Option<String>>>,
+    //pub data: Vec<Vec<Option<String>>>,
+    pub data: DataBlock,
     pub affect: Option<QueryAffect>,
     pub result_timeout_secs: Option<u64>,
 
@@ -164,11 +166,11 @@ impl QueryResponse {
     ) -> impl IntoResponse {
         let state = r.state.clone();
         let (data, next_uri) = if is_final {
-            (StringBlock::empty(), None)
+            (DataBlock::empty_with_rows(0), None)
         } else {
             match state.state {
                 ExecuteStateKind::Running | ExecuteStateKind::Starting => match r.data {
-                    None => (StringBlock::empty(), Some(make_state_uri(&id))),
+                    None => (DataBlock::empty_with_rows(0), Some(make_state_uri(&id))),
                     Some(d) => {
                         let uri = match d.next_page_no {
                             Some(n) => Some(make_page_uri(&id, n)),
@@ -177,9 +179,9 @@ impl QueryResponse {
                         (d.page.data, uri)
                     }
                 },
-                ExecuteStateKind::Failed => (StringBlock::empty(), Some(make_final_uri(&id))),
+                ExecuteStateKind::Failed => (DataBlock::empty_with_rows(0), Some(make_final_uri(&id))),
                 ExecuteStateKind::Succeeded => match r.data {
-                    None => (StringBlock::empty(), Some(make_final_uri(&id))),
+                    None => (DataBlock::empty_with_rows(0), Some(make_final_uri(&id))),
                     Some(d) => {
                         let uri = match d.next_page_no {
                             Some(n) => Some(make_page_uri(&id, n)),
@@ -200,7 +202,8 @@ impl QueryResponse {
             progresses: state.progresses.clone(),
             running_time_ms: state.running_time_ms,
         };
-        let rows = data.data.len();
+        //let rows = data.data.len();
+        let rows = data.num_rows();
 
         Json(QueryResponse {
             data: data.into(),

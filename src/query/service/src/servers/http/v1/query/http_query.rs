@@ -21,6 +21,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
 
+use databend_common_expression::DataBlock;
 use databend_common_base::base::short_sql;
 use databend_common_base::base::tokio::sync::Mutex as TokioMutex;
 use databend_common_base::base::tokio::sync::RwLock;
@@ -109,7 +110,7 @@ impl HttpQueryRequest {
             stats: QueryStats::default(),
             state: ExecuteStateKind::Failed,
             affect: None,
-            data: vec![],
+            data: DataBlock::empty_with_rows(0),
             schema: vec![],
             session_id: None,
             warnings: vec![],
