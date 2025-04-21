@@ -398,6 +398,10 @@ impl BloomIndex {
         }
     }
 
+    pub fn build_filter_ngram_column_name(_version: u64, field: &TableField, ngram_size: u32) -> Result<String> {
+        Ok(format!("Ngram({}_{})", field.column_id(), ngram_size))
+    }
+
     fn find(
         &self,
         filter_column: &str,
@@ -453,6 +457,7 @@ impl BloomIndex {
 pub struct BloomIndexBuilder {
     func_ctx: FunctionContext,
     columns: Vec<ColumnXor8Builder>,
+    ngram_columns: Vec<ColumnXor8Builder>,
 }
 
 struct ColumnXor8Builder {
@@ -474,7 +479,18 @@ impl BloomIndexBuilder {
                 builder: Xor8Builder::create(),
             })
             .collect();
-        Self { func_ctx, columns }
+
+        let ngram_columns = bloom_columns_map
+            .iter()
+            .filter(|(_, field)| field.data_type.remove_nullable() == TableDataType::String)
+            .map(|(&index, field)| ColumnXor8Builder {
+                index,
+                field: field.clone(),
+                builder: Xor8Builder::create(),
+            })
+            .collect();
+
+        Self { func_ctx, columns, ngram_columns }
     }
 
     pub fn add_block(&mut self, block: &DataBlock) -> Result<()> {
@@ -579,6 +595,40 @@ impl BloomIndexBuilder {
                 bloom_index_column.builder.add_digests(column.deref());
             }
         }
+
+        for (index, ngram_bloom_index_column) in self.ngram_columns.iter_mut().enumerate() {
+            let mut builder = ColumnBuilder::with_capacity(&DataType::String, 0);
+            let size = 3;
+            match &block.get_by_offset(ngram_bloom_index_column.index).value {
+                Value::Scalar(s) => {
+                    if s.len() >= size {
+                        for i in 0..s.len() - size {
+                            let v = unsafe {s.slice_unchecked(i, i + size)};
+                            builder.push(ScalarRef::String(v));
+                        }
+                    }
+                }
+                Value::Column(c) => {
+                    for v in c.iter() {
+                        if let ScalarRef::String(s) = v {
+                            if s.len() >= size {
+                                for i in 0..s.len() - size {
+                                    let v = unsafe {s.slice_unchecked(i, i + size)};
+                                    builder.push(ScalarRef::String(v));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            let ngram_column = builder.build();
+
+            let (column, _) =
+                BloomIndex::calculate_nullable_column_digest(&self.func_ctx, &ngram_column, &data_type)?;
+
+            ngram_bloom_index_column.builder.add_digests(column.deref());
+        }
+
         for k in keys_to_remove {
             self.columns.remove(k);
         }
@@ -587,8 +637,8 @@ impl BloomIndexBuilder {
 
     pub fn finalize(mut self) -> Result<Option<BloomIndex>> {
         let mut column_distinct_count = HashMap::with_capacity(self.columns.len());
-        let mut filters = Vec::with_capacity(self.columns.len());
-        let mut filter_fields = Vec::with_capacity(self.columns.len());
+        let mut filters = Vec::with_capacity(self.columns.len() + self.ngram_columns.len());
+        let mut filter_fields = Vec::with_capacity(self.columns.len() + self.ngram_columns.len());
         for column in self.columns.iter_mut() {
             let filter = column.builder.build()?;
             if let Some(len) = filter.len() {
@@ -606,6 +656,14 @@ impl BloomIndexBuilder {
             }
             let filter_name =
                 BloomIndex::build_filter_column_name(BlockFilter::VERSION, &column.field)?;
+            filter_fields.push(TableField::new(&filter_name, TableDataType::Binary));
+            filters.push(Arc::new(filter));
+        }
+        for column in self.ngram_columns.iter_mut() {
+            let filter = column.builder.build()?;
+
+            let filter_name =
+                BloomIndex::build_filter_ngram_column_name(BlockFilter::VERSION, &column.field, 3)?;
             filter_fields.push(TableField::new(&filter_name, TableDataType::Binary));
             filters.push(Arc::new(filter));
         }
