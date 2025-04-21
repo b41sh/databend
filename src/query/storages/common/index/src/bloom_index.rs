@@ -600,20 +600,24 @@ impl BloomIndexBuilder {
             let mut builder = ColumnBuilder::with_capacity(&DataType::String, 0);
             let size = 3;
             match &block.get_by_offset(ngram_bloom_index_column.index).value {
-                Value::Scalar(s) => {
-                    if s.len() >= size {
-                        for i in 0..s.len() - size {
-                            let v = unsafe {s.slice_unchecked(i, i + size)};
-                            builder.push(ScalarRef::String(v));
+                Value::Scalar(v) => {
+                    if let ScalarRef::String(s) = v.as_ref() {
+                        if s.len() >= size {
+                            for i in 0..=s.len() - size {
+                                let v = unsafe {s.slice_unchecked(i, i + size)};
+                                builder.push(ScalarRef::String(v));
+                            }
                         }
                     }
                 }
                 Value::Column(c) => {
                     for v in c.iter() {
                         if let ScalarRef::String(s) = v {
+                            println!("s={:?}", s);
                             if s.len() >= size {
-                                for i in 0..s.len() - size {
+                                for i in 0..=s.len() - size {
                                     let v = unsafe {s.slice_unchecked(i, i + size)};
+                                    println!("v={:?}", v);
                                     builder.push(ScalarRef::String(v));
                                 }
                             }
@@ -624,7 +628,7 @@ impl BloomIndexBuilder {
             let ngram_column = builder.build();
 
             let (column, _) =
-                BloomIndex::calculate_nullable_column_digest(&self.func_ctx, &ngram_column, &data_type)?;
+                BloomIndex::calculate_nullable_column_digest(&self.func_ctx, &ngram_column, &DataType::String)?;
 
             ngram_bloom_index_column.builder.add_digests(column.deref());
         }
@@ -672,6 +676,8 @@ impl BloomIndexBuilder {
             return Ok(None);
         }
         let filter_schema = Arc::new(TableSchema::new(filter_fields));
+        println!("filter_shcema={:?}", filter_schema);
+
         Ok(Some(BloomIndex {
             func_ctx: self.func_ctx,
             version: BlockFilter::VERSION,
