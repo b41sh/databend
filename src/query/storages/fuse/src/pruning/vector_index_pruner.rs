@@ -147,6 +147,7 @@ impl VectorIndexPruner {
         let pruning_runtime = &self.pruning_ctx.pruning_runtime;
         let pruning_semaphore = &self.pruning_ctx.pruning_semaphore;
 
+        let start = Instant::now();
         // Perf.
         {
             let block_size = metas.iter().map(|(_, m)| m.block_size).sum();
@@ -202,8 +203,6 @@ impl VectorIndexPruner {
                 })
         });
 
-        let start = Instant::now();
-
         let join_handlers = pruning_runtime
             .try_spawn_batch_with_owned_semaphore(pruning_semaphore.clone(), pruning_tasks)
             .await?;
@@ -246,6 +245,7 @@ impl VectorIndexPruner {
             pruned_metas.push((block_meta_index, vector_prune_result.block_meta));
         }
 
+        let elapsed = start.elapsed().as_millis() as u64;
         // Perf.
         {
             let block_size = pruned_metas.iter().map(|(_, m)| m.block_size).sum();
@@ -254,8 +254,11 @@ impl VectorIndexPruner {
             self.pruning_ctx
                 .pruning_stats
                 .set_blocks_vector_index_pruning_after(pruned_metas.len() as u64);
-            metrics_inc_block_vector_index_pruning_milliseconds(start.elapsed().as_millis() as u64);
+            metrics_inc_block_vector_index_pruning_milliseconds(elapsed);
         }
+        info!(
+            "[FUSE-PRUNER] Vector index topn prune elapsed: {elapsed}"
+        );
 
         Ok(pruned_metas)
     }
@@ -269,6 +272,7 @@ impl VectorIndexPruner {
         let pruning_runtime = &self.pruning_ctx.pruning_runtime;
         let pruning_semaphore = &self.pruning_ctx.pruning_semaphore;
 
+        let start = Instant::now();
         let mut block_meta_indexes = metas.into_iter().enumerate();
         let pruning_tasks = std::iter::from_fn(move || {
             block_meta_indexes
@@ -314,8 +318,6 @@ impl VectorIndexPruner {
                 })
         });
 
-        let start = Instant::now();
-
         let join_handlers = pruning_runtime
             .try_spawn_batch_with_owned_semaphore(pruning_semaphore.clone(), pruning_tasks)
             .await?;
@@ -345,10 +347,14 @@ impl VectorIndexPruner {
             new_metas.push((block_meta_index, vector_prune_result.block_meta));
         }
 
+        let elapsed = start.elapsed().as_millis() as u64;
         // Perf.
         {
-            metrics_inc_block_vector_index_pruning_milliseconds(start.elapsed().as_millis() as u64);
+            metrics_inc_block_vector_index_pruning_milliseconds(elapsed);
         }
+        info!(
+            "[FUSE-PRUNER] Vector index prune elapsed: {elapsed}"
+        );
 
         Ok(new_metas)
     }

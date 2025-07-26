@@ -28,6 +28,7 @@ use databend_storages_common_table_meta::meta::BlockMeta;
 
 use crate::pruning::VectorIndexPruner;
 use crate::pruning_pipeline::block_prune_result_meta::BlockPruneResult;
+use log::info;
 
 // VectorIndexPruneTransform is a processor that will accumulate the block meta and not push to
 // downstream until all data is received and pruned.
@@ -74,7 +75,13 @@ impl VectorIndexPruneTransform {
     }
 
     async fn do_vector_index_prune(&self) -> Result<Option<DataBlock>> {
+        let start = Instant::now();
         let pruned = self.vector_index_pruner.prune(self.metas.clone()).await?;
+        let elapsed = start.elapsed().as_millis() as u64;
+        info!(
+            "[PROCESSOR-ASYNC-TASK] Vector index prune transform elapsed: {elapsed}"
+        );
+
         if pruned.is_empty() {
             Ok(None)
         } else {
