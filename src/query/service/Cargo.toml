@@ -158,7 +158,7 @@ rustls = { workspace = true }
 rustls-pemfile = { workspace = true }
 rustls-pki-types = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
+serde_json = { workspace = true, features = ["preserve_order", "unbounded_depth"] }
 serde_stacker = { workspace = true }
 serde_urlencoded = { workspace = true }
 sha2 = { workspace = true }
