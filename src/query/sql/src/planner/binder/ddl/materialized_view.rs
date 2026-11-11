@@ -54,7 +54,6 @@ use databend_common_meta_app::schema::TableIdent;
 use databend_common_meta_app::schema::TableInfo;
 use databend_common_meta_app::schema::UpsertTableOptionReq;
 use databend_common_meta_app::schema::is_materialized_view_engine;
-use databend_enterprise_materialized_view::get_materialized_view_handler;
 use databend_meta_client::types::MatchSeq;
 use databend_storages_common_table_meta::table::OPT_KEY_AGGRESSIVE_RECLUSTER;
 use databend_storages_common_table_meta::table::OPT_KEY_CHANGE_TRACKING;
@@ -642,12 +641,6 @@ impl Binder {
                     ),
                 ]),
             });
-        let source_catalog = self.ctx.get_catalog(&source_catalog_name).await?;
-        let expected_source_generation = get_materialized_view_handler()
-            .get_mv_current_source_generation(source_catalog.as_ref(), &tenant, source_table_id)
-            .await?
-            .unwrap_or(0);
-
         // The source option update is intentionally deferred to CREATE so publishing the MV and
         // enabling CHANGE_TRACKING remain atomic. Bind the physical definition against an exact,
         // Binder-local clone that reflects that pending option; otherwise change$row_id would be
@@ -839,7 +832,6 @@ impl Binder {
             mv_definition,
             source_table_option,
             query_plan: Box::new(original_query_plan),
-            expected_source_generation,
         };
 
         Ok(Plan::CreateMaterializedView(Box::new(plan)))

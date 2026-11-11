@@ -398,10 +398,10 @@ impl TableRefVisitor {
 
                         let mut materialized_views = snapshot.materialized_views;
                         materialized_views.sort_by_key(|mv| mv.mv_id);
-                        let mut fingerprint = format!(
-                            "source:{}:binding_generation:{}",
-                            source_table_id, snapshot.generation
-                        );
+                        // The valid MVs of the source, each with its definition and table
+                        // sequence: a source DDL that invalidates an MV drops it from the list,
+                        // a refresh advances its table sequence.
+                        let mut fingerprint = format!("source:{}", source_table_id);
                         for mv in materialized_views {
                             let mv_options = &mv.table_meta.data.options;
                             fingerprint.push_str(&format!(

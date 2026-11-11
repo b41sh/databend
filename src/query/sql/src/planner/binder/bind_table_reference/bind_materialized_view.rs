@@ -639,19 +639,25 @@ impl Binder {
             .meta
             .materialized_view_source_table_id()
             .map_err(ErrorCode::from)?;
+        if let Some(reason) = table_meta
+            .get_table_info()
+            .meta
+            .materialized_view_invalid_reason()
+        {
+            return Err(ErrorCode::InvalidMaterializedView(format!(
+                "materialized view {} is invalid: {}; recreate the materialized view",
+                table_meta.name(),
+                reason
+            )));
+        }
         let mv_definition = databend_common_base::runtime::block_on(async {
             let catalog = self.ctx.get_catalog(catalog_name).await?;
             get_materialized_view_handler()
-                .get_active_mv_definition(
-                    catalog.as_ref(),
-                    &tenant,
-                    source_table_id,
-                    table_meta.get_id(),
-                )
+                .get_mv_definition(catalog.as_ref(), &tenant, table_meta.get_id())
                 .await?
                 .ok_or_else(|| {
                     ErrorCode::InvalidMaterializedView(format!(
-                        "materialized view {} has an invalid source binding; recreate the materialized view",
+                        "materialized view {} has no definition; recreate the materialized view",
                         table_meta.name()
                     ))
                 })

@@ -18,62 +18,37 @@
 //! __fd_table_by_id/<mv_id>
 //!     -> TableMeta
 //!        options["materialized_view_source_table_id"] = <source_id>
+//!        options["materialized_view_source_database_name"] = <bound db name>
+//!        options["materialized_view_source_table_name"] = <bound table name>
+//!        options["materialized_view_invalid_reason"] = <reason>, while invalid
 //! __fd_materialized_view_definition/<tenant>/<mv_id>
-//!     -> MVDefinition
+//!     -> MVDefinition { query, logical_schema }
 //! __fd_materialized_view_by_source/<tenant>/<source_id>/<mv_id>
-//!     -> MVSourceBinding { bound_source_generation }
-//! __fd_materialized_view_source_binding_version/<tenant>/<source_id>
-//!     -> MVSourceBindingVersion { current_source_generation }
+//!     -> MVSourceBinding (no state)
 //! ```
 //!
-//! `SourceTableMVIdent` cannot use `EmptyProto`: key existence would express
-//! both dependency and validity, forcing source DDL to delete every edge and
-//! losing invalid dependencies needed by management and lifecycle cleanup.
-//! Instead, it is a durable dependency edge whose value records the generation
-//! to which the MV is bound. Its binding is valid when
-//! `bound_source_generation == current_source_generation`. Source DDL defined
-//! to invalidate existing MVs can therefore do so in O(1) by advancing only
-//! the source generation. DDL that preserves existing bindings does not touch
-//! this metadata.
+//! Whether an MV is valid is stored explicitly in its `TableMeta` options.
+//! Source DDL that breaks the binding finds the dependent MVs through the
+//! `SourceTableMVIdent` edges and writes the reason into each MV `TableMeta` in
+//! the DDL's own transaction, with an exact-sequence condition on each. A
+//! concurrent REFRESH commit of the same MV fails that condition; the DDL
+//! retries. Readers decide validity from the `TableMeta` they read anyway; no
+//! other record is compared. The edge is kept after invalidation so
+//! management, restore, and GC can still find the MV.
 //!
-//! The version value cannot be `EmptyProto` with its KV sequence used as the
-//! generation. A missing key is observed as generation 0, but the first put
-//! receives a nonzero KV sequence, so an edge atomically bound to 0 would be
-//! stale immediately. Storing the semantic generation explicitly lets the
-//! first CREATE publish version 0 and its edge in one transaction; the KV
-//! sequence remains an internal CAS token.
-//!
-//! The APIs expose the dependency views explicitly:
-//!
-//! - [`MaterializedViewApi::list_mvs_by_source_table_id`] returns every edge,
-//!   including invalid ones, for management and lifecycle operations.
-//! - [`MaterializedViewApi::get_mv_definition_snapshot`] reads one definition,
-//!   its exact dependency edge, and the current source generation in one
-//!   read-only transaction so query can decide whether the definition is valid.
-//! - [`MaterializedViewApi::get_mv_source_binding_snapshot`] returns all active
-//!   MVs for source-driven query rewrite when the source generation stays stable
-//!   throughout metadata collection.
-//!
-//! `CreateMaterializedViewMeta::expected_source_generation` provides the same
-//! fence for CREATE. `create_table` compares it with the current value and uses
-//! the version record's KV sequence only as an internal CAS token. A missing
-//! record means generation 0 and is initialized atomically with the first MV.
-//! The record remains until source GC to prevent generation ABA.
-//!
-//! Invalidating source-schema updates advance the source generation atomically
-//! with the source `TableMeta` update.
+//! Lifecycle reasons are reversible: UNDROP and a RENAME back to the database
+//! and table name the MV was bound to clear them (`restore_mvs_of_source`). A
+//! schema change is final and overrides a lifecycle reason; a lifecycle reason
+//! never overrides a schema change.
 //!
 //! The metadata operations are:
 //!
 //! ```text
 //! CREATE MV txn:
-//!     assert current_source_generation == expected_source_generation
-//!     initialize MVSourceBindingVersion { current_source_generation: 0 }
-//!         if the version record is missing
+//!     assert the source TableMeta exists and is not dropped
 //!     put TableId(new_mv_id) = new_mv_table_meta
 //!     put MVDefinitionIdent(tenant, new_mv_id) = definition
-//!     put SourceTableMVIdent(tenant, source_id, new_mv_id) =
-//!         MVSourceBinding { bound_source_generation: expected_source_generation }
+//!     put SourceTableMVIdent(tenant, source_id, new_mv_id)
 //!
 //! REPLACE MV txn:
 //!     mark TableId(old_mv_id) dropped
@@ -87,31 +62,37 @@
 //!     delete SourceTableMVIdent(tenant, source_id, mv_id)
 //!
 //! RENAME/DROP/MODIFY COLUMN ON SOURCE txn:
-//!     read MVSourceBindingVersion (missing means generation 0)
-//!     put current_source_generation + 1
 //!     update the source TableMeta using its exact seq as CAS
-//!     keep SourceTableMVIdent(tenant, source_id, *)
-//!     the source TableMeta CAS serializes generation increments
+//!     mark_mvs_invalid(source_id, SourceSchemaChanged)
 //!
 //! ADD COLUMN ON SOURCE txn:
 //!     update the source TableMeta
-//!     no MV binding metadata changes
-//!     keep SourceTableMVIdent(tenant, source_id, *)
+//!     no MV metadata changes
 //!
 //! RENAME SOURCE TABLE txn:
 //!     update the source table-name mappings
-//!     no MV binding metadata changes
-//!     keep SourceTableMVIdent(tenant, source_id, *)
+//!     new name == bound name: restore_mvs_of_source(source_id)
+//!     otherwise:              mark_mvs_invalid(source_id, SourceRenamed)
+//!
+//! RENAME DATABASE txn:
+//!     update the database-name mappings
+//!     for each table of the database, as RENAME SOURCE TABLE with SourceDatabaseRenamed
 //!
 //! DROP SOURCE TABLE txn:
 //!     update the ordinary source-table lifecycle metadata
-//!     no MV binding metadata changes
-//!     keep SourceTableMVIdent(tenant, source_id, *)
+//!     mark_mvs_invalid(source_id, SourceDropped)
 //!
 //! UNDROP SOURCE TABLE txn:
 //!     update the ordinary source-table lifecycle metadata
-//!     no MV binding metadata changes
-//!     keep SourceTableMVIdent(tenant, source_id, *)
+//!     restore_mvs_of_source(source_id)
+//!
+//! DROP DATABASE txn:
+//!     mark the DatabaseMeta dropped
+//!     for each table of the database: mark_mvs_invalid(table_id, SourceDatabaseDropped)
+//!
+//! UNDROP DATABASE txn:
+//!     restore the DatabaseMeta
+//!     for each active table of the database: restore_mvs_of_source(table_id)
 //!
 //! GC MV txn:
 //!     delete MVDefinitionIdent(tenant, mv_id)
@@ -120,7 +101,6 @@
 //!
 //! GC source txn:
 //!     delete SourceTableMVIdent(tenant, source_id, *)
-//!     delete MVSourceBindingVersionIdent(tenant, source_id)
 //! ```
 
 use std::collections::BTreeSet;
@@ -133,11 +113,13 @@ use databend_common_meta_app::schema::ListedMVSource;
 use databend_common_meta_app::schema::ListedMaterializedView;
 use databend_common_meta_app::schema::MVDefinition;
 use databend_common_meta_app::schema::MVDefinitionIdent;
-use databend_common_meta_app::schema::MVDefinitionSnapshot;
 use databend_common_meta_app::schema::MVInfo;
+use databend_common_meta_app::schema::MVInvalidReason;
 use databend_common_meta_app::schema::MVSourceBindingSnapshot;
-use databend_common_meta_app::schema::MVSourceBindingVersionIdent;
 use databend_common_meta_app::schema::MaterializedViewListFilter;
+use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON;
+use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME;
+use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME;
 use databend_common_meta_app::schema::SourceTableMV;
 use databend_common_meta_app::schema::SourceTableMVIdent;
 use databend_common_meta_app::schema::TableId;
@@ -154,17 +136,17 @@ use databend_meta_client::kvapi::StructKey;
 use databend_meta_client::types::MetaError;
 use databend_meta_client::types::SeqV;
 use databend_meta_client::types::TxnGetResponse;
-use databend_meta_client::types::TxnOpResponse;
 use databend_meta_client::types::TxnRequest;
 use databend_meta_client::types::protobuf as pb;
+use log::info;
 use log::warn;
 
 use crate::DEFAULT_MGET_SIZE;
 use crate::deserialize_struct_get_response;
 use crate::error_util::invalid_reply;
 use crate::kv_pb_api::KVPbApi;
-use crate::send_txn;
-use crate::txn_get;
+use crate::txn_cond_eq_seq;
+use crate::txn_put_pb;
 
 /// APIs for metadata that belongs exclusively to materialized views.
 #[async_trait::async_trait]
@@ -184,125 +166,7 @@ where
         self.get_pb(&ident).await
     }
 
-    /// Get one MV definition and both source generations at one transaction point.
-    ///
-    /// This method returns raw metadata and does not decide whether the definition is valid.
-    /// Query-facing catalog implementations compare the immutable bound generation with the
-    /// current source generation. A missing current generation is always invalid.
-    #[logcall::logcall]
-    #[fastrace::trace]
-    async fn get_mv_definition_snapshot(
-        &self,
-        tenant: &Tenant,
-        source_table_id: u64,
-        mv_table_id: u64,
-    ) -> Result<MVDefinitionSnapshot, MetaError> {
-        let definition_ident = MVDefinitionIdent::new(tenant, mv_table_id);
-        let binding_ident = SourceTableMVIdent::new_generic(
-            tenant,
-            SourceTableMV::new(source_table_id, mv_table_id),
-        );
-        let generation_ident = MVSourceBindingVersionIdent::new(tenant, source_table_id);
-
-        let txn = TxnRequest::new(vec![], vec![
-            txn_get(&definition_ident),
-            txn_get(&binding_ident),
-            txn_get(&generation_ident),
-        ]);
-        let (success, responses) = send_txn(self, txn).await?;
-        if !success {
-            return Err(invalid_reply(
-                "unconditional read-only transaction returned an unsuccessful result",
-            )
-            .into());
-        }
-
-        let [definition_response, binding_response, generation_response]: [TxnOpResponse; 3] =
-            responses.try_into().map_err(|responses: Vec<_>| {
-                invalid_reply(format!(
-                    "materialized-view definition snapshot expected 3 responses, got {}",
-                    responses.len()
-                ))
-            })?;
-        let (Some(definition_response), Some(binding_response), Some(generation_response)) = (
-            definition_response.into_get(),
-            binding_response.into_get(),
-            generation_response.into_get(),
-        ) else {
-            return Err(invalid_reply(
-                "materialized-view definition snapshot contained a non-get response",
-            )
-            .into());
-        };
-        if definition_response.key != definition_ident.to_string_key()
-            || binding_response.key != binding_ident.to_string_key()
-            || generation_response.key != generation_ident.to_string_key()
-        {
-            return Err(invalid_reply(
-                "materialized-view definition snapshot response key mismatch",
-            )
-            .into());
-        }
-
-        let (_, definition) =
-            deserialize_struct_get_response::<MVDefinitionIdent>(definition_response)?;
-        let (_, binding) = deserialize_struct_get_response::<SourceTableMVIdent>(binding_response)?;
-        let (_, generation) =
-            deserialize_struct_get_response::<MVSourceBindingVersionIdent>(generation_response)?;
-
-        Ok(MVDefinitionSnapshot {
-            definition,
-            bound_source_generation: binding.map(|binding| binding.bound_source_generation),
-            current_source_generation: generation
-                .map(|generation| generation.current_source_generation),
-        })
-    }
-
-    /// Get the current semantic MV-binding generation of one source table.
-    ///
-    /// Return `None` if the generation record has not been created.
-    #[logcall::logcall]
-    #[fastrace::trace]
-    async fn get_mv_current_source_generation(
-        &self,
-        tenant: &Tenant,
-        source_table_id: u64,
-    ) -> Result<Option<u64>, MetaError> {
-        let generation_ident = MVSourceBindingVersionIdent::new(tenant, source_table_id);
-        Ok(self
-            .get_pb(&generation_ident)
-            .await?
-            .map(|record| record.data.current_source_generation))
-    }
-
-    /// Get the immutable source generation stored on one exact MV dependency edge.
-    ///
-    /// This is a single point read. It does not read the source's current
-    /// generation or decide whether the binding is active; callers compare the
-    /// returned value with the current generation for their operation.
-    #[logcall::logcall]
-    #[fastrace::trace]
-    async fn get_mv_bound_source_generation(
-        &self,
-        tenant: &Tenant,
-        source_table_id: u64,
-        mv_table_id: u64,
-    ) -> Result<Option<u64>, MetaError> {
-        let ident = SourceTableMVIdent::new_generic(
-            tenant,
-            SourceTableMV::new(source_table_id, mv_table_id),
-        );
-        Ok(self
-            .get_pb(&ident)
-            .await?
-            .map(|binding| binding.data.bound_source_generation))
-    }
-
-    /// List MVs valid at the source generation observed by this call.
-    ///
-    /// This source-wide API is intended for discovering query-rewrite
-    /// candidates. A generation change while collecting the bindings and MV
-    /// metadata produces an empty candidate list at the final generation.
+    /// List the valid MVs of a source table, for query rewrite.
     #[logcall::logcall]
     #[fastrace::trace]
     async fn get_mv_source_binding_snapshot(
@@ -310,37 +174,10 @@ where
         tenant: &Tenant,
         source_table_id: u64,
     ) -> Result<MVSourceBindingSnapshot, MetaError> {
-        let Some(generation_before) = self
-            .get_mv_current_source_generation(tenant, source_table_id)
-            .await?
-        else {
-            return Ok(MVSourceBindingSnapshot {
-                generation: 0,
-                materialized_views: vec![],
-            });
-        };
-        let mvs = list_mvs_by_source_table_id_impl(
-            self,
-            tenant,
-            source_table_id,
-            Some(generation_before),
-        )
-        .await?;
-        let generation_after = self
-            .get_mv_current_source_generation(tenant, source_table_id)
-            .await?;
-        match generation_after {
-            Some(generation_after) if generation_after == generation_before => {
-                Ok(MVSourceBindingSnapshot {
-                    generation: generation_after,
-                    materialized_views: mvs,
-                })
-            }
-            _ => Ok(MVSourceBindingSnapshot {
-                generation: 0,
-                materialized_views: vec![],
-            }),
-        }
+        let mut materialized_views =
+            list_mvs_by_source_table_id_impl(self, tenant, source_table_id).await?;
+        materialized_views.retain(|mv| mv.table_meta.data.is_valid_materialized_view());
+        Ok(MVSourceBindingSnapshot { materialized_views })
     }
 
     /// List every MV that depends on a source table, including invalid MVs.
@@ -353,7 +190,7 @@ where
         tenant: &Tenant,
         source_table_id: u64,
     ) -> Result<Vec<MVInfo>, MetaError> {
-        list_mvs_by_source_table_id_impl(self, tenant, source_table_id, None).await
+        list_mvs_by_source_table_id_impl(self, tenant, source_table_id).await
     }
 
     /// List materialized views for management and system-table consumers.
@@ -366,6 +203,346 @@ where
     ) -> Result<Vec<ListedMaterializedView>, MetaError> {
         list_materialized_views_impl(self, tenant, filter).await
     }
+}
+
+/// Add to `txn` the operations that mark every MV of `source_table_id` invalid with `reason`.
+///
+/// Each MV `TableMeta` is updated under its exact sequence, so a concurrent change to the same
+/// MV (a REFRESH commit, another DDL) fails the caller's transaction, which retries. An MV
+/// already holding `SourceSchemaChanged` keeps it: that reason is final. An MV already holding
+/// `reason` is left alone.
+pub async fn mark_mvs_invalid<KV>(
+    kv_api: &KV,
+    txn: &mut TxnRequest,
+    tenant: &Tenant,
+    source_table_id: u64,
+    reason: MVInvalidReason,
+) -> Result<(), MetaError>
+where
+    KV: kvapi::KVApi<Error = MetaError> + ?Sized,
+{
+    for (ident, table_meta) in mv_table_metas_of_source(kv_api, tenant, source_table_id).await? {
+        if let Some(updated) = invalidated(&table_meta.data, reason) {
+            info!(
+                "mark materialized view {} invalid: source table {} {}",
+                ident.table_id,
+                source_table_id,
+                reason.as_str()
+            );
+            txn.condition.push(txn_cond_eq_seq(&ident, table_meta.seq));
+            txn.if_then.push(txn_put_pb(&ident, &updated));
+        }
+    }
+    Ok(())
+}
+
+/// Add to `txn` the operations that make the MVs of `source_table_id` valid again.
+///
+/// The caller has established that the source table is active after `txn`, under the name
+/// `current_database_name.current_table_name`. An MV is restored when its reason is a
+/// lifecycle one (see [`MVInvalidReason::restorable`]) and that name is the one it was
+/// created against, recorded in its `TableMeta` options.
+pub async fn restore_mvs_of_source<KV>(
+    kv_api: &KV,
+    txn: &mut TxnRequest,
+    tenant: &Tenant,
+    source_table_id: u64,
+    current_database_name: &str,
+    current_table_name: &str,
+) -> Result<(), MetaError>
+where
+    KV: kvapi::KVApi<Error = MetaError> + ?Sized,
+{
+    for (ident, table_meta) in mv_table_metas_of_source(kv_api, tenant, source_table_id).await? {
+        if bound_to(&table_meta.data, current_database_name, current_table_name)
+            && let Some(updated) = restored(&table_meta.data)
+        {
+            info!(
+                "restore materialized view {}: source table {} is {}.{} again",
+                ident.table_id, source_table_id, current_database_name, current_table_name
+            );
+            txn.condition.push(txn_cond_eq_seq(&ident, table_meta.seq));
+            txn.if_then.push(txn_put_pb(&ident, &updated));
+        }
+    }
+    Ok(())
+}
+
+/// Add to `txn` the MV updates of renaming `source_table_id` to
+/// `new_database_name.new_table_name`: an MV bound to that name is restored, every other MV is
+/// marked `SourceRenamed`.
+pub async fn rename_source_of_mvs<KV>(
+    kv_api: &KV,
+    txn: &mut TxnRequest,
+    tenant: &Tenant,
+    source_table_id: u64,
+    new_database_name: &str,
+    new_table_name: &str,
+) -> Result<(), MetaError>
+where
+    KV: kvapi::KVApi<Error = MetaError> + ?Sized,
+{
+    for (ident, table_meta) in mv_table_metas_of_source(kv_api, tenant, source_table_id).await? {
+        let updated = if bound_to(&table_meta.data, new_database_name, new_table_name) {
+            restored(&table_meta.data)
+        } else {
+            invalidated(&table_meta.data, MVInvalidReason::SourceRenamed)
+        };
+        if let Some(updated) = updated {
+            info!(
+                "rename source table {} to {}.{}: materialized view {} is now {}",
+                source_table_id,
+                new_database_name,
+                new_table_name,
+                ident.table_id,
+                updated
+                    .materialized_view_invalid_reason()
+                    .unwrap_or("valid")
+            );
+            txn.condition.push(txn_cond_eq_seq(&ident, table_meta.seq));
+            txn.if_then.push(txn_put_pb(&ident, &updated));
+        }
+    }
+    Ok(())
+}
+
+/// Add to `txn` the MV updates of dropping a database: every MV whose source is one of
+/// `source_table_ids` (the tables of that database) is marked `reason`.
+///
+/// This walks all MVs of the tenant once rather than the edges of every table of the database:
+/// MVs are few, tables may be many.
+pub async fn mark_mvs_of_sources_invalid<KV>(
+    kv_api: &KV,
+    txn: &mut TxnRequest,
+    tenant: &Tenant,
+    source_table_ids: &BTreeSet<u64>,
+    reason: MVInvalidReason,
+) -> Result<(), MetaError>
+where
+    KV: kvapi::KVApi<Error = MetaError> + ?Sized,
+{
+    if source_table_ids.is_empty() {
+        return Ok(());
+    }
+    for (ident, table_meta) in all_mv_table_metas(kv_api, tenant).await? {
+        let Ok(source_table_id) = table_meta.data.materialized_view_source_table_id() else {
+            continue;
+        };
+        if !source_table_ids.contains(&source_table_id) {
+            continue;
+        }
+        if let Some(updated) = invalidated(&table_meta.data, reason) {
+            info!(
+                "mark materialized view {} invalid: source table {} {}",
+                ident.table_id,
+                source_table_id,
+                reason.as_str()
+            );
+            txn.condition.push(txn_cond_eq_seq(&ident, table_meta.seq));
+            txn.if_then.push(txn_put_pb(&ident, &updated));
+        }
+    }
+    Ok(())
+}
+
+/// Add to `txn` the MV updates of undropping database `database_name`: `tables` are its active
+/// tables after `txn`, by id and name. An MV is restored when it is bound to one of them under
+/// that name.
+pub async fn restore_mvs_of_sources<KV>(
+    kv_api: &KV,
+    txn: &mut TxnRequest,
+    tenant: &Tenant,
+    database_name: &str,
+    tables: &HashMap<u64, String>,
+) -> Result<(), MetaError>
+where
+    KV: kvapi::KVApi<Error = MetaError> + ?Sized,
+{
+    if tables.is_empty() {
+        return Ok(());
+    }
+    for (ident, table_meta) in all_mv_table_metas(kv_api, tenant).await? {
+        let Ok(source_table_id) = table_meta.data.materialized_view_source_table_id() else {
+            continue;
+        };
+        let Some(table_name) = tables.get(&source_table_id) else {
+            continue;
+        };
+        if bound_to(&table_meta.data, database_name, table_name)
+            && let Some(updated) = restored(&table_meta.data)
+        {
+            info!(
+                "restore materialized view {}: source table {} is {}.{} again",
+                ident.table_id, source_table_id, database_name, table_name
+            );
+            txn.condition.push(txn_cond_eq_seq(&ident, table_meta.seq));
+            txn.if_then.push(txn_put_pb(&ident, &updated));
+        }
+    }
+    Ok(())
+}
+
+/// Add to `txn` the MV updates of renaming a database to `new_database_name`: `tables` are its
+/// tables by id and name. An MV bound to one of them under the new database name is restored,
+/// every other MV of those tables is marked `SourceDatabaseRenamed`.
+pub async fn rename_database_of_mvs<KV>(
+    kv_api: &KV,
+    txn: &mut TxnRequest,
+    tenant: &Tenant,
+    new_database_name: &str,
+    tables: &HashMap<u64, String>,
+) -> Result<(), MetaError>
+where
+    KV: kvapi::KVApi<Error = MetaError> + ?Sized,
+{
+    if tables.is_empty() {
+        return Ok(());
+    }
+    for (ident, table_meta) in all_mv_table_metas(kv_api, tenant).await? {
+        let Ok(source_table_id) = table_meta.data.materialized_view_source_table_id() else {
+            continue;
+        };
+        let Some(table_name) = tables.get(&source_table_id) else {
+            continue;
+        };
+        let updated = if bound_to(&table_meta.data, new_database_name, table_name) {
+            restored(&table_meta.data)
+        } else {
+            invalidated(&table_meta.data, MVInvalidReason::SourceDatabaseRenamed)
+        };
+        if let Some(updated) = updated {
+            info!(
+                "rename database of source table {} to {}: materialized view {} is now {}",
+                source_table_id,
+                new_database_name,
+                ident.table_id,
+                updated
+                    .materialized_view_invalid_reason()
+                    .unwrap_or("valid")
+            );
+            txn.condition.push(txn_cond_eq_seq(&ident, table_meta.seq));
+            txn.if_then.push(txn_put_pb(&ident, &updated));
+        }
+    }
+    Ok(())
+}
+
+/// The MV `TableMeta` with `reason` set, or `None` when nothing changes: it already holds
+/// `reason`, or holds the final `SourceSchemaChanged`.
+fn invalidated(table_meta: &TableMeta, reason: MVInvalidReason) -> Option<TableMeta> {
+    let current = table_meta.materialized_view_invalid_reason();
+    if current == Some(reason.as_str())
+        || current == Some(MVInvalidReason::SourceSchemaChanged.as_str())
+    {
+        return None;
+    }
+    let mut updated = table_meta.clone();
+    updated.options.insert(
+        OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON.to_string(),
+        reason.as_str().to_string(),
+    );
+    Some(updated)
+}
+
+/// The MV `TableMeta` made valid, or `None` when it is valid already or its reason is not
+/// restorable.
+fn restored(table_meta: &TableMeta) -> Option<TableMeta> {
+    if !table_meta.materialized_view_invalid_reason_restorable() {
+        return None;
+    }
+    let mut updated = table_meta.clone();
+    updated
+        .options
+        .remove(OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON);
+    Some(updated)
+}
+
+/// Whether the MV with `table_meta` was created against `database_name.table_name`.
+fn bound_to(table_meta: &TableMeta, database_name: &str, table_name: &str) -> bool {
+    let bound = |key: &str| table_meta.options.get(key).map(String::as_str);
+    bound(OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME) == Some(database_name)
+        && bound(OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME) == Some(table_name)
+}
+
+/// The table metas of the MVs depending on `source_table_id`, by the dependency edges. A
+/// dropped MV, or one without a table meta, is skipped.
+async fn mv_table_metas_of_source<KV>(
+    kv_api: &KV,
+    tenant: &Tenant,
+    source_table_id: u64,
+) -> Result<Vec<(TableId, SeqV<TableMeta>)>, MetaError>
+where
+    KV: kvapi::KVApi<Error = MetaError> + ?Sized,
+{
+    let mv_ids = mv_ids_of_source(kv_api, tenant, source_table_id).await?;
+    live_mv_table_metas(kv_api, mv_ids).await
+}
+
+/// The table metas of every MV of the tenant, by the definitions, dropped MVs excluded.
+async fn all_mv_table_metas<KV>(
+    kv_api: &KV,
+    tenant: &Tenant,
+) -> Result<Vec<(TableId, SeqV<TableMeta>)>, MetaError>
+where
+    KV: kvapi::KVApi<Error = MetaError> + ?Sized,
+{
+    let prefix = DirName::new(MVDefinitionIdent::new(tenant, 0));
+    let mv_ids = kv_api
+        .list_pb_vec(ListOptions::unlimited(&prefix))
+        .await?
+        .into_iter()
+        .map(|(ident, _)| *ident.name())
+        .collect::<Vec<_>>();
+    live_mv_table_metas(kv_api, mv_ids).await
+}
+
+async fn live_mv_table_metas<KV>(
+    kv_api: &KV,
+    mv_ids: Vec<u64>,
+) -> Result<Vec<(TableId, SeqV<TableMeta>)>, MetaError>
+where
+    KV: kvapi::KVApi<Error = MetaError> + ?Sized,
+{
+    if mv_ids.is_empty() {
+        return Ok(vec![]);
+    }
+    let idents = mv_ids.into_iter().map(TableId::new).collect::<Vec<_>>();
+    let table_metas = kv_api.get_pb_values_vec(idents.clone()).await?;
+    Ok(idents
+        .into_iter()
+        .zip(table_metas)
+        .filter_map(|(ident, table_meta)| match table_meta {
+            Some(table_meta) if table_meta.data.drop_on.is_none() => Some((ident, table_meta)),
+            Some(_) => None,
+            None => {
+                warn!(
+                    "materialized view {} has a dependency edge but no table meta",
+                    ident.table_id
+                );
+                None
+            }
+        })
+        .collect())
+}
+
+async fn mv_ids_of_source<KV>(
+    kv_api: &KV,
+    tenant: &Tenant,
+    source_table_id: u64,
+) -> Result<Vec<u64>, MetaError>
+where
+    KV: kvapi::KVApi<Error = MetaError> + ?Sized,
+{
+    let source_mv_prefix = DirName::new(SourceTableMVIdent::new_generic(
+        tenant,
+        SourceTableMV::new(source_table_id, 0),
+    ));
+    Ok(kv_api
+        .list_pb_vec(ListOptions::unlimited(&source_mv_prefix))
+        .await?
+        .into_iter()
+        .map(|(ident, _)| ident.name().mv_table_id)
+        .collect())
 }
 
 struct ListedMVTarget {
@@ -671,19 +848,7 @@ where
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect::<Vec<_>>();
-    let mut source_keys = Vec::with_capacity(targets.len() + source_ids.len() * 3);
-    source_keys.extend(targets.iter().map(|target| {
-        SourceTableMVIdent::new_generic(
-            tenant,
-            SourceTableMV::new(target.source_table_id, target.mv.mv_id),
-        )
-        .to_string_key()
-    }));
-    source_keys.extend(
-        source_ids
-            .iter()
-            .map(|source_id| MVSourceBindingVersionIdent::new(tenant, *source_id).to_string_key()),
-    );
+    let mut source_keys = Vec::with_capacity(source_ids.len() * 2);
     source_keys.extend(source_ids.iter().map(|source_id| {
         TableIdToName {
             table_id: *source_id,
@@ -697,29 +862,23 @@ where
     );
 
     let mut responses = mget_responses(kv_api, &source_keys).await?;
-    let source_meta_responses = responses.split_off(targets.len() + source_ids.len() * 2);
-    let source_name_responses = responses.split_off(targets.len() + source_ids.len());
-    let generation_responses = responses.split_off(targets.len());
-    let binding_responses = responses;
+    let source_meta_responses = responses.split_off(source_ids.len());
+    let source_name_responses = responses;
 
     let mut source_facts = HashMap::with_capacity(source_ids.len());
-    for (source_id, ((generation, table_name), table_meta)) in source_ids.into_iter().zip(
-        generation_responses
-            .into_iter()
-            .zip(source_name_responses)
-            .zip(source_meta_responses),
-    ) {
-        let (_, generation) =
-            deserialize_struct_get_response::<MVSourceBindingVersionIdent>(generation)?;
+    for (source_id, (table_name, table_meta)) in source_ids
+        .into_iter()
+        .zip(source_name_responses.into_iter().zip(source_meta_responses))
+    {
         let (_, table_name) = deserialize_struct_get_response::<TableIdToName>(table_name)?;
         let (_, table_meta) = deserialize_struct_get_response::<TableId>(table_meta)?;
         let is_active = table_meta.is_some_and(|meta| meta.data.drop_on.is_none());
-        source_facts.insert(source_id, (generation, table_name, is_active));
+        source_facts.insert(source_id, (table_name, is_active));
     }
 
     let source_database_ids = source_facts
         .values()
-        .filter_map(|(_, table_name, _)| table_name.as_ref().map(|name| name.data.db_id))
+        .filter_map(|(table_name, _)| table_name.as_ref().map(|name| name.data.db_id))
         .collect::<BTreeSet<_>>();
     let source_database_keys = source_database_ids
         .iter()
@@ -755,12 +914,11 @@ where
     }
 
     let mut listed = Vec::with_capacity(targets.len());
-    for (target, binding) in targets.into_iter().zip(binding_responses) {
-        let (_, binding) = deserialize_struct_get_response::<SourceTableMVIdent>(binding)?;
-        let (generation, table_name, is_active) = source_facts
+    for target in targets {
+        let (table_name, is_active) = source_facts
             .get(&target.source_table_id)
             .cloned()
-            .unwrap_or((None, None, false));
+            .unwrap_or((None, false));
         let (database_id, database_name, table_name, is_active, database_dropped) = match table_name
         {
             Some(table_name) => {
@@ -788,10 +946,6 @@ where
                 table_name,
                 is_active,
                 database_dropped,
-                bound_source_generation: binding
-                    .map(|binding| binding.data.bound_source_generation),
-                current_source_generation: generation
-                    .map(|generation| generation.data.current_source_generation),
             },
         });
     }
@@ -803,26 +957,11 @@ async fn list_mvs_by_source_table_id_impl<KV>(
     kv_api: &KV,
     tenant: &Tenant,
     source_table_id: u64,
-    expected_source_generation: Option<u64>,
 ) -> Result<Vec<MVInfo>, MetaError>
 where
     KV: kvapi::KVApi<Error = MetaError> + ?Sized,
 {
-    let source_mv_prefix = DirName::new(SourceTableMVIdent::new_generic(
-        tenant,
-        SourceTableMV::new(source_table_id, 0),
-    ));
-    let source_mvs = kv_api
-        .list_pb_vec(ListOptions::unlimited(&source_mv_prefix))
-        .await?;
-    let mv_ids = source_mvs
-        .iter()
-        .filter_map(|(ident, binding)| {
-            expected_source_generation
-                .is_none_or(|expected| binding.data.bound_source_generation == expected)
-                .then_some(ident.name().mv_table_id)
-        })
-        .collect::<Vec<_>>();
+    let mv_ids = mv_ids_of_source(kv_api, tenant, source_table_id).await?;
     if mv_ids.is_empty() {
         return Ok(vec![]);
     }

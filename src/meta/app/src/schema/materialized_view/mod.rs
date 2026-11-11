@@ -22,14 +22,10 @@ use crate::app_error::AppError;
 use crate::app_error::InvalidMaterializedView;
 
 mod mv_definition_ident;
-mod mv_source_binding_version_ident;
 mod source_table_mv_ident;
 
 pub use mv_definition_ident::MVDefinitionIdent;
 pub use mv_definition_ident::MVDefinitionResource;
-pub use mv_source_binding_version_ident::MVSourceBindingVersion;
-pub use mv_source_binding_version_ident::MVSourceBindingVersionIdent;
-pub use mv_source_binding_version_ident::MVSourceBindingVersionResource;
 pub use source_table_mv_ident::MVSourceBinding;
 pub use source_table_mv_ident::SourceTableMV;
 pub use source_table_mv_ident::SourceTableMVIdent;
@@ -41,6 +37,14 @@ pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_ID: &str = "materialized_view_s
 /// Internal table option containing the source table sequence captured when the MV was created
 /// or last refreshed.
 pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_SEQ: &str = "materialized_view_source_table_seq";
+/// Internal table options recording the database and table name the source had when the MV was
+/// created. A renamed source is restored to validity when it gets this name back.
+pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME: &str =
+    "materialized_view_source_database_name";
+pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME: &str = "materialized_view_source_table_name";
+/// Internal table option holding why the MV is invalid; absent while it is valid. Source DDL that
+/// breaks the binding writes it in its own transaction, see [`MVInvalidReason`].
+pub const OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON: &str = "materialized_view_invalid_reason";
 /// Hidden physical column used to match source DELETE/UPDATE rows during refresh.
 pub const MATERIALIZED_VIEW_SOURCE_ROW_ID_COLUMN: &str = "_mv_source_row_id";
 
@@ -108,8 +112,9 @@ impl TableMeta {
 ///
 /// A materialized view reuses table metadata and storage for its materialized
 /// data, and its table ID is also its materialized view ID. [`TableMeta`]
-/// describes how the data is stored, while this record stores the defining
-/// query and the columns returned to users under the same table ID.
+/// describes how the data is stored and whether the view is valid
+/// (`OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON`), while this record stores the
+/// defining query and the columns returned to users under the same table ID.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MVDefinition {
     pub original_query: String,
@@ -118,35 +123,87 @@ pub struct MVDefinition {
     pub sync_creation: bool,
 }
 
+impl TableMeta {
+    /// Why the materialized view is invalid; `None` while it is valid.
+    ///
+    /// Validity is explicit: source DDL that breaks the binding (DROP TABLE, DROP DATABASE,
+    /// RENAME TABLE, RENAME DATABASE, invalidating schema changes) writes the reason into every
+    /// dependent MV's `TableMeta` in its own transaction. Readers need no other record to
+    /// decide whether the MV is valid. Lifecycle reasons are cleared again when the source is
+    /// restored to the identity the MV was bound to (UNDROP, RENAME back); a schema change is
+    /// final.
+    pub fn materialized_view_invalid_reason(&self) -> Option<&str> {
+        self.options
+            .get(OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON)
+            .map(String::as_str)
+    }
+
+    pub fn is_valid_materialized_view(&self) -> bool {
+        self.materialized_view_invalid_reason().is_none()
+    }
+
+    /// Whether a restore may clear the current reason once the source identity matches again.
+    /// A missing reason needs no restore; an unknown reason is kept.
+    pub fn materialized_view_invalid_reason_restorable(&self) -> bool {
+        self.materialized_view_invalid_reason()
+            .and_then(MVInvalidReason::parse)
+            .is_some_and(|reason| reason.restorable())
+    }
+}
+
+/// Why a materialized view is invalid, as stored under
+/// [`OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON`].
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MVInvalidReason {
+    /// The source table was dropped. Cleared by UNDROP TABLE.
+    SourceDropped,
+    /// The database holding the source table was dropped. Cleared by UNDROP DATABASE.
+    SourceDatabaseDropped,
+    /// The source table was renamed or moved to another database. Cleared by renaming it back
+    /// to the database and name the MV was created against.
+    SourceRenamed,
+    /// The database holding the source table was renamed. Cleared by renaming it back.
+    SourceDatabaseRenamed,
+    /// A column the MV may depend on was renamed, dropped, or changed. Never cleared.
+    SourceSchemaChanged,
+}
+
+impl MVInvalidReason {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::SourceDropped => "source table was dropped",
+            Self::SourceDatabaseDropped => "source database was dropped",
+            Self::SourceRenamed => "source table was renamed",
+            Self::SourceDatabaseRenamed => "source database was renamed",
+            Self::SourceSchemaChanged => "source table schema was changed",
+        }
+    }
+
+    pub fn parse(reason: &str) -> Option<Self> {
+        [
+            Self::SourceDropped,
+            Self::SourceDatabaseDropped,
+            Self::SourceRenamed,
+            Self::SourceDatabaseRenamed,
+            Self::SourceSchemaChanged,
+        ]
+        .into_iter()
+        .find(|candidate| candidate.as_str() == reason)
+    }
+
+    /// Whether the source can come back to the identity the MV was bound to.
+    pub const fn restorable(self) -> bool {
+        !matches!(self, Self::SourceSchemaChanged)
+    }
+}
+
 /// Materialized-view metadata supplied only while creating a table.
 ///
-/// `definition` is persisted as [`MVDefinition`].
-/// `expected_source_generation` binds that definition to the source metadata
-/// observed while binding. `create_table` compares it with the current semantic
-/// generation, then uses the freshly read version-key KV sequence as its
-/// transaction condition. It is not persisted in the MV `TableMeta`.
-/// A source `TableMeta` sequence is intentionally not carried here because
-/// ordinary source-table writes advance it without invalidating the bound
-/// schema. `create_table` reads the current source `TableMeta` itself to reject
-/// a missing or dropped source.
+/// `definition` is persisted as [`MVDefinition`]. `create_table` reads the
+/// current source `TableMeta` itself to reject a missing or dropped source.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CreateMaterializedViewMeta {
     pub definition: MVDefinition,
-    /// Semantic source binding generation observed while binding.
-    ///
-    /// A missing version key is generation 0. MV-invalidating source DDL
-    /// increments the stored generation, rejecting a CREATE bound before that
-    /// DDL. The version key's KV sequence is intentionally kept inside the
-    /// Meta API as a transaction CAS token.
-    pub expected_source_generation: u64,
-}
-
-/// A point-in-time view of one materialized-view definition and its source generation.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct MVDefinitionSnapshot {
-    pub definition: Option<SeqV<MVDefinition>>,
-    pub bound_source_generation: Option<u64>,
-    pub current_source_generation: Option<u64>,
 }
 
 /// Complete metadata needed to use one materialized view.
@@ -183,8 +240,6 @@ pub struct ListedMVSource {
     /// Whether the source's current database is dropped. `is_active` is false in that case too;
     /// this flag only tells management paths which of the two was dropped.
     pub database_dropped: bool,
-    pub bound_source_generation: Option<u64>,
-    pub current_source_generation: Option<u64>,
 }
 
 /// Complete metadata needed by management and system-table listing paths.
@@ -197,20 +252,52 @@ pub struct ListedMaterializedView {
     pub source: ListedMVSource,
 }
 
-/// A consistent view of the active MV bindings for one source table.
-#[derive(Clone, Debug, Eq, PartialEq)]
+/// The valid MVs of one source table, for query rewrite.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct MVSourceBindingSnapshot {
-    /// Binding generation at which `materialized_views` was collected.
-    pub generation: u64,
-    /// Empty when the generation changed while MV metadata was being collected.
     pub materialized_views: Vec<MVInfo>,
 }
 
 #[cfg(test)]
 mod tests {
+    use super::MVInvalidReason;
+    use super::OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON;
     use super::OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_ID;
     use super::OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_SEQ;
     use crate::schema::TableMeta;
+
+    #[test]
+    fn test_mv_invalid_reason_round_trip_and_restorable() {
+        for reason in [
+            MVInvalidReason::SourceDropped,
+            MVInvalidReason::SourceDatabaseDropped,
+            MVInvalidReason::SourceRenamed,
+            MVInvalidReason::SourceDatabaseRenamed,
+            MVInvalidReason::SourceSchemaChanged,
+        ] {
+            assert_eq!(MVInvalidReason::parse(reason.as_str()), Some(reason));
+            assert_eq!(
+                reason.restorable(),
+                reason != MVInvalidReason::SourceSchemaChanged
+            );
+        }
+        assert_eq!(MVInvalidReason::parse("unknown"), None);
+
+        let mut table_meta = TableMeta::default();
+        assert!(table_meta.is_valid_materialized_view());
+        assert!(!table_meta.materialized_view_invalid_reason_restorable());
+        table_meta.options.insert(
+            OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON.to_string(),
+            MVInvalidReason::SourceRenamed.as_str().to_string(),
+        );
+        assert!(!table_meta.is_valid_materialized_view());
+        assert!(table_meta.materialized_view_invalid_reason_restorable());
+        table_meta.options.insert(
+            OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON.to_string(),
+            "unknown".to_string(),
+        );
+        assert!(!table_meta.materialized_view_invalid_reason_restorable());
+    }
 
     #[test]
     fn test_materialized_view_source_table_id() {

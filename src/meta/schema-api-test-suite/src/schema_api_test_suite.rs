@@ -130,11 +130,13 @@ use databend_common_meta_app::schema::LockMeta;
 use databend_common_meta_app::schema::LockType;
 use databend_common_meta_app::schema::MATERIALIZED_VIEW_ENGINE;
 use databend_common_meta_app::schema::MVDefinition;
-use databend_common_meta_app::schema::MVSourceBindingVersionIdent;
+use databend_common_meta_app::schema::MVInvalidReason;
 use databend_common_meta_app::schema::MarkedDeletedIndexType;
 use databend_common_meta_app::schema::MaterializedViewListFilter;
 use databend_common_meta_app::schema::OPT_KEY_CLONE_GROUP_ID;
+use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME;
 use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_ID;
+use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME;
 use databend_common_meta_app::schema::RenameDatabaseReq;
 use databend_common_meta_app::schema::RenameDictionaryReq;
 use databend_common_meta_app::schema::RenameTableReq;
@@ -270,6 +272,21 @@ fn summarize_locks(locks: &[LockInfo]) -> Vec<LockSummary> {
 /// to ensure an impl works as expected,
 /// such as `meta/embedded` and `metasrv`.
 #[derive(Copy, Clone)]
+/// Why materialized view `mv_id` is invalid, from its `TableMeta`; `None` while it is valid.
+async fn mv_invalid_reason<MT: kvapi::KVApi<Error = MetaError>>(
+    mt: &MT,
+    mv_id: u64,
+) -> anyhow::Result<Option<String>> {
+    let table_meta = mt
+        .get_pb(&TableId::new(mv_id))
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("MV table meta {mv_id} must exist"))?;
+    Ok(table_meta
+        .data
+        .materialized_view_invalid_reason()
+        .map(str::to_string))
+}
+
 pub struct SchemaApiTestSuite {}
 
 impl SchemaApiTestSuite {
@@ -2374,13 +2391,10 @@ impl SchemaApiTestSuite {
                 ("begin_version".to_string(), Some(seq.to_string())),
             ]),
         };
-        let source_generation_ident = MVSourceBindingVersionIdent::new(&tenant, source_table_id);
-        assert!(mt.get_pb(&source_generation_ident).await?.is_none());
-        let initial_source_binding_generation = 0;
         let new_mv_req = |name,
                           create_option,
                           source_table_id: u64,
-                          source_binding_generation: u64,
+                          source_table_name: &str,
                           definition: &MVDefinition| {
             let mut table_meta = TableMeta {
                 schema: util.schema(),
@@ -2390,6 +2404,14 @@ impl SchemaApiTestSuite {
             table_meta.options.insert(
                 OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_ID.to_string(),
                 source_table_id.to_string(),
+            );
+            table_meta.options.insert(
+                OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME.to_string(),
+                db_name.clone(),
+            );
+            table_meta.options.insert(
+                OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME.to_string(),
+                source_table_name.to_string(),
             );
 
             CreateTableReq {
@@ -2402,7 +2424,6 @@ impl SchemaApiTestSuite {
                 clone: None,
                 materialized_view: Some(CreateMaterializedViewMeta {
                     definition: definition.clone(),
-                    expected_source_generation: source_binding_generation,
                 }),
                 table_properties: None,
                 table_partition: None,
@@ -2431,7 +2452,7 @@ impl SchemaApiTestSuite {
                     "mv_missing_source",
                     CreateOption::Create,
                     missing_source_id,
-                    0,
+                    "missing_source",
                     &invalid_definition,
                 );
                 req.source_table_option = source_table_option;
@@ -2450,7 +2471,7 @@ impl SchemaApiTestSuite {
                 "mv_hidden",
                 CreateOption::Create,
                 source_table_id,
-                initial_source_binding_generation,
+                &source_table_name,
                 &definition,
             );
             hidden_req.as_dropped = true;
@@ -2470,7 +2491,7 @@ impl SchemaApiTestSuite {
                 mv_name,
                 CreateOption::Create,
                 source_table_id,
-                initial_source_binding_generation,
+                &source_table_name,
                 &definition,
             );
             req.source_table_option = Some(enable_change_tracking(
@@ -2495,18 +2516,12 @@ impl SchemaApiTestSuite {
                     .data,
                 definition
             );
-            let binding = mt
-                .get_pb(&source_mv_ident(source_table_id, created.table_id))
-                .await?
-                .expect("MV source binding must exist");
-            let current_generation = mt
-                .get_pb(&source_generation_ident)
-                .await?
-                .expect("the first MV must initialize its source binding version")
-                .data
-                .current_source_generation;
-            assert_eq!(current_generation, initial_source_binding_generation);
-            assert_eq!(binding.data.bound_source_generation, current_generation);
+            assert!(
+                mt.get_pb(&source_mv_ident(source_table_id, created.table_id))
+                    .await?
+                    .is_some(),
+                "MV source binding must exist"
+            );
             let mvs = mt
                 .list_mvs_by_source_table_id(&tenant, source_table_id)
                 .await?;
@@ -2540,8 +2555,7 @@ impl SchemaApiTestSuite {
                 Some(source_table_name.as_str())
             );
             assert!(listed_mv.source.is_active);
-            assert_eq!(listed_mv.source.bound_source_generation, Some(0));
-            assert_eq!(listed_mv.source.current_source_generation, Some(0));
+            assert!(listed_mv.mv.table_meta.data.is_valid_materialized_view());
 
             let renamed_db_name = format!("{db_name}_renamed");
             mt.rename_database(RenameDatabaseReq {
@@ -2565,12 +2579,23 @@ impl SchemaApiTestSuite {
                 renamed.source.database_name.as_deref(),
                 Some(renamed_db_name.as_str())
             );
+            // The source is bound as `db_name.source_table`: the database rename invalidates
+            // the MV, renaming it back restores it.
+            assert_eq!(
+                renamed
+                    .mv
+                    .table_meta
+                    .data
+                    .materialized_view_invalid_reason(),
+                Some(MVInvalidReason::SourceDatabaseRenamed.as_str())
+            );
             mt.rename_database(RenameDatabaseReq {
                 if_exists: false,
                 name_ident: DatabaseNameIdent::new(&tenant, &renamed_db_name),
                 new_db_name: db_name.clone(),
             })
             .await?;
+            assert_eq!(mv_invalid_reason(mt, mv_id).await?, None);
 
             let exact = mt
                 .list_materialized_views(&tenant, &MaterializedViewListFilter {
@@ -2617,12 +2642,6 @@ impl SchemaApiTestSuite {
             let source_table = mt
                 .get_table(GetTableReq::new(&tenant, &db_name, &source_table_name))
                 .await?;
-            let generation_before = mt
-                .get_pb(&source_generation_ident)
-                .await?
-                .expect("source binding version must exist")
-                .data
-                .current_source_generation;
             let mut new_source_meta = source_table.meta.clone();
             let mut new_schema = new_source_meta.schema.as_ref().clone();
             new_schema.add_column(
@@ -2665,27 +2684,14 @@ impl SchemaApiTestSuite {
                     .map(String::as_str),
                 Some("snapshot-v1")
             );
-            assert_eq!(
-                mt.get_pb(&source_generation_ident)
-                    .await?
-                    .expect("source binding version must exist")
-                    .data
-                    .current_source_generation,
-                generation_before
-            );
+            assert_eq!(mv_invalid_reason(mt, mv_id).await?, None);
         }
 
-        // Renaming a source column advances the generation and invalidates the old binding.
-        let current_source_generation = {
+        // Renaming a source column marks the MV invalid; the reason is final.
+        {
             let source_table = mt
                 .get_table(GetTableReq::new(&tenant, &db_name, &source_table_name))
                 .await?;
-            let generation_before = mt
-                .get_pb(&source_generation_ident)
-                .await?
-                .expect("source binding version must exist")
-                .data
-                .current_source_generation;
             let mut new_source_meta = source_table.meta.clone();
             let mut new_schema = new_source_meta.schema.as_ref().clone();
             let renamed_index = new_schema.index_of("number")?;
@@ -2713,63 +2719,48 @@ impl SchemaApiTestSuite {
                 .await?;
             assert!(updated_source.meta.schema.has_field("renamed_number"));
             assert!(!updated_source.meta.schema.has_field("number"));
-
-            let generation_after = mt
-                .get_pb(&source_generation_ident)
-                .await?
-                .expect("source binding version must exist")
-                .data
-                .current_source_generation;
-            assert_eq!(generation_after, generation_before + 1);
-            let definition_snapshot = mt
-                .get_mv_definition_snapshot(&tenant, source_table_id, mv_id)
-                .await?;
-            assert!(definition_snapshot.definition.is_some());
             assert_eq!(
-                definition_snapshot.bound_source_generation,
-                Some(initial_source_binding_generation)
+                mv_invalid_reason(mt, mv_id).await?.as_deref(),
+                Some(MVInvalidReason::SourceSchemaChanged.as_str())
             );
-            assert_eq!(
-                definition_snapshot.current_source_generation,
-                Some(generation_after)
-            );
-            generation_after
-        };
 
-        // CREATE rejects a generation observed before the source DDL.
-        {
-            let err = mt
-                .create_table(new_mv_req(
-                    "mv_stale_source_binding",
-                    CreateOption::Create,
-                    source_table_id,
-                    initial_source_binding_generation,
-                    &definition,
-                ))
-                .await
-                .unwrap_err();
-            assert!(matches!(
-                err,
-                KVAppError::AppError(AppError::InvalidMaterializedView(_))
-            ));
+            // A lifecycle reason does not override the schema reason, and the source coming
+            // back under its name does not restore it.
+            mt.rename_table(RenameTableReq {
+                if_exists: false,
+                name_ident: TableNameIdent::new(&tenant, &db_name, &source_table_name),
+                new_db_name: db_name.clone(),
+                new_table_name: "source_table_moved".to_string(),
+            })
+            .await?;
+            mt.rename_table(RenameTableReq {
+                if_exists: false,
+                name_ident: TableNameIdent::new(&tenant, &db_name, "source_table_moved"),
+                new_db_name: db_name.clone(),
+                new_table_name: source_table_name.clone(),
+            })
+            .await?;
+            assert_eq!(
+                mv_invalid_reason(mt, mv_id).await?.as_deref(),
+                Some(MVInvalidReason::SourceSchemaChanged.as_str())
+            );
         }
 
-        // CREATE accepts the current generation and source snapshots filter out the stale MV.
+        // A new MV against the changed source is valid; the snapshot filters out the stale MV.
         let current_mv = mt
             .create_table(new_mv_req(
                 "mv_current_source_binding",
                 CreateOption::Create,
                 source_table_id,
-                current_source_generation,
+                &source_table_name,
                 &definition,
             ))
             .await?;
         let active_snapshot = mt
             .get_mv_source_binding_snapshot(&tenant, source_table_id)
             .await?;
-        assert_eq!(active_snapshot.generation, current_source_generation);
         let [active_mv] = active_snapshot.materialized_views.as_slice() else {
-            panic!("only the MV bound to the current generation must be active");
+            panic!("only the valid MV must be in the snapshot");
         };
         assert_eq!(active_mv.mv_id, current_mv.table_id);
         assert_eq!(
@@ -2809,7 +2800,7 @@ impl SchemaApiTestSuite {
                     mv_name,
                     CreateOption::CreateOrReplace,
                     replacement_source_table_id,
-                    0,
+                    replacement_source_name,
                     &replacement_definition,
                 ))
                 .await?;
@@ -2832,13 +2823,10 @@ impl SchemaApiTestSuite {
             replacement
         };
 
-        // Source DROP preserves relationships and generations until source GC.
+        // Source lifecycle DDL marks the MV invalid and restores it when the source comes back
+        // under the name the MV was bound to.
         {
-            let relationship_ident =
-                source_mv_ident(replacement_source_table_id, replacement.table_id);
-            let binding_generation_ident =
-                MVSourceBindingVersionIdent::new(&tenant, replacement_source_table_id);
-            mt.drop_table_by_id(DropTableByIdReq {
+            let drop_source = DropTableByIdReq {
                 if_exists: false,
                 tenant: tenant.clone(),
                 db_id: replacement.db_id,
@@ -2847,10 +2835,108 @@ impl SchemaApiTestSuite {
                 engine: util.engine(),
                 temp_prefix: "".to_string(),
                 db_name: db_name.clone(),
+            };
+            let source_name_ident = TableNameIdent::new(&tenant, &db_name, replacement_source_name);
+
+            // DROP TABLE / UNDROP TABLE.
+            mt.drop_table_by_id(drop_source.clone()).await?;
+            assert_eq!(
+                mv_invalid_reason(mt, replacement.table_id)
+                    .await?
+                    .as_deref(),
+                Some(MVInvalidReason::SourceDropped.as_str())
+            );
+            mt.undrop_table(UndropTableReq {
+                name_ident: source_name_ident.clone(),
             })
             .await?;
+            assert_eq!(mv_invalid_reason(mt, replacement.table_id).await?, None);
+
+            // RENAME TABLE away and back, through another database.
+            let other_db_name = format!("{db_name}_other");
+            let mut other_db =
+                DbTableHarness::new(mt, tenant.tenant_name(), &other_db_name, "unused", "FUSE");
+            other_db.create_db().await?;
+            mt.rename_table(RenameTableReq {
+                if_exists: false,
+                name_ident: source_name_ident.clone(),
+                new_db_name: other_db_name.clone(),
+                new_table_name: replacement_source_name.to_string(),
+            })
+            .await?;
+            assert_eq!(
+                mv_invalid_reason(mt, replacement.table_id)
+                    .await?
+                    .as_deref(),
+                Some(MVInvalidReason::SourceRenamed.as_str())
+            );
+            // Dropping the moved source keeps the rename reason: it is not the bound identity.
+            mt.rename_table(RenameTableReq {
+                if_exists: false,
+                name_ident: TableNameIdent::new(&tenant, &other_db_name, replacement_source_name),
+                new_db_name: db_name.clone(),
+                new_table_name: "renamed_again".to_string(),
+            })
+            .await?;
+            assert_eq!(
+                mv_invalid_reason(mt, replacement.table_id)
+                    .await?
+                    .as_deref(),
+                Some(MVInvalidReason::SourceRenamed.as_str())
+            );
+            mt.rename_table(RenameTableReq {
+                if_exists: false,
+                name_ident: TableNameIdent::new(&tenant, &db_name, "renamed_again"),
+                new_db_name: db_name.clone(),
+                new_table_name: replacement_source_name.to_string(),
+            })
+            .await?;
+            assert_eq!(mv_invalid_reason(mt, replacement.table_id).await?, None);
+
+            // DROP DATABASE / UNDROP DATABASE of the source's database. The MV lives in the same
+            // database here, so it is checked through its definition, which the drop keeps.
+            mt.drop_database(DropDatabaseReq {
+                if_exists: false,
+                name_ident: DatabaseNameIdent::new(&tenant, &db_name),
+            })
+            .await?;
+            assert_eq!(
+                mv_invalid_reason(mt, replacement.table_id)
+                    .await?
+                    .as_deref(),
+                Some(MVInvalidReason::SourceDatabaseDropped.as_str())
+            );
+            mt.undrop_database(UndropDatabaseReq {
+                name_ident: DatabaseNameIdent::new(&tenant, &db_name),
+            })
+            .await?;
+            assert_eq!(mv_invalid_reason(mt, replacement.table_id).await?, None);
+            // The snapshot sees the restored MV again.
+            assert_eq!(
+                mt.get_mv_source_binding_snapshot(&tenant, replacement_source_table_id)
+                    .await?
+                    .materialized_views
+                    .len(),
+                1
+            );
+
+            // Source DROP preserves the relationship until source GC.
+            let relationship_ident =
+                source_mv_ident(replacement_source_table_id, replacement.table_id);
+            mt.drop_table_by_id(drop_source).await?;
             assert!(mt.get_pb(&relationship_ident).await?.is_some());
-            assert!(mt.get_pb(&binding_generation_ident).await?.is_some());
+            assert_eq!(
+                mv_invalid_reason(mt, replacement.table_id)
+                    .await?
+                    .as_deref(),
+                Some(MVInvalidReason::SourceDropped.as_str())
+            );
+            assert!(
+                mt.get_mv_source_binding_snapshot(&tenant, replacement_source_table_id)
+                    .await?
+                    .materialized_views
+                    .is_empty()
+            );
 
             let dropped = mt
                 .list_materialized_views(&tenant, &MaterializedViewListFilter {
@@ -2879,7 +2965,7 @@ impl SchemaApiTestSuite {
                 "mv_dropped_source",
                 CreateOption::Create,
                 replacement_source_table_id,
-                0,
+                replacement_source_name,
                 &replacement_definition,
             );
             req.source_table_option = Some(enable_change_tracking(
@@ -2904,7 +2990,6 @@ impl SchemaApiTestSuite {
             })
             .await?;
             assert!(mt.get_pb(&relationship_ident).await?.is_none());
-            assert!(mt.get_pb(&binding_generation_ident).await?.is_none());
 
             let orphan = mt
                 .list_materialized_views(&tenant, &MaterializedViewListFilter {
@@ -2920,8 +3005,10 @@ impl SchemaApiTestSuite {
             assert!(orphan.source.database_name.is_none());
             assert!(orphan.source.table_name.is_none());
             assert!(!orphan.source.is_active);
-            assert!(orphan.source.bound_source_generation.is_none());
-            assert!(orphan.source.current_source_generation.is_none());
+            assert_eq!(
+                orphan.mv.table_meta.data.materialized_view_invalid_reason(),
+                Some(MVInvalidReason::SourceDropped.as_str())
+            );
         }
 
         Ok(())
@@ -4170,8 +4257,6 @@ impl SchemaApiTestSuite {
                 let table = util.get_table().await.unwrap();
 
                 let table_id = table.ident.table_id;
-                let generation_ident = MVSourceBindingVersionIdent::new(&tenant, table_id);
-                let generation_before = mt.get_pb(&generation_ident).await?;
                 let mut new_table_meta = table.meta.clone();
                 let mut new_schema = new_table_meta.schema.as_ref().clone();
                 new_schema.rename_field(0, "stale_rename");
@@ -4194,7 +4279,6 @@ impl SchemaApiTestSuite {
                 let err = res.unwrap_err();
                 assert!(!err.is_empty());
                 assert_eq!(util.get_table().await?.meta, table.meta);
-                assert_eq!(mt.get_pb(&generation_ident).await?, generation_before);
             }
 
             info!("--- update table meta: simulate kv txn retried after commit");

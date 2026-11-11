@@ -683,13 +683,13 @@ SELECT count(*) FROM test_mv2
 2
 
 # The native system table exposes MV/source identity, validity, and physical TableMeta statistics.
-query TTTBTIIB
-SELECT name, database, source_table, invalid, invalid_reason, bound_source_generation, current_source_generation,
+query TTTBTB
+SELECT name, database, source_table, invalid, invalid_reason,
        text = 'CREATE MATERIALIZED VIEW `test_mv_ddl`.`test_mv2` (`val`, `cnt`) CLUSTER BY (val) AS SELECT val, COUNT(*) AS cnt FROM test_mv_ddl.mv_base_t WHERE 1 = 1 GROUP BY val'
 FROM system.materialized_views
 WHERE catalog = 'default' AND database = 'test_mv_ddl' AND name = 'test_mv2'
 ----
-test_mv2 test_mv_ddl mv_base_t 0 NULL 0 0 1
+test_mv2 test_mv_ddl mv_base_t 0 NULL 1
 
 query BBB
 SELECT m.num_rows = t.num_rows,
@@ -1033,8 +1033,8 @@ UNDROP TABLE test_mv
 statement error 1302
 DROP MATERIALIZED VIEW mv_base_t
 
-# Source lifecycle invalidity is derived from the source name bound by CREATE and current source
-# metadata. REFRESH does not persist an invalid reason.
+# Source DDL writes the invalid reason into the MV definition; renaming the source back to the
+# name bound by CREATE clears it.
 statement ok
 create table replaced_source (id int) change_tracking = true
 
@@ -1050,13 +1050,13 @@ refresh materialized view replaced_mv
 statement ok
 alter table replaced_source rename to renamed_replaced_source
 
-# Rename is visible immediately without planning the persisted MV query.
+# The rename marks the MV in the same transaction.
 query TBT
 select source_table, invalid, invalid_reason
 from system.materialized_views
 where database = 'test_mv_ddl' and name = 'replaced_mv'
 ----
-renamed_replaced_source 1 source table was dropped, renamed, or replaced
+renamed_replaced_source 1 source table was renamed
 
 statement error 2328
 select * from replaced_mv
@@ -1069,7 +1069,7 @@ select invalid, invalid_reason
 from system.materialized_views
 where database = 'test_mv_ddl' and name = 'replaced_mv'
 ----
-1 source table was dropped, renamed, or replaced
+1 source table was renamed
 
 # Restoring the original source identity makes the MV current again.
 statement ok
@@ -1108,7 +1108,7 @@ select source_table, invalid, invalid_reason
 from system.materialized_views
 where database = 'test_mv_ddl' and name = 'replaced_mv'
 ----
-renamed_replaced_source 1 source table was dropped, renamed, or replaced
+renamed_replaced_source 1 source table was renamed
 
 statement error
 select * from replaced_mv
@@ -1125,7 +1125,7 @@ drop table replaced_source
 statement ok
 drop table renamed_replaced_source
 
-# Soft DROP is detected from source TableMeta even though its ID-to-name mapping is retained.
+# DROP TABLE marks the MV; UNDROP TABLE restores it.
 statement ok
 create table dropped_source (id int) change_tracking = true
 
@@ -1146,7 +1146,7 @@ select source_table, invalid, invalid_reason
 from system.materialized_views
 where database = 'test_mv_ddl' and name = 'dropped_mv'
 ----
-dropped_source 1 source table was dropped, renamed, or replaced
+dropped_source 1 source table was dropped
 
 statement error 2328
 select * from dropped_mv
@@ -1159,9 +1159,9 @@ select invalid, invalid_reason
 from system.materialized_views
 where database = 'test_mv_ddl' and name = 'dropped_mv'
 ----
-1 source table was dropped, renamed, or replaced
+1 source table was dropped
 
-# UNDROP restores the same table ID/name and therefore clears the dynamic lifecycle state.
+# UNDROP restores the same table ID/name and clears the reason.
 statement ok
 undrop table dropped_source
 
@@ -1199,7 +1199,7 @@ select source_table, invalid, invalid_reason
 from system.materialized_views
 where database = 'test_mv_ddl' and name = 'case_rename_mv'
 ----
-casesource 1 source table was dropped, renamed, or replaced
+casesource 1 source table was renamed
 
 statement ok
 alter table casesource rename to CaseSource
@@ -1220,8 +1220,8 @@ drop table CaseSource
 statement ok
 set unquoted_ident_case_sensitive = 0
 
-# A database rename preserves table IDs and source-binding generations, but the persisted MV
-# definition still references the database name captured by CREATE.
+# A database rename preserves table IDs, but the MV is bound to the database name captured by
+# CREATE: the rename marks it, renaming back restores it.
 statement ok
 create database mv_database_rename
 
@@ -1241,14 +1241,12 @@ refresh materialized view mv_database_rename.mv
 statement ok
 alter database mv_database_rename rename to mv_database_renamed
 
-# Name-based lifecycle validation detects the rename even though generation validation does not.
-query TTBTII
-select source_database, source_table, invalid, invalid_reason,
-       bound_source_generation, current_source_generation
+query TTBT
+select source_database, source_table, invalid, invalid_reason
 from system.materialized_views
 where database = 'mv_database_renamed' and name = 'mv'
 ----
-mv_database_renamed source 1 source database was renamed 0 0
+mv_database_renamed source 1 source database was renamed
 
 statement error 2328
 select * from mv_database_renamed.mv
@@ -1295,7 +1293,7 @@ CREATE MATERIALIZED VIEW mv_guard AS SELECT a, b FROM mv_guard_source WHERE 1 = 
 statement ok
 ALTER TABLE mv_guard_source ADD COLUMN c INT
 
-# ADD COLUMN preserves the source generation, so refresh remains valid.
+# ADD COLUMN does not mark the MV, so refresh remains valid.
 statement ok
 REFRESH MATERIALIZED VIEW mv_guard
 
@@ -1305,12 +1303,12 @@ ALTER TABLE mv_guard_source RENAME COLUMN a TO renamed_a
 statement error 2328
 REFRESH MATERIALIZED VIEW mv_guard
 
-query BTII
-SELECT invalid, invalid_reason, bound_source_generation, current_source_generation
+query BT
+SELECT invalid, invalid_reason
 FROM system.materialized_views
 WHERE database = 'test_mv_ddl' AND name = 'mv_guard'
 ----
-1 NULL 0 1
+1 source table schema was changed
 
 # Reads reject the same stale source binding instead of using MV storage.
 statement error 2328
@@ -1322,7 +1320,7 @@ SHOW CREATE MATERIALIZED VIEW mv_guard
 ----
 mv_guard CREATE MATERIALIZED VIEW `test_mv_ddl`.`mv_guard` (`a`, `b`) AS SELECT a, b FROM test_mv_ddl.mv_guard_source WHERE 1 = 1
 
-# CREATE observes the nonzero generation produced by RENAME COLUMN and can publish a new binding.
+# A new MV against the changed schema is valid.
 statement ok
 CREATE MATERIALIZED VIEW mv_guard_recreated AS SELECT renamed_a, b, c FROM mv_guard_source WHERE 1 = 1
 

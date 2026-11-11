@@ -80,9 +80,8 @@ use databend_common_meta_app::schema::ListTableReq;
 use databend_common_meta_app::schema::LvtUpdate;
 use databend_common_meta_app::schema::MATERIALIZED_VIEW_ENGINE;
 use databend_common_meta_app::schema::MVDefinitionIdent;
+use databend_common_meta_app::schema::MVInvalidReason;
 use databend_common_meta_app::schema::MVSourceBinding;
-use databend_common_meta_app::schema::MVSourceBindingVersion;
-use databend_common_meta_app::schema::MVSourceBindingVersionIdent;
 use databend_common_meta_app::schema::OPT_KEY_CLONE_GROUP_ID;
 use databend_common_meta_app::schema::RenameTableReply;
 use databend_common_meta_app::schema::RenameTableReq;
@@ -148,6 +147,8 @@ use super::database_util::get_db_or_err;
 use super::garbage_collection_api::HistoryTablesForGc;
 use super::garbage_collection_api::ORPHAN_POSTFIX;
 use super::garbage_collection_api::get_history_tables_for_gc;
+use super::materialized_view_api::mark_mvs_invalid;
+use super::materialized_view_api::rename_source_of_mvs;
 use super::schema_api::VersionedTable;
 use super::schema_api::build_upsert_table_deduplicated_label;
 use super::schema_api::construct_drop_table_txn_operations;
@@ -804,43 +805,12 @@ where
                             .into(),
                         ));
                     }
-                    let version_ident =
-                        MVSourceBindingVersionIdent::new(req.tenant(), source_table_id);
-                    let (version_seq, version) = self.get_pb_seq_and_value(&version_ident).await?;
-                    let current_source_generation = version
-                        .as_ref()
-                        .map(|version| version.current_source_generation)
-                        .unwrap_or(0);
-                    if current_source_generation != mv.expected_source_generation {
-                        return Err(KVAppError::AppError(
-                            InvalidMaterializedView::new(format!(
-                                "source table binding generation changed from {} to {} while creating materialized view",
-                                mv.expected_source_generation, current_source_generation
-                            ))
-                            .into(),
-                        ));
-                    }
-                    txn.condition
-                        .push(txn_cond_eq_seq(&version_ident, version_seq));
-                    if version.is_none() {
-                        // A missing version record is semantic generation 0.
-                        // Initialize it in the same transaction that publishes
-                        // the first MV, so a failed CREATE leaves no record.
-                        // Its resulting KV seq is deliberately not the MV
-                        // generation; that seq is only a transaction CAS token.
-                        txn.if_then.push(txn_put_pb(
-                            &version_ident,
-                            &MVSourceBindingVersion::default(),
-                        ));
-                    }
                     txn.if_then.push(txn_put_pb(
                         &SourceTableMVIdent::new_generic(
                             req.tenant(),
                             SourceTableMV::new(source_table_id, table_id),
                         ),
-                        &MVSourceBinding {
-                            bound_source_generation: mv.expected_source_generation,
-                        },
+                        &MVSourceBinding::default(),
                     ));
                 }
 
@@ -1125,6 +1095,18 @@ where
                     txn.if_then
                         .push(txn_put_pb(&new_seq_db_id.data, &*new_db_meta)); // (db_id) -> db_meta
                 }
+
+                // MVs are bound to the name the source had when they were created: renaming it
+                // away invalidates them, renaming it back restores them.
+                rename_source_of_mvs(
+                    self,
+                    &mut txn,
+                    tenant_dbname.tenant(),
+                    table_id,
+                    &req.new_db_name,
+                    &req.new_table_name,
+                )
+                .await?;
 
                 let (succ, _responses) = send_txn(self, txn).await?;
 
@@ -1581,7 +1563,7 @@ where
         }
     }
 
-    /// `tenant` locates MV source binding generation records for invalidating schema updates.
+    /// `tenant` locates the MV dependency edges of tables whose schema update invalidates MVs.
     async fn update_multi_table_meta(
         &self,
         tenant: &Tenant,
@@ -1711,44 +1693,19 @@ where
             new_table_meta_map.insert(req.table_id, new_table_meta);
         }
 
-        let invalidating_mv_source_table_ids = invalidates_mv_source_bindings_by_table_id
-            .into_iter()
-            .filter_map(|(table_id, invalidates)| invalidates.then_some(table_id))
-            .collect::<Vec<_>>();
-
-        if !invalidating_mv_source_table_ids.is_empty() {
-            let generation_idents = invalidating_mv_source_table_ids
-                .iter()
-                .map(|table_id| MVSourceBindingVersionIdent::new(tenant, *table_id))
-                .collect::<Vec<_>>();
-
-            let generations = self.get_pb_values_vec(generation_idents.clone()).await?;
-
-            // The exact source TableMeta sequence condition serializes concurrent invalidating
-            // updates, so the generation value does not need a second CAS condition.
-            for ((table_id, generation_ident), generation) in invalidating_mv_source_table_ids
-                .into_iter()
-                .zip(generation_idents)
-                .zip(generations)
-            {
-                let next_generation = generation
-                    .map(|generation| generation.data.current_source_generation)
-                    .unwrap_or(0)
-                    .checked_add(1)
-                    .ok_or_else(|| {
-                        KVAppError::AppError(
-                            InvalidMaterializedView::new(format!(
-                                "source table {} binding generation overflow",
-                                table_id
-                            ))
-                            .into(),
-                        )
-                    })?;
-
-                txn.if_then
-                    .push(txn_put_pb(&generation_ident, &MVSourceBindingVersion {
-                        current_source_generation: next_generation,
-                    }));
+        // An invalidating schema change marks every dependent MV in this transaction. A concurrent
+        // change to one of those definitions fails the transaction, which the caller reports as
+        // a commit failure.
+        for (table_id, invalidates) in invalidates_mv_source_bindings_by_table_id {
+            if invalidates {
+                mark_mvs_invalid(
+                    self,
+                    &mut txn,
+                    tenant,
+                    table_id,
+                    MVInvalidReason::SourceSchemaChanged,
+                )
+                .await?;
             }
         }
 

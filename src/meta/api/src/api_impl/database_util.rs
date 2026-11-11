@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::BTreeSet;
+use std::collections::HashMap;
 use std::fmt::Display;
 
 use chrono::Utc;
@@ -20,10 +22,12 @@ use databend_common_meta_app::app_error::AppError;
 use databend_common_meta_app::app_error::DropDbWithDropTime;
 use databend_common_meta_app::principal::OwnershipObject;
 use databend_common_meta_app::principal::TenantOwnershipObjectIdent;
+use databend_common_meta_app::schema::DBIdTableName;
 use databend_common_meta_app::schema::DatabaseId;
 use databend_common_meta_app::schema::DatabaseIdHistoryIdent;
 use databend_common_meta_app::schema::DatabaseMeta;
 use databend_common_meta_app::schema::DbIdList;
+use databend_common_meta_app::schema::MVInvalidReason;
 use databend_common_meta_app::schema::ObjectTagIdRef;
 use databend_common_meta_app::schema::ObjectTagIdRefIdent;
 use databend_common_meta_app::schema::TagIdObjectRef;
@@ -41,6 +45,7 @@ use futures::TryStreamExt;
 use log::debug;
 use log::warn;
 
+use super::materialized_view_api::mark_mvs_of_sources_invalid;
 use crate::error_util::unknown_database_error;
 use crate::kv_app_error::KVAppError;
 use crate::kv_app_error::KVAppResultExt;
@@ -163,7 +168,37 @@ pub(crate) async fn drop_database_meta(
         txn.if_then.push(txn_del(&tag_ref_key));
     }
 
+    // The MVs depending on tables of this database lose their source; UNDROP DATABASE restores
+    // them. MVs inside the database are dropped with it and need no mark.
+    let source_table_ids = active_table_ids_of_database(kv_api, db_id)
+        .await?
+        .into_keys()
+        .collect::<BTreeSet<_>>();
+    mark_mvs_of_sources_invalid(
+        kv_api,
+        txn,
+        tenant_dbname.tenant(),
+        &source_table_ids,
+        MVInvalidReason::SourceDatabaseDropped,
+    )
+    .await?;
+
     Ok(db_id)
+}
+
+/// The tables listed under database `db_id`, by id and name. DROP DATABASE keeps these name
+/// mappings, so after a drop they are the tables that UNDROP DATABASE brings back.
+pub(crate) async fn active_table_ids_of_database(
+    kv_api: &(impl kvapi::KVApi<Error = MetaError> + ?Sized),
+    db_id: u64,
+) -> Result<HashMap<u64, String>, MetaError> {
+    let dir = DirName::new(DBIdTableName::new(db_id, ""));
+    Ok(kv_api
+        .list_pb_vec(ListOptions::unlimited(&dir))
+        .await?
+        .into_iter()
+        .map(|(name, table_id)| (table_id.data.table_id, name.table_name))
+        .collect())
 }
 
 /// Returns (db_id_seq, db_id, db_meta_seq, db_meta)

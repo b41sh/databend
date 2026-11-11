@@ -134,20 +134,21 @@ impl<'a> MaterializedViewRefresh<'a> {
         };
 
         let catalog_obj = ctx.get_catalog(catalog).await?;
-        // Binding validity is an admission check, not a refresh fence. Meta reads the definition
-        // and both generations at one transaction point. Once admitted, a concurrent source-schema
-        // change may let this refresh finish; subsequent MV reads reject the stale binding.
+        // Validity is an admission check: source DDL writes the reason into the MV TableMeta in
+        // its own transaction. A source-schema change after this check makes the commit's exact
+        // TableMeta sequence condition fail, as the DDL rewrote the MV TableMeta.
+        if let Some(reason) = mv_meta.materialized_view_invalid_reason() {
+            return Err(ErrorCode::InvalidMaterializedView(format!(
+                "materialized view {}.{} is invalid: {}; recreate the materialized view",
+                database, view_name, reason
+            )));
+        }
         let definition = get_materialized_view_handler()
-            .get_active_mv_definition(
-                catalog_obj.as_ref(),
-                &ctx.get_tenant(),
-                source_table_id,
-                mv_table.get_id(),
-            )
+            .get_mv_definition(catalog_obj.as_ref(), &ctx.get_tenant(), mv_table.get_id())
             .await?
             .ok_or_else(|| {
                 ErrorCode::InvalidMaterializedView(format!(
-                    "materialized view {}.{} has an invalid source binding; recreate the materialized view",
+                    "materialized view {}.{} has no definition; recreate the materialized view",
                     database, view_name
                 ))
             })?;

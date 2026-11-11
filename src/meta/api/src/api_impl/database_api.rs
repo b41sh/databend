@@ -40,6 +40,7 @@ use databend_common_meta_app::schema::GetDatabaseReq;
 use databend_common_meta_app::schema::ListDatabaseReq;
 use databend_common_meta_app::schema::RenameDatabaseReply;
 use databend_common_meta_app::schema::RenameDatabaseReq;
+use databend_common_meta_app::schema::TableId;
 use databend_common_meta_app::schema::UndropDatabaseReply;
 use databend_common_meta_app::schema::UndropDatabaseReq;
 use databend_common_meta_app::schema::UpdateDatabaseOptionsReply;
@@ -62,8 +63,11 @@ use log::warn;
 use seq_marked::SeqValue;
 
 use super::data_retention_util::is_drop_time_retainable;
+use super::database_util::active_table_ids_of_database;
 use super::database_util::drop_database_meta;
 use super::database_util::get_db_or_err;
+use super::materialized_view_api::rename_database_of_mvs;
+use super::materialized_view_api::restore_mvs_of_sources;
 use crate::db_has_to_exist;
 use crate::error_util::db_has_to_not_exist;
 use crate::fetch_id;
@@ -318,7 +322,7 @@ where
                 }
                 db_meta.drop_on = None;
 
-                let txn_req = TxnRequest::new(
+                let mut txn_req = TxnRequest::new(
                     vec![
                         txn_cond_seq(name_key, Eq, 0),
                         txn_cond_seq(&dbid_idlist, Eq, db_id_list_seq),
@@ -329,6 +333,30 @@ where
                         txn_put_pb(&dbid, &db_meta), // (db_id) -> db_meta
                     ],
                 );
+
+                // The tables of the database are active again: MVs bound to them come back.
+                // A table dropped on its own before the database stays dropped.
+                let mut tables = active_table_ids_of_database(self, db_id).await?;
+                let table_metas = self
+                    .get_pb_values_vec(tables.keys().map(|table_id| TableId::new(*table_id)))
+                    .await?;
+                let dropped = tables
+                    .keys()
+                    .zip(table_metas)
+                    .filter(|(_, meta)| !meta.as_ref().is_some_and(|m| m.data.drop_on.is_none()))
+                    .map(|(table_id, _)| *table_id)
+                    .collect::<Vec<_>>();
+                for table_id in dropped {
+                    tables.remove(&table_id);
+                }
+                restore_mvs_of_sources(
+                    self,
+                    &mut txn_req,
+                    name_key.tenant(),
+                    name_key.database_name(),
+                    &tables,
+                )
+                .await?;
 
                 let (succ, _responses) = send_txn(self, txn_req).await?;
 
@@ -469,7 +497,19 @@ where
                 txn_put_pb(&db_id_key, &DatabaseNameIdentRaw::from(&tenant_newdbname)), /* __fd_database_id_to_name/<db_id> -> (tenant,db_name) */
             ];
 
-            let txn_req = TxnRequest::new(condition, if_then);
+            let mut txn_req = TxnRequest::new(condition, if_then);
+
+            // MVs are bound to `database.table` of their source: renaming the database away
+            // invalidates them, renaming it back restores them.
+            let tables = active_table_ids_of_database(self, *old_db_id).await?;
+            rename_database_of_mvs(
+                self,
+                &mut txn_req,
+                tenant_dbname.tenant(),
+                &req.new_db_name,
+                &tables,
+            )
+            .await?;
 
             let (succ, _responses) = send_txn(self, txn_req).await?;
 
