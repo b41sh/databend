@@ -3061,6 +3061,7 @@ dependencies = [
  "rspack-codespan-reporting",
  "serde",
  "serde_json",
+ "stacker",
  "strsim 0.10.0",
  "strum 0.24.1",
  "strum_macros 0.24.3",
@@ -3293,6 +3294,7 @@ dependencies = [
  "serde_ignored",
  "serde_with",
  "serfig",
+ "sysinfo",
  "temp-env",
  "tempfile",
  "toml 0.8.22",
@@ -3506,6 +3508,7 @@ dependencies = [
  "databend-functions-scalar-math",
  "databend-functions-scalar-numeric-basic-arithmetic",
  "divan",
+ "encoding_rs",
  "geo",
  "geozero",
  "glob",
@@ -3526,6 +3529,7 @@ dependencies = [
  "proptest",
  "rand 0.8.5",
  "regex",
+ "regex-syntax 0.8.11",
  "serde",
  "serde_json",
  "sha1 0.10.6",
@@ -3681,6 +3685,7 @@ dependencies = [
  "anyhow",
  "async-backtrace",
  "async-trait",
+ "bytes",
  "chrono",
  "databend-common-base",
  "databend-common-exception",
@@ -3693,6 +3698,8 @@ dependencies = [
  "display-more 0.2.6",
  "fastrace",
  "futures",
+ "h2",
+ "http 1.3.1",
  "itertools 0.13.0",
  "log",
  "logcall",
@@ -3992,7 +3999,6 @@ dependencies = [
  "once_cell",
  "serde",
  "serde_json",
- "sys-info",
  "tokio",
 ]
 
@@ -4284,7 +4290,6 @@ dependencies = [
  "tantivy",
  "tantivy-jieba",
  "tempfile",
- "thrift",
  "tokio",
  "typetag",
  "uuid",
@@ -4296,6 +4301,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "arrow-array",
+ "arrow-cast",
  "arrow-schema",
  "async-backtrace",
  "async-trait",
@@ -5854,6 +5860,7 @@ dependencies = [
  "sha2 0.10.9",
  "socket2 0.5.9",
  "sqlx",
+ "subtle",
  "sysinfo",
  "temp-env",
  "tempfile",
@@ -6069,6 +6076,7 @@ dependencies = [
  "half",
  "itertools 0.13.0",
  "jsonb",
+ "libc",
  "log",
  "match-template",
  "num-traits",
@@ -6109,6 +6117,8 @@ dependencies = [
  "log",
  "opendal 0.55.0",
  "parquet",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -14678,16 +14688,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sys-info"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b3a0d0aba8bf96a0e1ddfdc352fc53b3df7f39318c71854910c3c4b024ae52c"
-dependencies = [
- "cc",
- "libc",
-]
-
-[[package]]
 name = "sysinfo"
 version = "0.34.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -15084,15 +15084,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "threadpool"
-version = "1.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d050e60b33d41c19108b32cea32164033a9013fe3b46cbd4457559bfbf77afaa"
-dependencies = [
- "num_cpus",
-]
-
-[[package]]
 name = "thrift"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -15100,9 +15091,7 @@ checksum = "7e54bc85fc7faa8bc175c4bab5b92ba8d9a3ce893d0e9f42cc455c8ab16a9e09"
 dependencies = [
  "byteorder",
  "integer-encoding 3.0.4",
- "log",
  "ordered-float 2.10.1",
- "threadpool",
 ]
 
 [[package]]
