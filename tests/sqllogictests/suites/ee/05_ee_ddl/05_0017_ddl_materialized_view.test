@@ -1033,8 +1033,8 @@ UNDROP TABLE test_mv
 statement error 1302
 DROP MATERIALIZED VIEW mv_base_t
 
-# Source DDL writes the invalid reason into the MV definition; renaming the source back to the
-# name bound by CREATE clears it.
+# Source DDL is followed by writing the invalid reason into the MV; renaming the source back to
+# the name bound by CREATE clears it.
 statement ok
 create table replaced_source (id int) change_tracking = true
 
@@ -1050,7 +1050,7 @@ refresh materialized view replaced_mv
 statement ok
 alter table replaced_source rename to renamed_replaced_source
 
-# The rename marks the MV in the same transaction.
+# The rename reconciles the MV after it commits.
 query TBT
 select source_table, invalid, invalid_reason
 from system.materialized_views
@@ -1344,6 +1344,62 @@ DROP MATERIALIZED VIEW mv_guard_recreated
 
 statement ok
 DROP TABLE mv_guard_source
+
+# SWAP renames each table to the other's name, which invalidates the MV; swapping back restores it.
+statement ok
+CREATE TABLE mv_swap_a (id INT) change_tracking = true
+
+statement ok
+CREATE TABLE mv_swap_b (id INT) change_tracking = true
+
+statement ok
+CREATE MATERIALIZED VIEW mv_swap AS SELECT id FROM mv_swap_a WHERE 1 = 1
+
+statement ok
+ALTER TABLE mv_swap_a SWAP WITH mv_swap_b
+
+query BT
+SELECT invalid, invalid_reason
+FROM system.materialized_views
+WHERE database = 'test_mv_ddl' AND name = 'mv_swap'
+----
+1 source table was renamed
+
+statement error 2328
+SELECT * FROM mv_swap
+
+statement ok
+ALTER TABLE mv_swap_a SWAP WITH mv_swap_b
+
+query BB
+SELECT invalid, invalid_reason IS NULL
+FROM system.materialized_views
+WHERE database = 'test_mv_ddl' AND name = 'mv_swap'
+----
+0 1
+
+# CREATE OR REPLACE TABLE ... AS SELECT replaces the source: the MV reads a table that is gone.
+statement ok
+CREATE OR REPLACE TABLE mv_swap_a AS SELECT 1 AS id
+
+query BT
+SELECT invalid, invalid_reason
+FROM system.materialized_views
+WHERE database = 'test_mv_ddl' AND name = 'mv_swap'
+----
+1 source table was dropped
+
+statement error 2328
+SELECT * FROM mv_swap
+
+statement ok
+DROP MATERIALIZED VIEW mv_swap
+
+statement ok
+DROP TABLE mv_swap_a
+
+statement ok
+DROP TABLE mv_swap_b
 
 # After three MV refreshes, synchronous post-commit maintenance must compact
 # the three small blocks into one block containing all three rows.
