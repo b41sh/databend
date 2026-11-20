@@ -134,6 +134,7 @@ use databend_common_meta_app::schema::MVInvalidReason;
 use databend_common_meta_app::schema::MarkedDeletedIndexType;
 use databend_common_meta_app::schema::MaterializedViewListFilter;
 use databend_common_meta_app::schema::OPT_KEY_CLONE_GROUP_ID;
+use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON;
 use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME;
 use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_ID;
 use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME;
@@ -266,12 +267,6 @@ fn summarize_locks(locks: &[LockInfo]) -> Vec<LockSummary> {
         .collect()
 }
 
-/// Test suite of `SchemaApi`.
-///
-/// It is not used by this crate, but is used by other crate that impl `SchemaApi`,
-/// to ensure an impl works as expected,
-/// such as `meta/embedded` and `metasrv`.
-#[derive(Copy, Clone)]
 /// Why materialized view `mv_id` is invalid, from its `TableMeta`; `None` while it is valid.
 async fn mv_invalid_reason<MT: kvapi::KVApi<Error = MetaError>>(
     mt: &MT,
@@ -287,6 +282,12 @@ async fn mv_invalid_reason<MT: kvapi::KVApi<Error = MetaError>>(
         .map(str::to_string))
 }
 
+/// Test suite of `SchemaApi`.
+///
+/// It is not used by this crate, but is used by other crate that impl `SchemaApi`,
+/// to ensure an impl works as expected,
+/// such as `meta/embedded` and `metasrv`.
+#[derive(Copy, Clone)]
 pub struct SchemaApiTestSuite {}
 
 impl SchemaApiTestSuite {
@@ -2564,8 +2565,6 @@ impl SchemaApiTestSuite {
                 new_db_name: renamed_db_name.clone(),
             })
             .await?;
-            mt.reconcile_mvs_of_sources(&tenant, &[source_table_id])
-                .await?;
             let renamed = mt
                 .list_materialized_views(&tenant, &MaterializedViewListFilter {
                     materialized_view_ids: Some(BTreeSet::from([mv_id])),
@@ -2581,15 +2580,14 @@ impl SchemaApiTestSuite {
                 renamed.source.database_name.as_deref(),
                 Some(renamed_db_name.as_str())
             );
-            // The source is bound as `db_name.source_table`: the database rename invalidates
-            // the MV, renaming it back restores it.
+            // Source DDL leaves the MV alone: the query layer reconciles it afterwards.
             assert_eq!(
                 renamed
                     .mv
                     .table_meta
                     .data
                     .materialized_view_invalid_reason(),
-                Some(MVInvalidReason::SourceDatabaseRenamed.as_str())
+                None
             );
             mt.rename_database(RenameDatabaseReq {
                 if_exists: false,
@@ -2597,8 +2595,6 @@ impl SchemaApiTestSuite {
                 new_db_name: db_name.clone(),
             })
             .await?;
-            mt.reconcile_mvs_of_sources(&tenant, &[source_table_id])
-                .await?;
             assert_eq!(mv_invalid_reason(mt, mv_id).await?, None);
 
             let exact = mt
@@ -2646,22 +2642,6 @@ impl SchemaApiTestSuite {
             let source_table = mt
                 .get_table(GetTableReq::new(&tenant, &db_name, &source_table_name))
                 .await?;
-            // The MV was created without recorded source columns, as by an older version: they
-            // are recorded from the schema before the first schema change.
-            assert_eq!(
-                mt.backfill_mv_source_columns(&tenant, source_table_id, &source_table.meta.schema)
-                    .await?,
-                1
-            );
-            assert_eq!(
-                mt.backfill_mv_source_columns(&tenant, source_table_id, &source_table.meta.schema)
-                    .await?,
-                0,
-                "recorded source columns are never replaced"
-            );
-            let source_table = mt
-                .get_table(GetTableReq::new(&tenant, &db_name, &source_table_name))
-                .await?;
             let mut new_source_meta = source_table.meta.clone();
             let mut new_schema = new_source_meta.schema.as_ref().clone();
             new_schema.add_column(
@@ -2704,12 +2684,11 @@ impl SchemaApiTestSuite {
                     .map(String::as_str),
                 Some("snapshot-v1")
             );
-            mt.reconcile_mvs_of_sources(&tenant, &[source_table_id])
-                .await?;
             assert_eq!(mv_invalid_reason(mt, mv_id).await?, None);
         }
 
-        // Renaming a source column marks the MV invalid; the reason is final.
+        // Renaming a source column leaves the MV alone; the query layer marks it invalid
+        // afterwards.
         {
             let source_table = mt
                 .get_table(GetTableReq::new(&tenant, &db_name, &source_table_name))
@@ -2741,36 +2720,18 @@ impl SchemaApiTestSuite {
                 .await?;
             assert!(updated_source.meta.schema.has_field("renamed_number"));
             assert!(!updated_source.meta.schema.has_field("number"));
-            // The schema change itself leaves the MV alone; reconciling compares the recorded
-            // source columns with the new schema.
             assert_eq!(mv_invalid_reason(mt, mv_id).await?, None);
-            mt.reconcile_mvs_of_sources(&tenant, &[source_table_id])
-                .await?;
-            assert_eq!(
-                mv_invalid_reason(mt, mv_id).await?.as_deref(),
-                Some(MVInvalidReason::SourceSchemaChanged.as_str())
-            );
 
-            // A lifecycle reason does not override the schema reason, and the source coming
-            // back under its name does not restore it.
-            mt.rename_table(RenameTableReq {
-                if_exists: false,
-                name_ident: TableNameIdent::new(&tenant, &db_name, &source_table_name),
-                new_db_name: db_name.clone(),
-                new_table_name: "source_table_moved".to_string(),
+            // The reason is an ordinary option of the MV, written as the query layer does.
+            mt.upsert_table_option(UpsertTableOptionReq {
+                table_id: mv_id,
+                seq: MatchSeq::Any,
+                options: HashMap::from([(
+                    OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON.to_string(),
+                    Some(MVInvalidReason::SourceSchemaChanged.as_str().to_string()),
+                )]),
             })
             .await?;
-            mt.reconcile_mvs_of_sources(&tenant, &[source_table_id])
-                .await?;
-            mt.rename_table(RenameTableReq {
-                if_exists: false,
-                name_ident: TableNameIdent::new(&tenant, &db_name, "source_table_moved"),
-                new_db_name: db_name.clone(),
-                new_table_name: source_table_name.clone(),
-            })
-            .await?;
-            mt.reconcile_mvs_of_sources(&tenant, &[source_table_id])
-                .await?;
             assert_eq!(
                 mv_invalid_reason(mt, mv_id).await?.as_deref(),
                 Some(MVInvalidReason::SourceSchemaChanged.as_str())
@@ -2854,8 +2815,7 @@ impl SchemaApiTestSuite {
             replacement
         };
 
-        // Reconciling after source lifecycle DDL marks the MV invalid, and restores it when the
-        // source comes back under the name the MV was bound to.
+        // Source lifecycle DDL leaves the MV alone: the query layer reconciles it afterwards.
         {
             let drop_source = DropTableByIdReq {
                 if_exists: false,
@@ -2869,34 +2829,13 @@ impl SchemaApiTestSuite {
             };
             let source_name_ident = TableNameIdent::new(&tenant, &db_name, replacement_source_name);
 
-            // The DDL leaves the MV alone; reconciling reads the state of the source, so it does
-            // not depend on the order of the DDLs: after DROP and UNDROP the MV is valid.
-            mt.drop_table_by_id(drop_source.clone()).await?;
-            assert_eq!(mv_invalid_reason(mt, replacement.table_id).await?, None);
-            mt.undrop_table(UndropTableReq {
-                name_ident: source_name_ident.clone(),
-            })
-            .await?;
-            mt.reconcile_mvs_of_sources(&tenant, &[replacement_source_table_id])
-                .await?;
-            assert_eq!(mv_invalid_reason(mt, replacement.table_id).await?, None);
-
             // DROP TABLE / UNDROP TABLE.
             mt.drop_table_by_id(drop_source.clone()).await?;
-            mt.reconcile_mvs_of_sources(&tenant, &[replacement_source_table_id])
-                .await?;
-            assert_eq!(
-                mv_invalid_reason(mt, replacement.table_id)
-                    .await?
-                    .as_deref(),
-                Some(MVInvalidReason::SourceDropped.as_str())
-            );
+            assert_eq!(mv_invalid_reason(mt, replacement.table_id).await?, None);
             mt.undrop_table(UndropTableReq {
                 name_ident: source_name_ident.clone(),
             })
             .await?;
-            mt.reconcile_mvs_of_sources(&tenant, &[replacement_source_table_id])
-                .await?;
             assert_eq!(mv_invalid_reason(mt, replacement.table_id).await?, None);
 
             // RENAME TABLE away and back, through another database.
@@ -2911,91 +2850,35 @@ impl SchemaApiTestSuite {
                 new_table_name: replacement_source_name.to_string(),
             })
             .await?;
-            mt.reconcile_mvs_of_sources(&tenant, &[replacement_source_table_id])
-                .await?;
-            assert_eq!(
-                mv_invalid_reason(mt, replacement.table_id)
-                    .await?
-                    .as_deref(),
-                Some(MVInvalidReason::SourceRenamed.as_str())
-            );
-            // Dropping the moved source keeps the rename reason: it is not the bound identity.
+            assert_eq!(mv_invalid_reason(mt, replacement.table_id).await?, None);
             mt.rename_table(RenameTableReq {
                 if_exists: false,
                 name_ident: TableNameIdent::new(&tenant, &other_db_name, replacement_source_name),
                 new_db_name: db_name.clone(),
-                new_table_name: "renamed_again".to_string(),
-            })
-            .await?;
-            mt.reconcile_mvs_of_sources(&tenant, &[replacement_source_table_id])
-                .await?;
-            assert_eq!(
-                mv_invalid_reason(mt, replacement.table_id)
-                    .await?
-                    .as_deref(),
-                Some(MVInvalidReason::SourceRenamed.as_str())
-            );
-            mt.rename_table(RenameTableReq {
-                if_exists: false,
-                name_ident: TableNameIdent::new(&tenant, &db_name, "renamed_again"),
-                new_db_name: db_name.clone(),
                 new_table_name: replacement_source_name.to_string(),
             })
             .await?;
-            mt.reconcile_mvs_of_sources(&tenant, &[replacement_source_table_id])
-                .await?;
             assert_eq!(mv_invalid_reason(mt, replacement.table_id).await?, None);
 
-            // DROP DATABASE / UNDROP DATABASE of the source's database. The MV lives in the same
-            // database here, so it is checked through its definition, which the drop keeps.
+            // DROP DATABASE / UNDROP DATABASE of the source's database.
             mt.drop_database(DropDatabaseReq {
                 if_exists: false,
                 name_ident: DatabaseNameIdent::new(&tenant, &db_name),
             })
             .await?;
-            mt.reconcile_mvs_of_sources(&tenant, &[replacement_source_table_id])
-                .await?;
-            assert_eq!(
-                mv_invalid_reason(mt, replacement.table_id)
-                    .await?
-                    .as_deref(),
-                Some(MVInvalidReason::SourceDatabaseDropped.as_str())
-            );
+            assert_eq!(mv_invalid_reason(mt, replacement.table_id).await?, None);
             mt.undrop_database(UndropDatabaseReq {
                 name_ident: DatabaseNameIdent::new(&tenant, &db_name),
             })
             .await?;
-            mt.reconcile_mvs_of_sources(&tenant, &[replacement_source_table_id])
-                .await?;
             assert_eq!(mv_invalid_reason(mt, replacement.table_id).await?, None);
-            // The snapshot sees the restored MV again.
-            assert_eq!(
-                mt.get_mv_source_binding_snapshot(&tenant, replacement_source_table_id)
-                    .await?
-                    .materialized_views
-                    .len(),
-                1
-            );
 
             // Source DROP preserves the relationship until source GC.
             let relationship_ident =
                 source_mv_ident(replacement_source_table_id, replacement.table_id);
             mt.drop_table_by_id(drop_source).await?;
-            mt.reconcile_mvs_of_sources(&tenant, &[replacement_source_table_id])
-                .await?;
             assert!(mt.get_pb(&relationship_ident).await?.is_some());
-            assert_eq!(
-                mv_invalid_reason(mt, replacement.table_id)
-                    .await?
-                    .as_deref(),
-                Some(MVInvalidReason::SourceDropped.as_str())
-            );
-            assert!(
-                mt.get_mv_source_binding_snapshot(&tenant, replacement_source_table_id)
-                    .await?
-                    .materialized_views
-                    .is_empty()
-            );
+            assert_eq!(mv_invalid_reason(mt, replacement.table_id).await?, None);
 
             let dropped = mt
                 .list_materialized_views(&tenant, &MaterializedViewListFilter {
@@ -3064,10 +2947,6 @@ impl SchemaApiTestSuite {
             assert!(orphan.source.database_name.is_none());
             assert!(orphan.source.table_name.is_none());
             assert!(!orphan.source.is_active);
-            assert_eq!(
-                orphan.mv.table_meta.data.materialized_view_invalid_reason(),
-                Some(MVInvalidReason::SourceDropped.as_str())
-            );
         }
 
         Ok(())

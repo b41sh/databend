@@ -669,7 +669,7 @@ impl Binder {
                 OPT_KEY_CHANGE_TRACKING_BEGIN_VER.to_string(),
                 source_table_seq.to_string(),
             );
-            source_catalog.get_table_by_info(&source_info)?
+            target_catalog.get_table_by_info(&source_info)?
         } else {
             source_table.clone()
         };

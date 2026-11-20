@@ -31,23 +31,15 @@
 //! Whether an MV is valid is recorded in its `TableMeta` options, on a best-effort
 //! basis. Source DDL does not touch MV metadata in its own transaction: a source
 //! may have many MVs, and the DDL must not grow with them or retry on their
-//! REFRESH commits. After the DDL, the query layer calls
-//! [`MaterializedViewApi::reconcile_mvs_of_sources`] (or
-//! [`MaterializedViewApi::reconcile_all_mvs`] after a database DDL), which reads the current
-//! state of each source and writes the reason each dependent MV should have, one
-//! MV per transaction. Reconciling is idempotent and does not depend on the order
-//! of the DDLs, so a failure is repaired by reconciling again.
+//! REFRESH commits. After the DDL, the query layer reads the current state of the
+//! source and sets or clears the invalid reason of each dependent MV through the
+//! ordinary table option API; a failure is only logged.
 //!
 //! Because the reason may be missing, readers do not rely on it alone: they check
 //! the source identity, and compare the source schema with the columns the MV was
 //! created against (`materialized_view_source_columns`). An MV created by an older
-//! version has no recorded columns; [`MaterializedViewApi::backfill_mv_source_columns`]
-//! records them before the first schema change of its source.
-//!
-//! Lifecycle reasons are reversible: UNDROP and a RENAME back to the database
-//! and table name the MV was bound to clear them. A schema change is final and
-//! overrides a lifecycle reason; a lifecycle reason never overrides a schema
-//! change.
+//! version has no recorded columns; the query layer records them before the first
+//! schema change of its source.
 //!
 //! The metadata operations are:
 //!
@@ -69,17 +61,8 @@
 //!     delete MVDefinitionIdent(tenant, mv_id)
 //!     delete SourceTableMVIdent(tenant, source_id, mv_id)
 //!
-//! Source DDL (DROP, UNDROP, RENAME, SWAP, REPLACE of the table, column changes)
-//! commits without MV operations; afterwards:
-//!     reconcile_mvs_of_sources(source_ids): for each MV of each source, one txn
-//!         assert the MV TableMeta seq
-//!         put the MV TableMeta with the reason the source state calls for
-//!
-//! Database DDL (DROP, UNDROP, RENAME, REPLACE) likewise; afterwards:
-//!     reconcile_all_mvs(): as reconcile_mvs_of_sources, for every MV of the tenant
-//!
-//! Before a column change on a source:
-//!     backfill_mv_source_columns(source_id, schema before the change)
+//! Source DDL (DROP, UNDROP, RENAME, SWAP, REPLACE of a table or database, and
+//! column changes) commits without MV operations.
 //!
 //! GC MV txn:
 //!     delete MVDefinitionIdent(tenant, mv_id)
@@ -92,9 +75,7 @@
 
 use std::collections::BTreeSet;
 use std::collections::HashMap;
-use std::sync::Arc;
 
-use databend_common_expression::TableSchema;
 use databend_common_meta_app::schema::DBIdTableName;
 use databend_common_meta_app::schema::DatabaseId;
 use databend_common_meta_app::schema::DatabaseIdToName;
@@ -103,14 +84,8 @@ use databend_common_meta_app::schema::ListedMaterializedView;
 use databend_common_meta_app::schema::MVDefinition;
 use databend_common_meta_app::schema::MVDefinitionIdent;
 use databend_common_meta_app::schema::MVInfo;
-use databend_common_meta_app::schema::MVInvalidReason;
 use databend_common_meta_app::schema::MVSourceBindingSnapshot;
-use databend_common_meta_app::schema::MVSourceColumn;
 use databend_common_meta_app::schema::MaterializedViewListFilter;
-use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON;
-use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS;
-use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME;
-use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME;
 use databend_common_meta_app::schema::SourceTableMV;
 use databend_common_meta_app::schema::SourceTableMVIdent;
 use databend_common_meta_app::schema::TableId;
@@ -127,25 +102,13 @@ use databend_meta_client::kvapi::StructKey;
 use databend_meta_client::types::MetaError;
 use databend_meta_client::types::SeqV;
 use databend_meta_client::types::TxnGetResponse;
-use databend_meta_client::types::TxnRequest;
 use databend_meta_client::types::protobuf as pb;
-use log::info;
 use log::warn;
 
 use crate::DEFAULT_MGET_SIZE;
 use crate::deserialize_struct_get_response;
 use crate::error_util::invalid_reply;
-use crate::kv_app_error::KVAppError;
 use crate::kv_pb_api::KVPbApi;
-use crate::send_txn;
-use crate::txn_backoff::txn_backoff;
-use crate::txn_cond_eq_seq;
-use crate::txn_put_pb;
-
-/// Attempts to update one MV `TableMeta` against concurrent REFRESH commits.
-const MV_UPDATE_RETRIES: u32 = 5;
-/// Up to this many sources, their MVs are found through the dependency edges.
-const MV_EDGE_LOOKUP_MAX_SOURCES: usize = 8;
 
 /// APIs for metadata that belongs exclusively to materialized views.
 #[async_trait::async_trait]
@@ -192,60 +155,6 @@ where
         list_mvs_by_source_table_id_impl(self, tenant, source_table_id).await
     }
 
-    /// Bring the invalid reason of every MV of `source_table_ids` in line with the current state
-    /// of its source: dropped, in a dropped database, renamed away from the name the MV was
-    /// created against, with a recorded column changed, or back to the name it was created
-    /// against. Called after source DDL; it is idempotent, so a failure is repaired by calling it
-    /// again. Each MV is updated in its own transaction. Returns the number of MVs updated.
-    #[logcall::logcall]
-    #[fastrace::trace]
-    async fn reconcile_mvs_of_sources(
-        &self,
-        tenant: &Tenant,
-        source_table_ids: &[u64],
-    ) -> Result<usize, KVAppError> {
-        let source_table_ids = source_table_ids.iter().copied().collect::<BTreeSet<_>>();
-        reconcile_mvs(self, tenant, Some(&source_table_ids)).await
-    }
-
-    /// [`Self::reconcile_mvs_of_sources`] for every MV of the tenant: after a database DDL, whose
-    /// tables need not be listed for it, as MVs are few and tables may be many.
-    #[logcall::logcall]
-    #[fastrace::trace]
-    async fn reconcile_all_mvs(&self, tenant: &Tenant) -> Result<usize, KVAppError> {
-        reconcile_mvs(self, tenant, None).await
-    }
-
-    /// Record `source_schema` as the source columns of every MV of `source_table_id` that has
-    /// none, i.e. was created by an older version. Called before a schema change of the source,
-    /// with the schema it has before the change: an MV of an older version was invalidated in the
-    /// transaction of every earlier schema change, so the current schema is the one a valid MV
-    /// was created against. Returns the number of MVs updated.
-    #[logcall::logcall]
-    #[fastrace::trace]
-    async fn backfill_mv_source_columns(
-        &self,
-        tenant: &Tenant,
-        source_table_id: u64,
-        source_schema: &TableSchema,
-    ) -> Result<usize, KVAppError> {
-        let mut updated = 0;
-        for mv_id in mv_ids_of_source(self, tenant, source_table_id).await? {
-            if update_mv_table_meta(self, mv_id, |table_meta| {
-                with_source_columns(table_meta, source_schema)
-            })
-            .await?
-            {
-                info!(
-                    "record the source columns of materialized view {} from source table {}",
-                    mv_id, source_table_id
-                );
-                updated += 1;
-            }
-        }
-        Ok(updated)
-    }
-
     /// List materialized views for management and system-table consumers.
     #[logcall::logcall]
     #[fastrace::trace]
@@ -256,298 +165,6 @@ where
     ) -> Result<Vec<ListedMaterializedView>, MetaError> {
         list_materialized_views_impl(self, tenant, filter).await
     }
-}
-
-/// The MV `TableMeta` with `reason` set, or `None` when nothing changes: it already holds
-/// `reason`, or holds the final `SourceSchemaChanged`.
-fn invalidated(table_meta: &TableMeta, reason: MVInvalidReason) -> Option<TableMeta> {
-    let current = table_meta.materialized_view_invalid_reason();
-    if current == Some(reason.as_str())
-        || current == Some(MVInvalidReason::SourceSchemaChanged.as_str())
-    {
-        return None;
-    }
-    let mut updated = table_meta.clone();
-    updated.options.insert(
-        OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON.to_string(),
-        reason.as_str().to_string(),
-    );
-    Some(updated)
-}
-
-/// The MV `TableMeta` made valid, or `None` when it is valid already or its reason is not
-/// restorable.
-fn restored(table_meta: &TableMeta) -> Option<TableMeta> {
-    if !table_meta.materialized_view_invalid_reason_restorable() {
-        return None;
-    }
-    let mut updated = table_meta.clone();
-    updated
-        .options
-        .remove(OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON);
-    Some(updated)
-}
-
-/// The database or table name the MV with `table_meta` was created against.
-fn bound_name<'a>(table_meta: &'a TableMeta, key: &str) -> Option<&'a str> {
-    table_meta.options.get(key).map(String::as_str)
-}
-
-/// The state of a source table that decides whether its MVs are valid.
-enum SourceState {
-    /// The table is dropped, or its metadata is gone.
-    Dropped,
-    /// The database holding the table is dropped.
-    DatabaseDropped,
-    Active {
-        database_name: String,
-        table_name: String,
-        schema: Arc<TableSchema>,
-    },
-}
-
-async fn source_state<KV>(kv_api: &KV, source_table_id: u64) -> Result<SourceState, MetaError>
-where KV: kvapi::KVApi<Error = MetaError> + ?Sized {
-    let Some(table_meta) = kv_api.get_pb(&TableId::new(source_table_id)).await? else {
-        return Ok(SourceState::Dropped);
-    };
-    if table_meta.data.drop_on.is_some() {
-        return Ok(SourceState::Dropped);
-    }
-    let Some(table_name) = kv_api
-        .get_pb(&TableIdToName {
-            table_id: source_table_id,
-        })
-        .await?
-    else {
-        return Ok(SourceState::Dropped);
-    };
-    // CREATE OR REPLACE TABLE ... AS SELECT points the name at the new table without marking the
-    // replaced one dropped: a table its name no longer leads to is gone for its MVs.
-    let current_table_id = kv_api.get_pb(&table_name.data).await?;
-    if current_table_id.is_none_or(|table_id| table_id.data.table_id != source_table_id) {
-        return Ok(SourceState::Dropped);
-    }
-    // DROP DATABASE marks only the DatabaseMeta: the tables keep their TableMeta and names.
-    let database_id = table_name.data.db_id;
-    let database_meta = kv_api.get_pb(&DatabaseId::new(database_id)).await?;
-    if !database_meta.is_some_and(|meta| meta.data.drop_on.is_none()) {
-        return Ok(SourceState::DatabaseDropped);
-    }
-    let Some(database_name) = kv_api.get_pb(&DatabaseIdToName::new(database_id)).await? else {
-        return Ok(SourceState::DatabaseDropped);
-    };
-    Ok(SourceState::Active {
-        database_name: database_name.data.database_name().to_string(),
-        table_name: table_name.data.table_name,
-        schema: table_meta.data.schema,
-    })
-}
-
-/// The MV `TableMeta` with the reason `state` calls for, or `None` when it already has it.
-fn reconciled(mv_id: u64, table_meta: &TableMeta, state: &SourceState) -> Option<TableMeta> {
-    let reason = match state {
-        SourceState::Dropped => Some(MVInvalidReason::SourceDropped),
-        SourceState::DatabaseDropped => Some(MVInvalidReason::SourceDatabaseDropped),
-        SourceState::Active {
-            database_name,
-            table_name,
-            schema,
-        } => {
-            let schema_changed = table_meta
-                .materialized_view_source_schema_changed(schema)
-                .unwrap_or_else(|error| {
-                    warn!(
-                        "materialized view {} has unreadable source columns, schema not checked: {}",
-                        mv_id, error
-                    );
-                    false
-                });
-            if schema_changed {
-                Some(MVInvalidReason::SourceSchemaChanged)
-            } else if bound_name(table_meta, OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME)
-                != Some(database_name.as_str())
-            {
-                Some(MVInvalidReason::SourceDatabaseRenamed)
-            } else if bound_name(table_meta, OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME)
-                != Some(table_name.as_str())
-            {
-                Some(MVInvalidReason::SourceRenamed)
-            } else {
-                None
-            }
-        }
-    };
-    match reason {
-        Some(reason) => invalidated(table_meta, reason),
-        None => restored(table_meta),
-    }
-}
-
-/// The MV `TableMeta` with the source columns of `schema` recorded, or `None` when it has them.
-fn with_source_columns(table_meta: &TableMeta, schema: &TableSchema) -> Option<TableMeta> {
-    if table_meta
-        .options
-        .contains_key(OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS)
-    {
-        return None;
-    }
-    let mut updated = table_meta.clone();
-    updated.options.insert(
-        OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS.to_string(),
-        MVSourceColumn::encode(&MVSourceColumn::from_schema(schema)),
-    );
-    Some(updated)
-}
-
-/// Apply `update` to the `TableMeta` of MV `mv_id` in its own transaction, under its exact
-/// sequence. A concurrent change of the MV (a REFRESH commit) makes it read the MV again and
-/// retry. Returns whether the MV was updated: a dropped MV, or one `update` leaves alone, is not.
-async fn update_mv_table_meta<KV>(
-    kv_api: &KV,
-    mv_id: u64,
-    update: impl Fn(&TableMeta) -> Option<TableMeta>,
-) -> Result<bool, KVAppError>
-where
-    KV: kvapi::KVApi<Error = MetaError> + ?Sized,
-{
-    let ident = TableId::new(mv_id);
-    let mut trials = txn_backoff(Some(MV_UPDATE_RETRIES), "update_mv_table_meta");
-    loop {
-        trials.next().unwrap()?.await;
-        let Some(table_meta) = kv_api.get_pb(&ident).await? else {
-            return Ok(false);
-        };
-        if table_meta.data.drop_on.is_some() {
-            return Ok(false);
-        }
-        let Some(updated) = update(&table_meta.data) else {
-            return Ok(false);
-        };
-        let txn = TxnRequest::new(vec![txn_cond_eq_seq(&ident, table_meta.seq)], vec![
-            txn_put_pb(&ident, &updated),
-        ]);
-        let (succ, _) = send_txn(kv_api, txn).await?;
-        if succ {
-            return Ok(true);
-        }
-    }
-}
-
-/// The MVs of `source_table_ids`, or of the tenant, as `(mv_id, source_table_id)`. A few sources
-/// are looked up through their dependency edges; more through all the MVs of the tenant, as MVs
-/// are few and tables may be many.
-async fn mvs_of_sources<KV>(
-    kv_api: &KV,
-    tenant: &Tenant,
-    source_table_ids: Option<&BTreeSet<u64>>,
-) -> Result<Vec<(u64, u64)>, MetaError>
-where
-    KV: kvapi::KVApi<Error = MetaError> + ?Sized,
-{
-    if let Some(source_table_ids) = source_table_ids
-        && source_table_ids.len() <= MV_EDGE_LOOKUP_MAX_SOURCES
-    {
-        let mut mvs = Vec::new();
-        for source_table_id in source_table_ids {
-            for mv_id in mv_ids_of_source(kv_api, tenant, *source_table_id).await? {
-                mvs.push((mv_id, *source_table_id));
-            }
-        }
-        return Ok(mvs);
-    }
-    Ok(all_mv_table_metas(kv_api, tenant)
-        .await?
-        .into_iter()
-        .filter_map(|(ident, table_meta)| {
-            let source_table_id = table_meta.data.materialized_view_source_table_id().ok()?;
-            source_table_ids
-                .is_none_or(|ids| ids.contains(&source_table_id))
-                .then_some((ident.table_id, source_table_id))
-        })
-        .collect())
-}
-
-/// See [`MaterializedViewApi::reconcile_mvs_of_sources`]; `None` reconciles every MV.
-async fn reconcile_mvs<KV>(
-    kv_api: &KV,
-    tenant: &Tenant,
-    source_table_ids: Option<&BTreeSet<u64>>,
-) -> Result<usize, KVAppError>
-where
-    KV: kvapi::KVApi<Error = MetaError> + ?Sized,
-{
-    let mvs = mvs_of_sources(kv_api, tenant, source_table_ids).await?;
-    let mut states = HashMap::new();
-    let mut updated = 0;
-    for (mv_id, source_table_id) in mvs {
-        if !states.contains_key(&source_table_id) {
-            states.insert(
-                source_table_id,
-                source_state(kv_api, source_table_id).await?,
-            );
-        }
-        let state = &states[&source_table_id];
-        if update_mv_table_meta(kv_api, mv_id, |table_meta| {
-            reconciled(mv_id, table_meta, state)
-        })
-        .await?
-        {
-            info!(
-                "reconcile materialized view {} with source table {}",
-                mv_id, source_table_id
-            );
-            updated += 1;
-        }
-    }
-    Ok(updated)
-}
-
-/// The table metas of every MV of the tenant, by the definitions, dropped MVs excluded.
-async fn all_mv_table_metas<KV>(
-    kv_api: &KV,
-    tenant: &Tenant,
-) -> Result<Vec<(TableId, SeqV<TableMeta>)>, MetaError>
-where
-    KV: kvapi::KVApi<Error = MetaError> + ?Sized,
-{
-    let prefix = DirName::new(MVDefinitionIdent::new(tenant, 0));
-    let mv_ids = kv_api
-        .list_pb_vec(ListOptions::unlimited(&prefix))
-        .await?
-        .into_iter()
-        .map(|(ident, _)| *ident.name())
-        .collect::<Vec<_>>();
-    live_mv_table_metas(kv_api, mv_ids).await
-}
-
-async fn live_mv_table_metas<KV>(
-    kv_api: &KV,
-    mv_ids: Vec<u64>,
-) -> Result<Vec<(TableId, SeqV<TableMeta>)>, MetaError>
-where
-    KV: kvapi::KVApi<Error = MetaError> + ?Sized,
-{
-    if mv_ids.is_empty() {
-        return Ok(vec![]);
-    }
-    let idents = mv_ids.into_iter().map(TableId::new).collect::<Vec<_>>();
-    let table_metas = kv_api.get_pb_values_vec(idents.clone()).await?;
-    Ok(idents
-        .into_iter()
-        .zip(table_metas)
-        .filter_map(|(ident, table_meta)| match table_meta {
-            Some(table_meta) if table_meta.data.drop_on.is_none() => Some((ident, table_meta)),
-            Some(_) => None,
-            None => {
-                warn!(
-                    "materialized view {} has a dependency edge but no table meta",
-                    ident.table_id
-                );
-                None
-            }
-        })
-        .collect())
 }
 
 async fn mv_ids_of_source<KV>(
