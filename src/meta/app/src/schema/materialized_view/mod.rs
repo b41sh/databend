@@ -14,6 +14,8 @@
 
 use std::collections::BTreeSet;
 
+use databend_common_expression::ComputedExpr;
+use databend_common_expression::TableField;
 use databend_common_expression::TableSchema;
 use databend_meta_client::types::SeqV;
 
@@ -42,9 +44,13 @@ pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_SEQ: &str = "materialized_view_
 pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME: &str =
     "materialized_view_source_database_name";
 pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME: &str = "materialized_view_source_table_name";
-/// Internal table option holding why the MV is invalid; absent while it is valid. Source DDL that
-/// breaks the binding writes it in its own transaction, see [`MVInvalidReason`].
+/// Internal table option holding why the MV is invalid; absent while it is valid. It is written
+/// on a best-effort basis after the source DDL that breaks the binding, see [`MVInvalidReason`].
 pub const OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON: &str = "materialized_view_invalid_reason";
+/// Internal table option recording, as JSON, the source columns the MV was created against, see
+/// [`MVSourceColumn`]. Written by CREATE and never changed after; an MV created by an older
+/// version gets it before the first schema change of its source.
+pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS: &str = "materialized_view_source_columns";
 /// Hidden physical column used to match source DELETE/UPDATE rows during refresh.
 pub const MATERIALIZED_VIEW_SOURCE_ROW_ID_COLUMN: &str = "_mv_source_row_id";
 
@@ -52,22 +58,56 @@ pub fn is_materialized_view_engine(engine: &str) -> bool {
     engine == MATERIALIZED_VIEW_ENGINE
 }
 
-pub fn invalidates_mv_source_bindings(old_meta: &TableMeta, new_meta: &TableMeta) -> bool {
-    if old_meta.schema == new_meta.schema {
-        return false;
+/// One source column a materialized view was created against.
+///
+/// The MV query names source columns in SQL, and its storage holds values of their types, so a
+/// column the MV depends on must keep its id, name, type, and computed expression. Defaults are
+/// not recorded: they do not change the values of existing rows.
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct MVSourceColumn {
+    pub id: u32,
+    pub name: String,
+    /// `TableDataType::sql_name_explicit_null`, so a change of nullability is a change of type.
+    #[serde(rename = "type")]
+    pub data_type: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub computed: Option<String>,
+}
+
+impl MVSourceColumn {
+    pub fn from_field(field: &TableField) -> Self {
+        MVSourceColumn {
+            id: field.column_id,
+            name: field.name.clone(),
+            data_type: field.data_type.sql_name_explicit_null(),
+            computed: field.computed_expr.as_ref().map(|expr| match expr {
+                ComputedExpr::Virtual(expr) => format!("VIRTUAL {expr}"),
+                ComputedExpr::Stored(expr) => format!("STORED {expr}"),
+            }),
+        }
     }
 
-    // Match each old column by ID, then compare the complete TableField. A missing or changed
-    // old field invalidates the binding; fields that exist only in the new schema (ADD COLUMN)
-    // are intentionally ignored.
-    old_meta.schema.fields().iter().any(|old_field| {
-        new_meta
-            .schema
-            .fields()
-            .iter()
-            .find(|new_field| new_field.column_id == old_field.column_id)
-            != Some(old_field)
-    })
+    /// The columns of `schema`, as recorded by CREATE MATERIALIZED VIEW.
+    pub fn from_schema(schema: &TableSchema) -> Vec<Self> {
+        schema.fields().iter().map(Self::from_field).collect()
+    }
+
+    /// The table option value holding `columns`.
+    pub fn encode(columns: &[Self]) -> String {
+        serde_json::to_string(columns).expect("serializing MV source columns cannot fail")
+    }
+
+    /// Whether `schema` dropped, renamed, retyped, or recomputed one of `recorded`. Columns that
+    /// are not recorded, such as those added by ADD COLUMN, are ignored.
+    pub fn changed(recorded: &[Self], schema: &TableSchema) -> bool {
+        recorded.iter().any(|column| {
+            schema
+                .fields()
+                .iter()
+                .find(|field| field.column_id == column.id)
+                .is_none_or(|field| &Self::from_field(field) != column)
+        })
+    }
 }
 
 impl TableMeta {
@@ -87,6 +127,32 @@ impl TableMeta {
                 "invalid table option {OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_ID}: '{source_table_id}'"
             )))
         })
+    }
+
+    /// The source columns recorded by a materialized view; `None` for an MV created by a version
+    /// that did not record them.
+    pub fn materialized_view_source_columns(
+        &self,
+    ) -> Result<Option<Vec<MVSourceColumn>>, AppError> {
+        let Some(columns) = self.options.get(OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS) else {
+            return Ok(None);
+        };
+        serde_json::from_str(columns).map(Some).map_err(|error| {
+            AppError::InvalidMaterializedView(InvalidMaterializedView::new(format!(
+                "invalid table option {OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS}: {error}"
+            )))
+        })
+    }
+
+    /// Whether the source schema `schema` changed a column this materialized view was created
+    /// against. An MV without recorded columns cannot tell, and reports no change.
+    pub fn materialized_view_source_schema_changed(
+        &self,
+        schema: &TableSchema,
+    ) -> Result<bool, AppError> {
+        Ok(self
+            .materialized_view_source_columns()?
+            .is_some_and(|recorded| MVSourceColumn::changed(&recorded, schema)))
     }
 
     /// Return the source table sequence recorded by a materialized view.
@@ -126,12 +192,13 @@ pub struct MVDefinition {
 impl TableMeta {
     /// Why the materialized view is invalid; `None` while it is valid.
     ///
-    /// Validity is explicit: source DDL that breaks the binding (DROP TABLE, DROP DATABASE,
-    /// RENAME TABLE, RENAME DATABASE, invalidating schema changes) writes the reason into every
-    /// dependent MV's `TableMeta` in its own transaction. Readers need no other record to
-    /// decide whether the MV is valid. Lifecycle reasons are cleared again when the source is
-    /// restored to the identity the MV was bound to (UNDROP, RENAME back); a schema change is
-    /// final.
+    /// The reason is written on a best-effort basis after a source DDL that breaks the binding
+    /// (DROP TABLE, DROP DATABASE, RENAME TABLE, RENAME DATABASE, a change of a recorded column),
+    /// from the current state of the source. It is for display and a quick rejection: readers
+    /// still check the source identity and [`Self::materialized_view_source_schema_changed`],
+    /// because a failed write leaves the reason out. Lifecycle reasons are cleared again when the
+    /// source is restored to the identity the MV was bound to (UNDROP, RENAME back); a schema
+    /// change is final.
     pub fn materialized_view_invalid_reason(&self) -> Option<&str> {
         self.options
             .get(OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON)
@@ -260,8 +327,16 @@ pub struct MVSourceBindingSnapshot {
 
 #[cfg(test)]
 mod tests {
+    use databend_common_expression::ComputedExpr;
+    use databend_common_expression::TableDataType;
+    use databend_common_expression::TableField;
+    use databend_common_expression::TableSchema;
+    use databend_common_expression::types::NumberDataType;
+
     use super::MVInvalidReason;
+    use super::MVSourceColumn;
     use super::OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON;
+    use super::OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS;
     use super::OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_ID;
     use super::OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_SEQ;
     use crate::schema::TableMeta;
@@ -297,6 +372,67 @@ mod tests {
             "unknown".to_string(),
         );
         assert!(!table_meta.materialized_view_invalid_reason_restorable());
+    }
+
+    /// A recorded column that is dropped, renamed, retyped, made nullable, or recomputed is a
+    /// change; adding a column is not.
+    #[test]
+    fn test_mv_source_columns_changed() {
+        let int = TableDataType::Number(NumberDataType::Int32);
+        let schema = TableSchema::new(vec![
+            TableField::new("a", int.clone()),
+            TableField::new("b", TableDataType::String),
+        ]);
+        let recorded = MVSourceColumn::from_schema(&schema);
+        assert!(!MVSourceColumn::changed(&recorded, &schema));
+
+        let mut table_meta = TableMeta::default();
+        assert_eq!(table_meta.materialized_view_source_columns().unwrap(), None);
+        assert!(
+            !table_meta
+                .materialized_view_source_schema_changed(&schema)
+                .unwrap()
+        );
+        table_meta.options.insert(
+            OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS.to_string(),
+            MVSourceColumn::encode(&recorded),
+        );
+        assert_eq!(
+            table_meta.materialized_view_source_columns().unwrap(),
+            Some(recorded.clone())
+        );
+
+        let mut added = schema.clone();
+        added
+            .add_column(&TableField::new("c", int.clone()), 2)
+            .unwrap();
+        assert!(!MVSourceColumn::changed(&recorded, &added));
+
+        let mut renamed = schema.clone();
+        renamed.rename_field(0, "a2");
+        assert!(MVSourceColumn::changed(&recorded, &renamed));
+
+        let mut dropped = schema.clone();
+        dropped.drop_column("b").unwrap();
+        assert!(MVSourceColumn::changed(&recorded, &dropped));
+
+        let mut retyped = schema.clone();
+        retyped.fields[0].data_type = TableDataType::Number(NumberDataType::Int64);
+        assert!(MVSourceColumn::changed(&recorded, &retyped));
+
+        let mut nullable = schema.clone();
+        nullable.fields[0].data_type = TableDataType::Nullable(Box::new(int));
+        assert!(MVSourceColumn::changed(&recorded, &nullable));
+
+        let mut computed = schema.clone();
+        computed.fields[1].computed_expr = Some(ComputedExpr::Stored("'x'".to_string()));
+        assert!(MVSourceColumn::changed(&recorded, &computed));
+
+        table_meta.options.insert(
+            OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS.to_string(),
+            "not json".to_string(),
+        );
+        assert!(table_meta.materialized_view_source_columns().is_err());
     }
 
     #[test]

@@ -66,7 +66,6 @@ impl FromToProto for MVSourceBinding {
 
     fn from_pb(p: Self::PB) -> Result<Self, Incompatible> {
         reader_check_msg(p.ver, p.min_reader_ver)?;
-        // `bound_source_generation` is no longer read.
         Ok(Self {})
     }
 
@@ -74,7 +73,6 @@ impl FromToProto for MVSourceBinding {
         PbMVSourceBinding {
             ver: VER,
             min_reader_ver: MIN_READER_VER,
-            bound_source_generation: 0,
         }
     }
 }

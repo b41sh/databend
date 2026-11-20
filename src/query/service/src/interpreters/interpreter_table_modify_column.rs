@@ -18,6 +18,7 @@ use std::sync::Arc;
 
 use arrow_schema::Schema as ArrowSchema;
 use chrono::Utc;
+use databend_common_base::runtime::GlobalIORuntime;
 use databend_common_catalog::cache_policy::CachePolicy;
 use databend_common_catalog::catalog::Catalog;
 use databend_common_catalog::table::Table;
@@ -46,6 +47,7 @@ use databend_common_meta_app::schema::SetSecurityPolicyAction;
 use databend_common_meta_app::schema::SetTableColumnMaskPolicyReq;
 use databend_common_meta_app::schema::TableInfo;
 use databend_common_meta_app::schema::TableMeta;
+use databend_common_pipeline::core::ExecutionInfo;
 use databend_common_sql::ApproxDistinctColumns;
 use databend_common_sql::BloomIndexColumns;
 use databend_common_sql::DefaultExprBinder;
@@ -87,9 +89,11 @@ use parquet::arrow::ArrowSchemaConverter;
 use crate::clusters::ClusterHelper;
 use crate::interpreters::Interpreter;
 use crate::interpreters::build_insert_select_physical_plan;
+use crate::interpreters::common::backfill_materialized_view_source_columns;
 use crate::interpreters::common::check_policy_target_without_materialized_view;
 use crate::interpreters::common::check_referenced_computed_columns;
 use crate::interpreters::common::cluster_key_referenced_columns;
+use crate::interpreters::common::reconcile_materialized_views;
 use crate::interpreters::common::stored_computed_column_references;
 use crate::interpreters::common::ttl_referenced_columns;
 use crate::interpreters::interpreter_table_add_column::commit_table_meta;
@@ -954,6 +958,20 @@ impl Interpreter for ModifyTableColumnInterpreter {
             }
 
             let table_meta = table.get_table_info().meta.clone();
+            // A change of a column type, default, or computed expression may reach a column its
+            // MVs read: record the columns the MVs of an older version were created against
+            // before it, and reconcile the MVs after it is committed. Masking policies cannot
+            // be set on an MV source.
+            let source_table_id = (!matches!(
+                self.plan.action,
+                ModifyColumnAction::SetMaskingPolicy(..)
+                    | ModifyColumnAction::UnsetMaskingPolicy(_)
+            ) && !table.is_temp()
+                && !catalog.is_external())
+            .then(|| table.get_id());
+            if source_table_id.is_some() {
+                backfill_materialized_view_source_columns(&self.ctx, table.as_ref()).await;
+            }
 
             // NOTICE: if we support modify column data type,
             // need to check whether this column is referenced by other computed columns.
@@ -999,6 +1017,25 @@ impl Interpreter for ModifyTableColumnInterpreter {
                 .as_ref()
                 .and_then(|holder| holder.try_take());
             build_res.main_pipeline.add_lock_guard(lock_guard);
+            if let Some(source_table_id) = source_table_id {
+                if build_res.main_pipeline.is_empty() {
+                    reconcile_materialized_views(&self.ctx, &[source_table_id]).await;
+                } else {
+                    // A type change that rewrites the data commits when the pipeline finishes.
+                    let ctx = self.ctx.clone();
+                    build_res
+                        .main_pipeline
+                        .set_on_finished(move |info: &ExecutionInfo| {
+                            if info.res.is_ok() {
+                                GlobalIORuntime::instance().block_on(async move {
+                                    reconcile_materialized_views(&ctx, &[source_table_id]).await;
+                                    Ok::<_, ErrorCode>(())
+                                })?;
+                            }
+                            Ok(())
+                        });
+                }
+            }
             Ok(build_res)
         })
     }

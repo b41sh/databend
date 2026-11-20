@@ -42,7 +42,6 @@ use databend_common_meta_app::schema::DBIdTableName;
 use databend_common_meta_app::schema::DatabaseId;
 use databend_common_meta_app::schema::DatabaseMeta;
 use databend_common_meta_app::schema::MVDefinitionIdent;
-use databend_common_meta_app::schema::MVInvalidReason;
 use databend_common_meta_app::schema::MarkedDeletedIndexMeta;
 use databend_common_meta_app::schema::MarkedDeletedIndexType;
 use databend_common_meta_app::schema::ObjectTagIdRef;
@@ -93,8 +92,6 @@ use super::garbage_collection_api::GarbageCollectionApi;
 use super::index_api::IndexApi;
 use super::lock_api2::LockApi2;
 use super::materialized_view_api::MaterializedViewApi;
-use super::materialized_view_api::mark_mvs_invalid;
-use super::materialized_view_api::restore_mvs_of_source;
 use super::security_api::SecurityApi;
 use super::table_api::TableApi;
 use crate::error_util::db_id_has_to_exist;
@@ -299,15 +296,8 @@ pub(crate) async fn construct_drop_table_txn_operations(
         )));
     }
 
-    // The MVs depending on this table lose their source. UNDROP restores them.
-    mark_mvs_invalid(
-        kv_api,
-        txn,
-        tenant,
-        table_id,
-        MVInvalidReason::SourceDropped,
-    )
-    .await?;
+    // The MVs depending on this table are not touched here: the query layer reconciles them
+    // after the drop, see `MaterializedViewApi::reconcile_mvs_of_sources`.
 
     // There must NOT be concurrent txn(b) that list-then-delete tables:
     // Otherwise, (b) may not delete all of the tables, if this txn(a) is operating on some table.
@@ -616,7 +606,7 @@ pub async fn handle_undrop_table(
             // Prepare conditions for concurrent safety
             let vacuum_seq = seq_vacuum_retention.as_ref().map(|sr| sr.seq).unwrap_or(0);
 
-            let mut txn = TxnRequest::new(
+            let txn = TxnRequest::new(
                 [
                     vec![
                         // db has not to change, i.e., no new table is created.
@@ -646,17 +636,6 @@ pub async fn handle_undrop_table(
                 ]
                 .concat(),
             );
-
-            // The table is active again under this name: MVs bound to it come back.
-            restore_mvs_of_source(
-                kv_api,
-                &mut txn,
-                &tenant,
-                table_id,
-                &tenant_dbname_tbname.db_name,
-                &tenant_dbname_tbname.table_name,
-            )
-            .await?;
 
             let (succ, _responses) = send_txn(kv_api, txn).await?;
 

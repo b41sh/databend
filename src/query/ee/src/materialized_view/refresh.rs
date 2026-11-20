@@ -41,8 +41,10 @@ use databend_common_catalog::table::Table;
 use databend_common_catalog::table_context::TableContextSession;
 use databend_common_exception::ErrorCode;
 use databend_common_exception::Result;
+use databend_common_meta_api::MaterializedViewApi;
 use databend_common_meta_app::schema::DatabaseType;
 use databend_common_meta_app::schema::MATERIALIZED_VIEW_SOURCE_ROW_ID_COLUMN;
+use databend_common_meta_app::schema::MVInvalidReason;
 use databend_common_meta_app::schema::TableIdent;
 use databend_common_meta_app::schema::TableInfo;
 use databend_common_meta_app::schema::UpsertTableOptionReq;
@@ -53,6 +55,7 @@ use databend_common_sql::plans::Plan;
 use databend_common_sql::validate_materialized_view_source;
 use databend_common_storages_fuse::FuseTable;
 use databend_common_storages_fuse::operations::ChangesDesc;
+use databend_common_users::UserApiProvider;
 use databend_enterprise_materialized_view::get_materialized_view_handler;
 use databend_meta_client::types::MatchSeq;
 use databend_query::interpreters::InsertInterpreter;
@@ -72,6 +75,7 @@ use databend_storages_common_table_meta::table::OPT_KEY_MATERIALIZED_VIEW_SOURCE
 use databend_storages_common_table_meta::table::OPT_KEY_SNAPSHOT_LOCATION;
 use databend_storages_common_table_meta::table::StreamMode;
 use log::info;
+use log::warn;
 
 enum RefreshStrategy {
     CheckpointOnly,
@@ -134,9 +138,10 @@ impl<'a> MaterializedViewRefresh<'a> {
         };
 
         let catalog_obj = ctx.get_catalog(catalog).await?;
-        // Validity is an admission check: source DDL writes the reason into the MV TableMeta in
-        // its own transaction. A source-schema change after this check makes the commit's exact
-        // TableMeta sequence condition fail, as the DDL rewrote the MV TableMeta.
+        // Validity is an admission check. The reason is written after source DDL on a best-effort
+        // basis, so the source identity and the source columns the MV was created against are
+        // checked below against the source itself. A reason written after these checks changes
+        // the MV TableMeta, so the commit's exact sequence condition fails.
         if let Some(reason) = mv_meta.materialized_view_invalid_reason() {
             return Err(ErrorCode::InvalidMaterializedView(format!(
                 "materialized view {}.{} is invalid: {}; recreate the materialized view",
@@ -173,6 +178,28 @@ impl<'a> MaterializedViewRefresh<'a> {
             return Err(ErrorCode::UnknownTable(format!(
                 "materialized view {}.{} source table id {} has been dropped",
                 database, view_name, source_table_id
+            )));
+        }
+        if mv_meta
+            .materialized_view_source_schema_changed(&source_meta.data.schema)
+            .map_err(ErrorCode::from)?
+        {
+            // The schema change left the reason out: record it for the readers that show it.
+            if let Err(error) = UserApiProvider::instance()
+                .get_meta_store_client()
+                .reconcile_mvs_of_sources(&ctx.get_tenant(), &[source_table_id])
+                .await
+            {
+                warn!(
+                    "failed to reconcile the materialized views of source table {}: {}",
+                    source_table_id, error
+                );
+            }
+            return Err(ErrorCode::InvalidMaterializedView(format!(
+                "materialized view {}.{} is invalid: {}; recreate the materialized view",
+                database,
+                view_name,
+                MVInvalidReason::SourceSchemaChanged.as_str()
             )));
         }
         let mut source_seq = source_meta.seq;

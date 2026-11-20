@@ -80,7 +80,6 @@ use databend_common_meta_app::schema::ListTableReq;
 use databend_common_meta_app::schema::LvtUpdate;
 use databend_common_meta_app::schema::MATERIALIZED_VIEW_ENGINE;
 use databend_common_meta_app::schema::MVDefinitionIdent;
-use databend_common_meta_app::schema::MVInvalidReason;
 use databend_common_meta_app::schema::MVSourceBinding;
 use databend_common_meta_app::schema::OPT_KEY_CLONE_GROUP_ID;
 use databend_common_meta_app::schema::RenameTableReply;
@@ -110,7 +109,6 @@ use databend_common_meta_app::schema::UpdateTableMetaReply;
 use databend_common_meta_app::schema::UpsertTableOptionReply;
 use databend_common_meta_app::schema::UpsertTableOptionReq;
 use databend_common_meta_app::schema::database_name_ident::DatabaseNameIdent;
-use databend_common_meta_app::schema::invalidates_mv_source_bindings;
 use databend_common_meta_app::schema::is_materialized_view_engine;
 use databend_common_meta_app::schema::least_visible_time_ident::LeastVisibleTimeIdent;
 use databend_common_meta_app::schema::parse_clone_group_id;
@@ -147,8 +145,6 @@ use super::database_util::get_db_or_err;
 use super::garbage_collection_api::HistoryTablesForGc;
 use super::garbage_collection_api::ORPHAN_POSTFIX;
 use super::garbage_collection_api::get_history_tables_for_gc;
-use super::materialized_view_api::mark_mvs_invalid;
-use super::materialized_view_api::rename_source_of_mvs;
 use super::schema_api::VersionedTable;
 use super::schema_api::build_upsert_table_deduplicated_label;
 use super::schema_api::construct_drop_table_txn_operations;
@@ -1096,18 +1092,6 @@ where
                         .push(txn_put_pb(&new_seq_db_id.data, &*new_db_meta)); // (db_id) -> db_meta
                 }
 
-                // MVs are bound to the name the source had when they were created: renaming it
-                // away invalidates them, renaming it back restores them.
-                rename_source_of_mvs(
-                    self,
-                    &mut txn,
-                    tenant_dbname.tenant(),
-                    table_id,
-                    &req.new_db_name,
-                    &req.new_table_name,
-                )
-                .await?;
-
                 let (succ, _responses) = send_txn(self, txn).await?;
 
                 debug!(
@@ -1563,7 +1547,6 @@ where
         }
     }
 
-    /// `tenant` locates the MV dependency edges of tables whose schema update invalidates MVs.
     async fn update_multi_table_meta(
         &self,
         tenant: &Tenant,
@@ -1628,9 +1611,6 @@ where
         // Capture every LVT condition so the transaction's else branch can atomically report
         // whether an LVT sequence changed while metadata was being published.
         let mut lvt_guards = Vec::new();
-        // If a request repeats a table ID, use the final update to decide whether its MV bindings
-        // are invalidated, matching the transaction's final put for that table.
-        let mut invalidates_mv_source_bindings_by_table_id = HashMap::new();
         for ((req, _), (tb_meta_seq, old_table_meta)) in
             update_table_metas.iter_mut().zip(tb_meta_vec.iter())
         {
@@ -1639,15 +1619,11 @@ where
             };
 
             let new_table_meta = req.new_table_meta.clone();
-            let old_table_meta = old_table_meta.as_ref().ok_or_else(|| {
+            old_table_meta.as_ref().ok_or_else(|| {
                 KVAppError::AppError(AppError::UnknownTableId(
                     tbid.unknown_error("update_multi_table_meta"),
                 ))
             })?;
-            invalidates_mv_source_bindings_by_table_id.insert(
-                req.table_id,
-                invalidates_mv_source_bindings(old_table_meta, &new_table_meta),
-            );
 
             tbl_seqs.insert(req.table_id, *tb_meta_seq);
             txn.condition.push(txn_cond_seq(&tbid, Eq, *tb_meta_seq));
@@ -1691,22 +1667,6 @@ where
             });
 
             new_table_meta_map.insert(req.table_id, new_table_meta);
-        }
-
-        // An invalidating schema change marks every dependent MV in this transaction. A concurrent
-        // change to one of those definitions fails the transaction, which the caller reports as
-        // a commit failure.
-        for (table_id, invalidates) in invalidates_mv_source_bindings_by_table_id {
-            if invalidates {
-                mark_mvs_invalid(
-                    self,
-                    &mut txn,
-                    tenant,
-                    table_id,
-                    MVInvalidReason::SourceSchemaChanged,
-                )
-                .await?;
-            }
         }
 
         // `remove_table_copied_files` and `upsert_table_copied_file_info`

@@ -50,8 +50,10 @@ pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME: &str =
 pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_ID: &str = "materialized_view_source_table_id";
 pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME: &str = "materialized_view_source_table_name";
 pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_SEQ: &str = "materialized_view_source_table_seq";
-/// Why the materialized view is invalid; absent while it is valid. Written by source DDL.
+/// Why the materialized view is invalid; absent while it is valid. Written after source DDL.
 pub const OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON: &str = "materialized_view_invalid_reason";
+/// The source columns the materialized view was created against, as JSON.
+pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS: &str = "materialized_view_source_columns";
 pub const OPT_KEY_MATERIALIZED_VIEW_AGGREGATE_COMPACTION_DELTA_BLOCKS: &str =
     "materialized_view_aggregate_compaction_delta_blocks";
 pub const OPT_KEY_SNAPSHOT_LOCATION_FIXED_FLAG: &str = "snapshot_location_fixed";
@@ -178,6 +180,7 @@ pub static RESERVED_TABLE_OPTION_KEYS: LazyLock<HashSet<&'static str>> = LazyLoc
     r.insert(OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME);
     r.insert(OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_SEQ);
     r.insert(OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON);
+    r.insert(OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS);
     r.insert(OPT_KEY_MATERIALIZED_VIEW_AGGREGATE_COMPACTION_DELTA_BLOCKS);
     r.insert(OPT_KEY_AS_QUERY);
     r.insert(OPT_KEY_SOURCE_TABLE_IDS);
@@ -204,6 +207,7 @@ pub static INTERNAL_TABLE_OPTION_KEYS: LazyLock<HashSet<&'static str>> = LazyLoc
     r.insert(OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME);
     r.insert(OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_SEQ);
     r.insert(OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON);
+    r.insert(OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS);
     r.insert(OPT_KEY_MATERIALIZED_VIEW_AGGREGATE_COMPACTION_DELTA_BLOCKS);
     r.insert(OPT_KEY_AS_QUERY);
     r.insert(OPT_KEY_SOURCE_TABLE_IDS);
@@ -361,6 +365,12 @@ mod tests {
         ));
         assert!(is_internal_opt_key(
             OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON
+        ));
+        assert!(is_reserved_opt_key(
+            OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS
+        ));
+        assert!(is_internal_opt_key(
+            OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS
         ));
         assert!(is_reserved_opt_key(
             OPT_KEY_MATERIALIZED_VIEW_AGGREGATE_COMPACTION_DELTA_BLOCKS

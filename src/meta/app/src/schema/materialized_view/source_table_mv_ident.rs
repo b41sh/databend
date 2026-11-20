@@ -33,9 +33,8 @@ impl SourceTableMV {
 }
 
 /// The value of one MV dependency edge. It carries no state: the edge records that the MV
-/// depends on the source, and whether the MV is valid lives in its [`super::MVDefinition`].
-/// The edge is kept after invalidation so management, restore, and GC can still find every
-/// dependent MV.
+/// depends on the source, and whether the MV is valid lives in its `TableMeta` options. The edge
+/// is kept after invalidation so management, restore, and GC can still find every dependent MV.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct MVSourceBinding {}
 

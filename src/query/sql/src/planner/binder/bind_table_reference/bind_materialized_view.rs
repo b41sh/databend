@@ -39,6 +39,7 @@ use databend_common_functions::aggregates::AGGR_REGISTRY;
 use databend_common_license::license::Feature;
 use databend_common_license::license_manager::LicenseManagerSwitch;
 use databend_common_meta_app::schema::MVDefinition;
+use databend_common_meta_app::schema::MVInvalidReason;
 use databend_common_meta_app::schema::TableIdent;
 use databend_common_meta_app::schema::TableInfo;
 use databend_enterprise_materialized_view::get_materialized_view_handler;
@@ -663,45 +664,7 @@ impl Binder {
                 })
         })?;
 
-        // Bind the persisted physical definition to validate its source identity and determine
-        // whether hybrid reads must merge aggregate states before the logical projection.
-        let query = parse_materialized_view_query(
-            &mv_definition.data.query,
-            "invalid materialized view physical query",
-        )?;
-        let definition_metadata = Metadata::default_ref();
-        let mut definition_binder = Binder::new(
-            self.ctx.clone(),
-            self.catalogs.clone(),
-            self.name_resolution_ctx.clone(),
-            definition_metadata.clone(),
-        )
-        .with_subquery_executor(self.subquery_executor.clone());
-        let mut definition_context = BindContext::new();
-        definition_context.binding_depth = bind_context.next_depth()?;
-        // The persisted definition names the source captured by CREATE. A missing database or
-        // table means the source was dropped, renamed, or replaced, which REFRESH also reports as
-        // InvalidMaterializedView. Other errors keep their original code.
-        let (definition_expr, _) = definition_binder
-            .bind_query(&mut definition_context, &query)
-            .map_err(|error| match error.code() {
-                ErrorCode::UNKNOWN_DATABASE | ErrorCode::UNKNOWN_TABLE => {
-                    ErrorCode::InvalidMaterializedView(format!(
-                        "materialized view {} source table changed: expected table id {}: {}",
-                        table_meta.name(),
-                        source_table_id,
-                        error
-                    ))
-                }
-                _ => error,
-            })?;
-        validate_materialized_view_source(
-            &definition_metadata,
-            source_table_id,
-            table_meta.name(),
-        )?;
-        let is_aggregating = find_materialized_view_aggregate(&definition_expr).is_some();
-
+        // Resolve the current source by its id.
         let (source_table, source_database, source_seq, source_snapshot_location) = if let Some((
             source_table,
             source_database,
@@ -774,8 +737,75 @@ impl Binder {
                     source_meta.seq,
                     source_snapshot_location,
                 ))
+            })
+            // A source that cannot be resolved by its id was dropped, as the definition bind
+            // below reports it.
+            .map_err(|error| match error.code() {
+                ErrorCode::UNKNOWN_DATABASE | ErrorCode::UNKNOWN_TABLE => {
+                    ErrorCode::InvalidMaterializedView(format!(
+                        "materialized view {} source table changed: expected table id {}: {}",
+                        table_meta.name(),
+                        source_table_id,
+                        error
+                    ))
+                }
+                _ => error,
             })?
         };
+        // The invalid reason is written after source DDL on a best-effort basis, so a change of a
+        // source column the MV was created against is checked against the source itself, before
+        // the definition is bound against it.
+        if table_meta
+            .get_table_info()
+            .meta
+            .materialized_view_source_schema_changed(&source_table.get_table_info().meta.schema)
+            .map_err(ErrorCode::from)?
+        {
+            return Err(ErrorCode::InvalidMaterializedView(format!(
+                "materialized view {} is invalid: {}; recreate the materialized view",
+                table_meta.name(),
+                MVInvalidReason::SourceSchemaChanged.as_str()
+            )));
+        }
+        // Bind the persisted physical definition to validate its source identity and determine
+        // whether hybrid reads must merge aggregate states before the logical projection.
+        let query = parse_materialized_view_query(
+            &mv_definition.data.query,
+            "invalid materialized view physical query",
+        )?;
+        let definition_metadata = Metadata::default_ref();
+        let mut definition_binder = Binder::new(
+            self.ctx.clone(),
+            self.catalogs.clone(),
+            self.name_resolution_ctx.clone(),
+            definition_metadata.clone(),
+        )
+        .with_subquery_executor(self.subquery_executor.clone());
+        let mut definition_context = BindContext::new();
+        definition_context.binding_depth = bind_context.next_depth()?;
+        // The persisted definition names the source captured by CREATE. A missing database or
+        // table means the source was dropped, renamed, or replaced, which REFRESH also reports as
+        // InvalidMaterializedView. Other errors keep their original code.
+        let (definition_expr, _) = definition_binder
+            .bind_query(&mut definition_context, &query)
+            .map_err(|error| match error.code() {
+                ErrorCode::UNKNOWN_DATABASE | ErrorCode::UNKNOWN_TABLE => {
+                    ErrorCode::InvalidMaterializedView(format!(
+                        "materialized view {} source table changed: expected table id {}: {}",
+                        table_meta.name(),
+                        source_table_id,
+                        error
+                    ))
+                }
+                _ => error,
+            })?;
+        validate_materialized_view_source(
+            &definition_metadata,
+            source_table_id,
+            table_meta.name(),
+        )?;
+        let is_aggregating = find_materialized_view_aggregate(&definition_expr).is_some();
+
         // MV results depend on both persisted storage and the live source endpoint. Include both
         // identities in the result-cache key so a source append cannot reuse a previously fresh
         // storage-only result. Sequence values distinguish no-snapshot endpoints and metadata

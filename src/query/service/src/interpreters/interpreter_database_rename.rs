@@ -20,6 +20,7 @@ use databend_common_meta_app::schema::database_name_ident::DatabaseNameIdent;
 use databend_common_sql::plans::RenameDatabasePlan;
 
 use crate::interpreters::Interpreter;
+use crate::interpreters::common::reconcile_all_materialized_views;
 use crate::pipelines::PipelineBuildResult;
 use crate::sessions::QueryContext;
 use crate::sessions::TableContextTableAccess;
@@ -48,8 +49,10 @@ impl Interpreter for RenameDatabaseInterpreter {
     #[async_backtrace::framed]
     fn execute2(&self) -> futures::future::BoxFuture<'_, Result<PipelineBuildResult>> {
         Box::pin(async move {
+            let mut reconcile = false;
             for entity in &self.plan.entities {
                 let catalog = self.ctx.get_catalog(&entity.catalog).await?;
+                reconcile |= !catalog.is_external();
                 let tenant = self.plan.tenant.clone();
                 let _reply = catalog
                     .rename_database(RenameDatabaseReq {
@@ -58,6 +61,9 @@ impl Interpreter for RenameDatabaseInterpreter {
                         new_db_name: entity.new_database.clone(),
                     })
                     .await?;
+            }
+            if reconcile {
+                reconcile_all_materialized_views(&self.ctx).await;
             }
 
             Ok(PipelineBuildResult::create())

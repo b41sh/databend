@@ -49,6 +49,7 @@ use databend_common_license::license::Feature;
 use databend_common_license::license_manager::LicenseManagerSwitch;
 use databend_common_meta_app::schema::MATERIALIZED_VIEW_SOURCE_ROW_ID_COLUMN;
 use databend_common_meta_app::schema::MVDefinition;
+use databend_common_meta_app::schema::MVSourceColumn;
 use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_ID;
 use databend_common_meta_app::schema::TableIdent;
 use databend_common_meta_app::schema::TableInfo;
@@ -60,6 +61,7 @@ use databend_storages_common_table_meta::table::OPT_KEY_CHANGE_TRACKING;
 use databend_storages_common_table_meta::table::OPT_KEY_CHANGE_TRACKING_BEGIN_VER;
 use databend_storages_common_table_meta::table::OPT_KEY_COMMENT;
 use databend_storages_common_table_meta::table::OPT_KEY_DATABASE_ID;
+use databend_storages_common_table_meta::table::OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS;
 use databend_storages_common_table_meta::table::OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME;
 use databend_storages_common_table_meta::table::OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME;
 use databend_storages_common_table_meta::table::OPT_KEY_SNAPSHOT_LOCATION;
@@ -219,6 +221,18 @@ impl Binder {
                     .materialized_view_source_table_id()
                     .map_err(ErrorCode::from)?
                     != source_table_id
+                {
+                    continue;
+                }
+                // The invalid reason is written after source DDL on a best-effort basis: skip an
+                // MV whose recorded source columns the source no longer has, like an invalid one.
+                if mv
+                    .table_meta
+                    .data
+                    .materialized_view_source_schema_changed(
+                        &source_table.get_table_info().meta.schema,
+                    )
+                    .unwrap_or(true)
                 {
                     continue;
                 }
@@ -765,6 +779,14 @@ impl Binder {
         options.insert(
             OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME.to_owned(),
             source_table_name,
+        );
+        // The source columns the MV is created against: a later change of one of them invalidates
+        // the MV, see `TableMeta::materialized_view_source_schema_changed`.
+        options.insert(
+            OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS.to_owned(),
+            MVSourceColumn::encode(&MVSourceColumn::from_schema(
+                &source_table.get_table_info().meta.schema,
+            )),
         );
         // CreateTableInterpreter removes this transport option and stores it in TableMeta.comment;
         // ALTER MATERIALIZED VIEW SET OPTIONS does not accept COMMENT.

@@ -55,7 +55,7 @@ fn test_decode_v181_materialized_view_definition() -> anyhow::Result<()> {
 fn test_decode_v181_mv_source_binding() -> anyhow::Result<()> {
     let mv_source_binding_v181 = vec![8, 42, 160, 6, 181, 1, 168, 6, 24];
 
-    // The generation written by v181 is no longer read.
+    // The removed `bound_source_generation` (field 1 = 42) written by v181 is skipped.
     let want = || MVSourceBinding {};
 
     common::test_pb_from_to(func_name!(), want())?;

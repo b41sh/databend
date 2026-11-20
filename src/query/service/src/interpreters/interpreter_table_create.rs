@@ -90,6 +90,7 @@ use log::info;
 
 use crate::interpreters::InsertInterpreter;
 use crate::interpreters::Interpreter;
+use crate::interpreters::common::reconcile_materialized_views;
 use crate::interpreters::common::table_option_validation::is_valid_analyze_count_min_sketch_error_rate;
 use crate::interpreters::common::table_option_validation::is_valid_analyze_frequency_columns;
 use crate::interpreters::common::table_option_validation::is_valid_analyze_histogram_algorithm;
@@ -445,6 +446,9 @@ impl CreateTableInterpreter {
         // If the un-drop fails, data inserted and the table will be invisible, and available for vacuum.
 
         if !external_catalog {
+            // The table CREATE OR REPLACE replaces is the one its MVs read.
+            let replaced_table_id = prev_table_id.filter(|_| temp_prefix.is_none());
+            let reconcile_ctx = self.ctx.clone();
             pipeline.main_pipeline.lift_on_finished(move |info: &ExecutionInfo| {
                 let qualified_table_name = format!("{}.{}", db_name, table_name);
 
@@ -465,7 +469,12 @@ impl CreateTableInterpreter {
                             prev_table_id,
                             orphan_table_name,
                         };
-                        catalog.commit_table_meta(req).await
+                        catalog.commit_table_meta(req).await?;
+                        if let Some(replaced_table_id) = replaced_table_id {
+                            reconcile_materialized_views(&reconcile_ctx, &[replaced_table_id])
+                                .await;
+                        }
+                        Ok::<_, ErrorCode>(())
                     };
 
                     GlobalIORuntime::instance().block_on(fut).map_err(|e| {
@@ -639,6 +648,11 @@ impl CreateTableInterpreter {
             orphan_table_name: reply.orphan_table_name.clone(),
         };
         catalog.commit_table_meta(commit_req).await?;
+        if let Some(replaced_table_id) = reply.prev_table_id
+            && !catalog.is_external()
+        {
+            reconcile_materialized_views(&self.ctx, &[replaced_table_id]).await;
+        }
         if let Some(anchor_location) = staged_table_meta.options.get(OPT_KEY_SNAPSHOT_LOCATION) {
             // The target was built before dictionary paths were replaced. Use the
             // published metadata, not its stale TableInfo or the source's hint.
@@ -873,6 +887,24 @@ impl CreateTableInterpreter {
             req.as_dropped = true;
             req.table_meta.drop_on = Some(Utc::now());
         }
+        // The table CREATE OR REPLACE replaces is the one its MVs read.
+        let replaced_table_id = if self.plan.create_option == CreateOption::CreateOrReplace
+            && !req.table_meta.options.contains_key(OPT_KEY_TEMP_PREFIX)
+            && !catalog.is_external()
+        {
+            catalog
+                .get_table(
+                    &self.ctx.get_tenant(),
+                    &self.plan.database,
+                    &self.plan.table,
+                )
+                .await
+                .ok()
+                .filter(|table| !table.is_temp())
+                .map(|table| table.get_id())
+        } else {
+            None
+        };
         let reply = catalog.create_table(req.clone()).await?;
         // IF NOT EXISTS on an existing table creates nothing: keep its owner and skip setup.
         if !reply.new_table && self.plan.create_option != CreateOption::CreateOrReplace {
@@ -896,6 +928,9 @@ impl CreateTableInterpreter {
             }
             // Persistent staged tables remain dropped and are reclaimed by vacuum.
             return Err(e);
+        }
+        if let Some(replaced_table_id) = replaced_table_id {
+            reconcile_materialized_views(&self.ctx, &[replaced_table_id]).await;
         }
 
         Ok(PipelineBuildResult::create())
