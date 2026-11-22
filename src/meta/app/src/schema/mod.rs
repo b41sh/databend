@@ -106,6 +106,8 @@ pub use lock::LockKey;
 pub use lock::LockMeta;
 pub use lock::LockType;
 pub use materialized_view::CreateMaterializedViewMeta;
+pub use materialized_view::LegacyMVSourceBindingVersionIdent;
+pub use materialized_view::LegacyMVSourceBindingVersionResource;
 pub use materialized_view::ListedMVSource;
 pub use materialized_view::ListedMaterializedView;
 pub use materialized_view::MATERIALIZED_VIEW_ENGINE;

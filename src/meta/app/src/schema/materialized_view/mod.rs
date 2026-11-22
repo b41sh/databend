@@ -24,10 +24,13 @@ use crate::app_error::AppError;
 use crate::app_error::InvalidMaterializedView;
 
 mod mv_definition_ident;
+mod mv_source_binding_version_ident;
 mod source_table_mv_ident;
 
 pub use mv_definition_ident::MVDefinitionIdent;
 pub use mv_definition_ident::MVDefinitionResource;
+pub use mv_source_binding_version_ident::LegacyMVSourceBindingVersionIdent;
+pub use mv_source_binding_version_ident::LegacyMVSourceBindingVersionResource;
 pub use source_table_mv_ident::MVSourceBinding;
 pub use source_table_mv_ident::SourceTableMV;
 pub use source_table_mv_ident::SourceTableMVIdent;

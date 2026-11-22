@@ -35,9 +35,9 @@ use databend_common_meta_app::schema::DatabaseId;
 use databend_common_meta_app::schema::DatabaseIdHistoryIdent;
 use databend_common_meta_app::schema::DatabaseIdToName;
 use databend_common_meta_app::schema::DroppedId;
-use databend_common_meta_app::schema::EmptyProto;
 use databend_common_meta_app::schema::GcDroppedTableReq;
 use databend_common_meta_app::schema::IndexNameIdent;
+use databend_common_meta_app::schema::LegacyMVSourceBindingVersionIdent;
 use databend_common_meta_app::schema::ListIndexesReq;
 use databend_common_meta_app::schema::MVDefinitionIdent;
 use databend_common_meta_app::schema::ObjectTagIdRef;
@@ -62,8 +62,6 @@ use databend_common_meta_app::schema::parse_clone_group_id;
 use databend_common_meta_app::schema::table_niv::TableNIV;
 use databend_common_meta_app::schema::vacuum_watermark_ident::VacuumWatermarkIdent;
 use databend_common_meta_app::tenant::Tenant;
-use databend_common_meta_app::tenant_key::ident::TIdent;
-use databend_common_meta_app::tenant_key::resource::TenantResource;
 use databend_meta_client::kvapi;
 use databend_meta_client::kvapi::DirName;
 use databend_meta_client::kvapi::ListOptions;
@@ -829,20 +827,6 @@ async fn add_delete_table_ref_tag_ops(
 
     Ok(())
 }
-
-/// `__fd_materialized_view_source_binding_version/<tenant>/<source_table_id>`: the MV binding
-/// generation of a source table, written by older versions and no longer read or written. GC of
-/// the source deletes it; its value is never decoded.
-struct LegacyMVSourceBindingVersionResource;
-
-impl TenantResource for LegacyMVSourceBindingVersionResource {
-    const PREFIX: &'static str = "__fd_materialized_view_source_binding_version";
-    const TYPE: &'static str = "LegacyMVSourceBindingVersionIdent";
-    const HAS_TENANT: bool = true;
-    type ValueType = EmptyProto;
-}
-
-type LegacyMVSourceBindingVersionIdent = TIdent<LegacyMVSourceBindingVersionResource, u64>;
 
 /// Update TxnRequest to remove a dropped table's own data.
 ///
