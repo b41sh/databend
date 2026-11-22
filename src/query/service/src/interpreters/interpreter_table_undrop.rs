@@ -20,6 +20,7 @@ use databend_common_meta_app::schema::is_materialized_view_engine;
 use databend_common_sql::plans::UndropTablePlan;
 
 use crate::interpreters::Interpreter;
+use crate::interpreters::common::MVSourceChange;
 use crate::interpreters::common::reconcile_materialized_views;
 use crate::pipelines::PipelineBuildResult;
 use crate::sessions::QueryContext;
@@ -70,7 +71,8 @@ impl Interpreter for UndropTableInterpreter {
             if let Some(table) = history.last()
                 && !catalog.is_external()
             {
-                reconcile_materialized_views(&self.ctx, &[table.get_id()]).await;
+                reconcile_materialized_views(&self.ctx, table.get_id(), MVSourceChange::Undropped)
+                    .await;
             }
 
             Ok(PipelineBuildResult::create())

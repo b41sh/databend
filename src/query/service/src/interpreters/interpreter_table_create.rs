@@ -90,6 +90,7 @@ use log::info;
 
 use crate::interpreters::InsertInterpreter;
 use crate::interpreters::Interpreter;
+use crate::interpreters::common::MVSourceChange;
 use crate::interpreters::common::reconcile_materialized_views;
 use crate::interpreters::common::table_option_validation::is_valid_analyze_count_min_sketch_error_rate;
 use crate::interpreters::common::table_option_validation::is_valid_analyze_frequency_columns;
@@ -471,8 +472,12 @@ impl CreateTableInterpreter {
                         };
                         catalog.commit_table_meta(req).await?;
                         if let Some(replaced_table_id) = replaced_table_id {
-                            reconcile_materialized_views(&reconcile_ctx, &[replaced_table_id])
-                                .await;
+                            reconcile_materialized_views(
+                                &reconcile_ctx,
+                                replaced_table_id,
+                                MVSourceChange::Replaced,
+                            )
+                            .await;
                         }
                         Ok::<_, ErrorCode>(())
                     };
@@ -651,7 +656,8 @@ impl CreateTableInterpreter {
         if let Some(replaced_table_id) = reply.prev_table_id
             && !catalog.is_external()
         {
-            reconcile_materialized_views(&self.ctx, &[replaced_table_id]).await;
+            reconcile_materialized_views(&self.ctx, replaced_table_id, MVSourceChange::Replaced)
+                .await;
         }
         if let Some(anchor_location) = staged_table_meta.options.get(OPT_KEY_SNAPSHOT_LOCATION) {
             // The target was built before dictionary paths were replaced. Use the
@@ -930,7 +936,8 @@ impl CreateTableInterpreter {
             return Err(e);
         }
         if let Some(replaced_table_id) = replaced_table_id {
-            reconcile_materialized_views(&self.ctx, &[replaced_table_id]).await;
+            reconcile_materialized_views(&self.ctx, replaced_table_id, MVSourceChange::Replaced)
+                .await;
         }
 
         Ok(PipelineBuildResult::create())

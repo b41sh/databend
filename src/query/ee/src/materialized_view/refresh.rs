@@ -41,9 +41,11 @@ use databend_common_catalog::table::Table;
 use databend_common_catalog::table_context::TableContextSession;
 use databend_common_exception::ErrorCode;
 use databend_common_exception::Result;
+use databend_common_meta_api::TableApi;
 use databend_common_meta_app::schema::DatabaseType;
 use databend_common_meta_app::schema::MATERIALIZED_VIEW_SOURCE_ROW_ID_COLUMN;
 use databend_common_meta_app::schema::MVInvalidReason;
+use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON;
 use databend_common_meta_app::schema::TableIdent;
 use databend_common_meta_app::schema::TableInfo;
 use databend_common_meta_app::schema::UpsertTableOptionReq;
@@ -54,6 +56,7 @@ use databend_common_sql::plans::Plan;
 use databend_common_sql::validate_materialized_view_source;
 use databend_common_storages_fuse::FuseTable;
 use databend_common_storages_fuse::operations::ChangesDesc;
+use databend_common_users::UserApiProvider;
 use databend_enterprise_materialized_view::get_materialized_view_handler;
 use databend_meta_client::types::MatchSeq;
 use databend_query::interpreters::InsertInterpreter;
@@ -61,7 +64,6 @@ use databend_query::interpreters::MutationInterpreter;
 use databend_query::interpreters::PostCommitHooks;
 use databend_query::interpreters::QueryFinishHooks;
 use databend_query::interpreters::commit_transaction;
-use databend_query::interpreters::reconcile_materialized_views;
 use databend_query::schedulers::ServiceQueryExecutor;
 use databend_query::sessions::QueryContext;
 use databend_query::sessions::TableContextSettings;
@@ -74,6 +76,7 @@ use databend_storages_common_table_meta::table::OPT_KEY_MATERIALIZED_VIEW_SOURCE
 use databend_storages_common_table_meta::table::OPT_KEY_SNAPSHOT_LOCATION;
 use databend_storages_common_table_meta::table::StreamMode;
 use log::info;
+use log::warn;
 
 enum RefreshStrategy {
     CheckpointOnly,
@@ -183,7 +186,23 @@ impl<'a> MaterializedViewRefresh<'a> {
             .map_err(ErrorCode::from)?
         {
             // The schema change left the reason out: record it for the readers that show it.
-            reconcile_materialized_views(&ctx, &[source_table_id]).await;
+            if let Err(error) = UserApiProvider::instance()
+                .get_meta_store_client()
+                .upsert_table_option(UpsertTableOptionReq {
+                    table_id: mv_table.get_id(),
+                    seq: MatchSeq::Any,
+                    options: HashMap::from([(
+                        OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON.to_string(),
+                        Some(MVInvalidReason::SourceSchemaChanged.as_str().to_string()),
+                    )]),
+                })
+                .await
+            {
+                warn!(
+                    "failed to mark materialized view {}.{} invalid: {}",
+                    database, view_name, error
+                );
+            }
             return Err(ErrorCode::InvalidMaterializedView(format!(
                 "materialized view {}.{} is invalid: {}; recreate the materialized view",
                 database,

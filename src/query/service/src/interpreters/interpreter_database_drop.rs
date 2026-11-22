@@ -22,7 +22,6 @@ use databend_common_users::RoleCacheManager;
 use databend_common_users::UserApiProvider;
 
 use crate::interpreters::Interpreter;
-use crate::interpreters::common::reconcile_all_materialized_views;
 use crate::pipelines::PipelineBuildResult;
 use crate::sessions::QueryContext;
 use crate::sessions::TableContextTableAccess;
@@ -61,7 +60,6 @@ impl Interpreter for DropDatabaseInterpreter {
             // Cleanup after successful drop
             // iceberg db do not need to generate ownership and tag.
             if !catalog.is_external() {
-                reconcile_all_materialized_views(&self.ctx).await;
                 let role_api = UserApiProvider::instance().role_api(&tenant);
                 let owner_object = OwnershipObject::Database {
                     catalog_name: self.plan.catalog.clone(),

@@ -236,7 +236,6 @@ pub use access::ManagementModeAccess;
 pub(crate) use access::validate_stage_write_access;
 pub use common::InterpreterQueryLog;
 pub use common::QueryFinishHooks;
-pub use common::reconcile_materialized_views;
 pub use hook::HookOperator;
 pub use hook::TableHookScheduler;
 pub use interpreter::Interpreter;

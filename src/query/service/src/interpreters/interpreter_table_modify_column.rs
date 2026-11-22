@@ -84,12 +84,13 @@ use databend_storages_common_table_meta::table::OPT_KEY_APPROX_DISTINCT_COLUMNS;
 use databend_storages_common_table_meta::table::OPT_KEY_BLOOM_INDEX_COLUMNS;
 use databend_storages_common_table_meta::table::OPT_KEY_PARTITION_BY;
 use databend_storages_common_table_meta::table::OPT_KEY_SNAPSHOT_LOCATION;
+use log::warn;
 use parquet::arrow::ArrowSchemaConverter;
 
 use crate::clusters::ClusterHelper;
 use crate::interpreters::Interpreter;
 use crate::interpreters::build_insert_select_physical_plan;
-use crate::interpreters::common::backfill_materialized_view_source_columns;
+use crate::interpreters::common::MVSourceChange;
 use crate::interpreters::common::check_policy_target_without_materialized_view;
 use crate::interpreters::common::check_referenced_computed_columns;
 use crate::interpreters::common::cluster_key_referenced_columns;
@@ -958,20 +959,17 @@ impl Interpreter for ModifyTableColumnInterpreter {
             }
 
             let table_meta = table.get_table_info().meta.clone();
-            // A change of a column type, default, or computed expression may reach a column its
-            // MVs read: record the columns the MVs of an older version were created against
-            // before it, and reconcile the MVs after it is committed. Masking policies cannot
-            // be set on an MV source.
-            let source_table_id = (!matches!(
+            // A change of a column type or computed expression may reach a column the MVs of
+            // the table read: reconcile them after it is committed. Masking policies cannot be
+            // set on an MV source, and comments do not change the columns.
+            let mv_source = (!matches!(
                 self.plan.action,
                 ModifyColumnAction::SetMaskingPolicy(..)
                     | ModifyColumnAction::UnsetMaskingPolicy(_)
+                    | ModifyColumnAction::Comment(_)
             ) && !table.is_temp()
                 && !catalog.is_external())
-            .then(|| table.get_id());
-            if source_table_id.is_some() {
-                backfill_materialized_view_source_columns(&self.ctx, table.as_ref()).await;
-            }
+            .then(|| (catalog.clone(), table.get_id(), table.schema()));
 
             // NOTICE: if we support modify column data type,
             // need to check whether this column is referenced by other computed columns.
@@ -1017,18 +1015,36 @@ impl Interpreter for ModifyTableColumnInterpreter {
                 .as_ref()
                 .and_then(|holder| holder.try_take());
             build_res.main_pipeline.add_lock_guard(lock_guard);
-            if let Some(source_table_id) = source_table_id {
+            if let Some((catalog, source_table_id, previous_schema)) = mv_source {
+                let ctx = self.ctx.clone();
+                let database = self.plan.database.clone();
+                let table = self.plan.table.clone();
                 if build_res.main_pipeline.is_empty() {
-                    reconcile_materialized_views(&self.ctx, &[source_table_id]).await;
+                    reconcile_modified_source(
+                        &ctx,
+                        catalog,
+                        &database,
+                        &table,
+                        source_table_id,
+                        &previous_schema,
+                    )
+                    .await;
                 } else {
                     // A type change that rewrites the data commits when the pipeline finishes.
-                    let ctx = self.ctx.clone();
                     build_res
                         .main_pipeline
                         .set_on_finished(move |info: &ExecutionInfo| {
                             if info.res.is_ok() {
                                 GlobalIORuntime::instance().block_on(async move {
-                                    reconcile_materialized_views(&ctx, &[source_table_id]).await;
+                                    reconcile_modified_source(
+                                        &ctx,
+                                        catalog,
+                                        &database,
+                                        &table,
+                                        source_table_id,
+                                        &previous_schema,
+                                    )
+                                    .await;
                                     Ok::<_, ErrorCode>(())
                                 })?;
                             }
@@ -1039,6 +1055,33 @@ impl Interpreter for ModifyTableColumnInterpreter {
             Ok(build_res)
         })
     }
+}
+
+/// Reconcile the MVs of table `source_table_id` after a column change. The actions build the new
+/// schema in several ways, so it is read back from the committed table.
+async fn reconcile_modified_source(
+    ctx: &QueryContext,
+    catalog: Arc<dyn Catalog>,
+    database: &str,
+    table: &str,
+    source_table_id: u64,
+    previous_schema: &TableSchema,
+) {
+    let table = match catalog.get_table(&ctx.get_tenant(), database, table).await {
+        Ok(table) => table,
+        Err(error) => {
+            warn!(
+                "failed to read table {}.{} after a column change, the invalid reason of its materialized views may be stale: {}",
+                database, table, error
+            );
+            return;
+        }
+    };
+    reconcile_materialized_views(ctx, source_table_id, MVSourceChange::SchemaChanged {
+        previous_schema,
+        schema: &table.schema(),
+    })
+    .await;
 }
 
 fn is_string_to_binary(old_ty: &TableDataType, new_ty: &TableDataType) -> bool {

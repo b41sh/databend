@@ -40,16 +40,16 @@ pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_ID: &str = "materialized_view_s
 /// or last refreshed.
 pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_SEQ: &str = "materialized_view_source_table_seq";
 /// Internal table options recording the database and table name the source had when the MV was
-/// created. A renamed source is restored to validity when it gets this name back.
+/// created, the names its definition reads the source by.
 pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME: &str =
     "materialized_view_source_database_name";
 pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME: &str = "materialized_view_source_table_name";
 /// Internal table option holding why the MV is invalid; absent while it is valid. It is written
 /// on a best-effort basis after the source DDL that breaks the binding, see [`MVInvalidReason`].
 pub const OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON: &str = "materialized_view_invalid_reason";
-/// Internal table option recording, as JSON, the source columns the MV was created against, see
+/// Internal table option recording, as JSON, the source columns the MV reads, see
 /// [`MVSourceColumn`]. Written by CREATE and never changed after; an MV created by an older
-/// version gets it before the first schema change of its source.
+/// version gets all the source columns at the first schema change of its source.
 pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS: &str = "materialized_view_source_columns";
 /// Hidden physical column used to match source DELETE/UPDATE rows during refresh.
 pub const MATERIALIZED_VIEW_SOURCE_ROW_ID_COLUMN: &str = "_mv_source_row_id";
@@ -58,11 +58,12 @@ pub fn is_materialized_view_engine(engine: &str) -> bool {
     engine == MATERIALIZED_VIEW_ENGINE
 }
 
-/// One source column a materialized view was created against.
+/// One source column a materialized view reads, as it was when the MV was created.
 ///
 /// The MV query names source columns in SQL, and its storage holds values of their types, so a
-/// column the MV depends on must keep its id, name, type, and computed expression. Defaults are
-/// not recorded: they do not change the values of existing rows.
+/// column the MV reads must keep its id, name, type, and computed expression. Defaults are not
+/// recorded: they do not change the values of existing rows. Columns the MV does not read are not
+/// recorded, so changing them keeps the MV valid.
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MVSourceColumn {
     pub id: u32,
@@ -87,7 +88,8 @@ impl MVSourceColumn {
         }
     }
 
-    /// The columns of `schema`, as recorded by CREATE MATERIALIZED VIEW.
+    /// All the columns of `schema`, recorded for an MV of an older version, whose read columns
+    /// are not known.
     pub fn from_schema(schema: &TableSchema) -> Vec<Self> {
         schema.fields().iter().map(Self::from_field).collect()
     }
@@ -192,13 +194,12 @@ pub struct MVDefinition {
 impl TableMeta {
     /// Why the materialized view is invalid; `None` while it is valid.
     ///
-    /// The reason is written on a best-effort basis after a source DDL that breaks the binding
-    /// (DROP TABLE, DROP DATABASE, RENAME TABLE, RENAME DATABASE, a change of a recorded column),
-    /// from the current state of the source. It is for display and a quick rejection: readers
-    /// still check the source identity and [`Self::materialized_view_source_schema_changed`],
-    /// because a failed write leaves the reason out. Lifecycle reasons are cleared again when the
-    /// source is restored to the identity the MV was bound to (UNDROP, RENAME back); a schema
-    /// change is final.
+    /// The reason is written on a best-effort basis after a source DDL that breaks the MV, see
+    /// [`MVInvalidReason`]. It is for display and a quick rejection: readers still bind the
+    /// definition by the source name and check the source table id, and check
+    /// [`Self::materialized_view_source_schema_changed`], because a failed write leaves the
+    /// reason out. A rename of the source table or of its database, and a drop of its database,
+    /// write no reason: the definition no longer binds, and binds again once the source is back.
     pub fn materialized_view_invalid_reason(&self) -> Option<&str> {
         self.options
             .get(OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON)
@@ -209,8 +210,8 @@ impl TableMeta {
         self.materialized_view_invalid_reason().is_none()
     }
 
-    /// Whether a restore may clear the current reason once the source identity matches again.
-    /// A missing reason needs no restore; an unknown reason is kept.
+    /// Whether UNDROP TABLE of the source may clear the current reason. A missing reason needs no
+    /// restore; an unknown reason is kept.
     pub fn materialized_view_invalid_reason_restorable(&self) -> bool {
         self.materialized_view_invalid_reason()
             .and_then(MVInvalidReason::parse)
@@ -224,14 +225,11 @@ impl TableMeta {
 pub enum MVInvalidReason {
     /// The source table was dropped. Cleared by UNDROP TABLE.
     SourceDropped,
-    /// The database holding the source table was dropped. Cleared by UNDROP DATABASE.
-    SourceDatabaseDropped,
-    /// The source table was renamed or moved to another database. Cleared by renaming it back
-    /// to the database and name the MV was created against.
-    SourceRenamed,
-    /// The database holding the source table was renamed. Cleared by renaming it back.
-    SourceDatabaseRenamed,
-    /// A column the MV may depend on was renamed, dropped, or changed. Never cleared.
+    /// The source table was replaced by CREATE OR REPLACE TABLE. Never cleared.
+    SourceReplaced,
+    /// The source table was swapped with another by ALTER TABLE ... SWAP WITH. Never cleared.
+    SourceSwapped,
+    /// A column the MV reads was renamed, dropped, or changed. Never cleared.
     SourceSchemaChanged,
 }
 
@@ -239,9 +237,8 @@ impl MVInvalidReason {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::SourceDropped => "source table was dropped",
-            Self::SourceDatabaseDropped => "source database was dropped",
-            Self::SourceRenamed => "source table was renamed",
-            Self::SourceDatabaseRenamed => "source database was renamed",
+            Self::SourceReplaced => "source table was replaced",
+            Self::SourceSwapped => "source table was swapped",
             Self::SourceSchemaChanged => "source table schema was changed",
         }
     }
@@ -249,18 +246,18 @@ impl MVInvalidReason {
     pub fn parse(reason: &str) -> Option<Self> {
         [
             Self::SourceDropped,
-            Self::SourceDatabaseDropped,
-            Self::SourceRenamed,
-            Self::SourceDatabaseRenamed,
+            Self::SourceReplaced,
+            Self::SourceSwapped,
             Self::SourceSchemaChanged,
         ]
         .into_iter()
         .find(|candidate| candidate.as_str() == reason)
     }
 
-    /// Whether the source can come back to the identity the MV was bound to.
+    /// Whether the source can come back as it was when the MV was created: only a dropped table,
+    /// by UNDROP TABLE.
     pub const fn restorable(self) -> bool {
-        !matches!(self, Self::SourceSchemaChanged)
+        matches!(self, Self::SourceDropped)
     }
 }
 
@@ -345,15 +342,14 @@ mod tests {
     fn test_mv_invalid_reason_round_trip_and_restorable() {
         for reason in [
             MVInvalidReason::SourceDropped,
-            MVInvalidReason::SourceDatabaseDropped,
-            MVInvalidReason::SourceRenamed,
-            MVInvalidReason::SourceDatabaseRenamed,
+            MVInvalidReason::SourceReplaced,
+            MVInvalidReason::SourceSwapped,
             MVInvalidReason::SourceSchemaChanged,
         ] {
             assert_eq!(MVInvalidReason::parse(reason.as_str()), Some(reason));
             assert_eq!(
                 reason.restorable(),
-                reason != MVInvalidReason::SourceSchemaChanged
+                reason == MVInvalidReason::SourceDropped
             );
         }
         assert_eq!(MVInvalidReason::parse("unknown"), None);
@@ -363,10 +359,15 @@ mod tests {
         assert!(!table_meta.materialized_view_invalid_reason_restorable());
         table_meta.options.insert(
             OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON.to_string(),
-            MVInvalidReason::SourceRenamed.as_str().to_string(),
+            MVInvalidReason::SourceDropped.as_str().to_string(),
         );
         assert!(!table_meta.is_valid_materialized_view());
         assert!(table_meta.materialized_view_invalid_reason_restorable());
+        table_meta.options.insert(
+            OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON.to_string(),
+            MVInvalidReason::SourceSwapped.as_str().to_string(),
+        );
+        assert!(!table_meta.materialized_view_invalid_reason_restorable());
         table_meta.options.insert(
             OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON.to_string(),
             "unknown".to_string(),

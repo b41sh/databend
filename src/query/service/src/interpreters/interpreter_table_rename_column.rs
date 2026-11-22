@@ -29,7 +29,7 @@ use databend_storages_common_table_meta::table::OPT_KEY_BLOOM_INDEX_COLUMNS;
 use databend_storages_common_table_meta::table::OPT_KEY_PARTITION_BY;
 
 use crate::interpreters::Interpreter;
-use crate::interpreters::common::backfill_materialized_view_source_columns;
+use crate::interpreters::common::MVSourceChange;
 use crate::interpreters::common::check_referenced_computed_columns;
 use crate::interpreters::common::reconcile_materialized_views;
 use crate::interpreters::common::rename_column_in_cluster_key;
@@ -161,13 +161,7 @@ impl Interpreter for RenameTableColumnInterpreter {
                 new_ttl = rename_column_in_ttl(ttl, &self.plan.old_column, &self.plan.new_column)?;
             }
 
-            // Record the source columns of MVs of an older version before the change, and
-            // reconcile the MVs after it.
-            let source_table_id =
-                (!table.is_temp() && !catalog.is_external()).then(|| table.get_id());
-            if source_table_id.is_some() {
-                backfill_materialized_view_source_columns(&self.ctx, table.as_ref()).await;
-            }
+            let is_mv_source = !table.is_temp() && !catalog.is_external();
             commit_table_meta(
                 &self.ctx,
                 table.as_ref(),
@@ -194,8 +188,16 @@ impl Interpreter for RenameTableColumnInterpreter {
                 },
             )
             .await?;
-            if let Some(source_table_id) = source_table_id {
-                reconcile_materialized_views(&self.ctx, &[source_table_id]).await;
+            if is_mv_source {
+                reconcile_materialized_views(
+                    &self.ctx,
+                    table.get_id(),
+                    MVSourceChange::SchemaChanged {
+                        previous_schema: &table.schema(),
+                        schema: &self.plan.schema,
+                    },
+                )
+                .await;
             }
 
             Ok(PipelineBuildResult::create())

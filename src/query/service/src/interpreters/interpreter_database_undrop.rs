@@ -18,7 +18,6 @@ use databend_common_exception::Result;
 use databend_common_sql::plans::UndropDatabasePlan;
 
 use crate::interpreters::Interpreter;
-use crate::interpreters::common::reconcile_all_materialized_views;
 use crate::pipelines::PipelineBuildResult;
 use crate::sessions::QueryContext;
 use crate::sessions::TableContextTableAccess;
@@ -50,9 +49,6 @@ impl Interpreter for UndropDatabaseInterpreter {
             let catalog_name = self.plan.catalog.as_str();
             let catalog = self.ctx.get_catalog(catalog_name).await?;
             catalog.undrop_database(self.plan.clone().into()).await?;
-            if !catalog.is_external() {
-                reconcile_all_materialized_views(&self.ctx).await;
-            }
             Ok(PipelineBuildResult::create())
         })
     }

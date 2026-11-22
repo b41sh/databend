@@ -19,7 +19,6 @@ use databend_common_exception::Result;
 use databend_common_management::RoleApi;
 use databend_common_meta_app::principal::OwnershipObject;
 use databend_common_meta_app::schema::CreateDatabaseReq;
-use databend_common_meta_app::schema::CreateOption;
 use databend_common_sql::plans::CreateDatabasePlan;
 use databend_common_users::RoleCacheManager;
 use databend_common_users::UserApiProvider;
@@ -27,7 +26,6 @@ use databend_meta_client::types::MatchSeq;
 use log::debug;
 
 use crate::interpreters::Interpreter;
-use crate::interpreters::common::reconcile_all_materialized_views;
 use crate::pipelines::PipelineBuildResult;
 use crate::sessions::QueryContext;
 use crate::sessions::TableContextAuthorization;
@@ -86,10 +84,6 @@ impl Interpreter for CreateDatabaseInterpreter {
                 }
 
                 return Ok(PipelineBuildResult::create());
-            }
-            // CREATE OR REPLACE drops the database it replaces, with the sources of MVs in it.
-            if self.plan.create_option == CreateOption::CreateOrReplace && !catalog.is_external() {
-                reconcile_all_materialized_views(&self.ctx).await;
             }
 
             // Grant ownership as the current role. The above create_db_req.meta.owner could be removed in

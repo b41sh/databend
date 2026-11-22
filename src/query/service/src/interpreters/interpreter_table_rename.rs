@@ -22,7 +22,6 @@ use databend_common_meta_app::schema::TableNameIdent;
 use databend_common_sql::plans::RenameTablePlan;
 
 use crate::interpreters::Interpreter;
-use crate::interpreters::common::reconcile_materialized_views;
 use crate::pipelines::PipelineBuildResult;
 use crate::sessions::QueryContext;
 use crate::sessions::TableContextTableAccess;
@@ -85,9 +84,6 @@ impl Interpreter for RenameTableInterpreter {
                     new_table_name: self.plan.new_table.clone(),
                 })
                 .await?;
-            if !table.is_temp() && !catalog.is_external() {
-                reconcile_materialized_views(&self.ctx, &[table.get_id()]).await;
-            }
 
             Ok(PipelineBuildResult::create())
         })

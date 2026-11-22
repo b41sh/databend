@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -37,7 +38,9 @@ use databend_common_catalog::catalog_kind::CATALOG_DEFAULT;
 use databend_common_catalog::table::Table;
 use databend_common_exception::ErrorCode;
 use databend_common_exception::Result;
+use databend_common_expression::ComputedExpr;
 use databend_common_expression::DataField;
+use databend_common_expression::DataSchema;
 use databend_common_expression::DataSchemaRefExt;
 use databend_common_expression::TableDataType;
 use databend_common_expression::TableField;
@@ -73,6 +76,8 @@ use databend_storages_common_table_meta::table::is_fuse_engine;
 use log::debug;
 
 use crate::BindContext;
+use crate::ColumnEntry;
+use crate::ColumnSet;
 use crate::MaterializedViewCandidate;
 use crate::MaterializedViewCandidateReadMode;
 use crate::MetadataRef;
@@ -83,6 +88,7 @@ use crate::binder::ViewIdent;
 use crate::binder::bind_table_reference::MaterializedViewReadMode;
 use crate::check_materialized_view_source_without_policy;
 use crate::optimizer::ir::SExpr;
+use crate::parse_computed_expr;
 use crate::parse_materialized_view_query;
 use crate::planner::semantic::MaterializedViewChecker;
 use crate::planner::semantic::MaterializedViewRewriter;
@@ -96,6 +102,7 @@ use crate::plans::DropMaterializedViewPlan;
 use crate::plans::DropTableClusterKeyPlan;
 use crate::plans::MaintenanceTarget;
 use crate::plans::ModifyTableCommentPlan;
+use crate::plans::Operator;
 use crate::plans::Plan;
 use crate::plans::RefreshMaterializedViewPlan;
 use crate::plans::RelOperator;
@@ -124,6 +131,18 @@ pub(crate) fn find_materialized_view_aggregate(s_expr: &SExpr) -> Option<&Aggreg
         };
         current = child;
     }
+}
+
+/// Whether binding a rewrite candidate failed because the MV no longer matches its source: the
+/// source, or its database, was renamed or dropped, or the name now leads to another table. Such
+/// a candidate is skipped; the user's query on the source is not affected.
+fn is_unusable_materialized_view_candidate(error: &ErrorCode) -> bool {
+    matches!(
+        error.code(),
+        ErrorCode::UNKNOWN_TABLE
+            | ErrorCode::UNKNOWN_DATABASE
+            | ErrorCode::INVALID_MATERIALIZED_VIEW
+    )
 }
 
 /// Table schemas reject bare Null columns; normalize them the same way CREATE TABLE does.
@@ -224,6 +243,20 @@ impl Binder {
                 {
                     continue;
                 }
+                // The definition reads the source by the database and table name it had at CREATE,
+                // and a RENAME of the source or of its database leaves the MV alone: skip an MV
+                // whose names are no longer those of this source, before binding its definition
+                // to another table. An MV of an older version records no names; binding it fails,
+                // or reaches a table of another id, and is skipped below.
+                let bound_name =
+                    |key: &str| mv.table_meta.data.options.get(key).map(String::as_str);
+                if bound_name(OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME)
+                    .is_some_and(|name| name != source_entry.database())
+                    || bound_name(OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME)
+                        .is_some_and(|name| name != source_entry.name())
+                {
+                    continue;
+                }
                 // The invalid reason is written after source DDL on a best-effort basis: skip an
                 // MV whose recorded source columns the source no longer has, like an invalid one.
                 if mv
@@ -281,11 +314,15 @@ impl Binder {
                 let mut candidate_context = bind_context.new_view_scope(view_ident.clone())?;
                 candidate_context.planning_materialized_view_rewrite = true;
                 let (definition, definition_context) =
-                    self.bind_query(&mut candidate_context, &logical_query)?;
+                    match self.bind_query(&mut candidate_context, &logical_query) {
+                        Ok(bound) => bound,
+                        Err(error) if is_unusable_materialized_view_candidate(&error) => continue,
+                        Err(error) => return Err(error),
+                    };
 
                 let mut read_context = bind_context.new_view_scope(view_ident)?;
                 read_context.planning_materialized_view_rewrite = true;
-                let read_result = self.bind_materialized_view_with_mode(
+                let read_result = match self.bind_materialized_view_with_mode(
                     &mut read_context,
                     source_entry.catalog(),
                     &mv_database,
@@ -297,7 +334,11 @@ impl Binder {
                     None,
                     Some((source_table.clone(), source_entry.database().to_string())),
                     false,
-                )?;
+                ) {
+                    Ok(read_result) => read_result,
+                    Err(error) if is_unusable_materialized_view_candidate(&error) => continue,
+                    Err(error) => return Err(error),
+                };
                 let read_plan = read_result.s_expr;
                 let read_context = read_result.bind_context;
                 let read_mode = match read_result.read_mode {
@@ -377,6 +418,72 @@ impl Binder {
             .cloned()
             .collect();
         TableSchemaRefExt::create(fields)
+    }
+
+    /// The columns of `source_schema` the MV with storage definition `s_expr` reads: those its
+    /// operators and its output reference, with the columns the computed expressions of these
+    /// read. A computed expression that does not parse makes it all the columns.
+    fn materialized_view_read_columns(
+        &self,
+        s_expr: &SExpr,
+        bind_context: &BindContext,
+        metadata: &MetadataRef,
+        source_schema: &TableSchemaRef,
+    ) -> Vec<MVSourceColumn> {
+        let mut used = ColumnSet::new();
+        let mut stack = vec![s_expr];
+        while let Some(s_expr) = stack.pop() {
+            for scalar in s_expr.plan().scalar_expr_iter() {
+                scalar.collect_used_columns(&mut used);
+            }
+            stack.extend(s_expr.children());
+        }
+        used.extend(bind_context.columns.iter().map(|column| column.index));
+
+        let metadata = metadata.read();
+        let column_ids = used
+            .into_iter()
+            .filter_map(|index| match metadata.column(index) {
+                ColumnEntry::BaseTableColumn(column) => Some(column.column_id),
+                _ => None,
+            })
+            .collect::<BTreeSet<_>>();
+        // A column id may be of an inner column of a nested field: the field is read.
+        let mut read = source_schema
+            .fields()
+            .iter()
+            .filter(|field| field.column_ids().iter().any(|id| column_ids.contains(id)))
+            .map(|field| field.name().clone())
+            .collect::<BTreeSet<_>>();
+
+        let data_schema = Arc::new(DataSchema::from(source_schema.clone()));
+        let mut pending = read.iter().cloned().collect::<Vec<_>>();
+        while let Some(name) = pending.pop() {
+            let Ok(field) = source_schema.field_with_name(&name) else {
+                continue;
+            };
+            let Some(computed_expr) = field.computed_expr() else {
+                continue;
+            };
+            let sql = match computed_expr {
+                ComputedExpr::Virtual(sql) | ComputedExpr::Stored(sql) => sql,
+            };
+            let Ok(expr) = parse_computed_expr(self.ctx.clone(), data_schema.clone(), sql) else {
+                return MVSourceColumn::from_schema(source_schema);
+            };
+            for binding in expr.column_refs().keys() {
+                if read.insert(binding.column_name.clone()) {
+                    pending.push(binding.column_name.clone());
+                }
+            }
+        }
+
+        source_schema
+            .fields()
+            .iter()
+            .filter(|field| read.contains(field.name()))
+            .map(MVSourceColumn::from_field)
+            .collect()
     }
 
     /// Build the physical schema from rewriter names and types inferred by binding.
@@ -780,11 +887,15 @@ impl Binder {
             OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME.to_owned(),
             source_table_name,
         );
-        // The source columns the MV is created against: a later change of one of them invalidates
-        // the MV, see `TableMeta::materialized_view_source_schema_changed`.
+        // The source columns the MV reads: a later change of one of them invalidates the MV, see
+        // `TableMeta::materialized_view_source_schema_changed`. The storage definition reads all
+        // the source columns the logical one does.
         options.insert(
             OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS.to_owned(),
-            MVSourceColumn::encode(&MVSourceColumn::from_schema(
+            MVSourceColumn::encode(&self.materialized_view_read_columns(
+                storage_expr.logical()?,
+                physical_bind_context,
+                physical_metadata,
                 &source_table.get_table_info().meta.schema,
             )),
         );

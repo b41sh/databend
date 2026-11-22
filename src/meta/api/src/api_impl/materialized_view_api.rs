@@ -31,15 +31,19 @@
 //! Whether an MV is valid is recorded in its `TableMeta` options, on a best-effort
 //! basis. Source DDL does not touch MV metadata in its own transaction: a source
 //! may have many MVs, and the DDL must not grow with them or retry on their
-//! REFRESH commits. After the DDL, the query layer reads the current state of the
-//! source and sets or clears the invalid reason of each dependent MV through the
-//! ordinary table option API; a failure is only logged.
+//! REFRESH commits. After the DDL, the interpreter that ran it derives the invalid
+//! reason of each dependent MV from what the DDL did, and sets or clears it through
+//! the ordinary table option API; a failure is only logged. DROP TABLE is undone by
+//! UNDROP TABLE; SWAP, CREATE OR REPLACE, and a change of a column the MV reads are
+//! final. A rename of the source or of its database, and a drop of its database,
+//! write no reason.
 //!
-//! Because the reason may be missing, readers do not rely on it alone: they check
-//! the source identity, and compare the source schema with the columns the MV was
-//! created against (`materialized_view_source_columns`). An MV created by an older
-//! version has no recorded columns; the query layer records them before the first
-//! schema change of its source.
+//! Because the reason may be missing, readers do not rely on it alone: they bind
+//! the definition by the source name and check the source table id, and compare
+//! the source schema with the columns the MV reads (`materialized_view_source_columns`).
+//! An MV created by an older version has no recorded columns; the query layer
+//! records all the source columns, from the schema before the DDL, at the first
+//! column change of its source.
 //!
 //! The metadata operations are:
 //!
