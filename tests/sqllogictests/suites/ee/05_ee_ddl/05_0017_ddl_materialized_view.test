@@ -1330,6 +1330,23 @@ SELECT * FROM mv_guard_recreated
 statement ok
 ALTER TABLE mv_guard_source DROP COLUMN b
 
+# A schema change is final: DROP and UNDROP of the source do not replace or clear it.
+statement ok
+DROP TABLE mv_guard_source
+
+statement ok
+UNDROP TABLE mv_guard_source
+
+query BT
+SELECT invalid, invalid_reason
+FROM system.materialized_views
+WHERE database = 'test_mv_ddl' AND name = 'mv_guard'
+----
+1 source table schema was changed
+
+statement error 2328
+SELECT * FROM mv_guard
+
 statement ok
 DROP MATERIALIZED VIEW mv_guard
 
@@ -1432,9 +1449,16 @@ SELECT * FROM mv_swap
 statement ok
 DROP MATERIALIZED VIEW mv_swap
 
-# CREATE OR REPLACE TABLE ... AS SELECT replaces the source: the MV is invalid for good.
+# CREATE OR REPLACE TABLE ... AS SELECT drops the source it replaces, as in Snowflake: the MV is
+# invalid until the replaced table is undropped.
+statement ok
+INSERT INTO mv_swap_a VALUES (7)
+
 statement ok
 CREATE MATERIALIZED VIEW mv_replace AS SELECT id FROM mv_swap_a WHERE 1 = 1
+
+statement ok
+REFRESH MATERIALIZED VIEW mv_replace
 
 statement ok
 CREATE OR REPLACE TABLE mv_swap_a AS SELECT 1 AS id
@@ -1444,16 +1468,37 @@ SELECT invalid, invalid_reason
 FROM system.materialized_views
 WHERE database = 'test_mv_ddl' AND name = 'mv_replace'
 ----
-1 source table was replaced
+1 source table was dropped
 
 statement error 2328
 SELECT * FROM mv_replace
+
+statement ok
+ALTER TABLE mv_swap_a RENAME TO mv_swap_a_new
+
+statement ok
+UNDROP TABLE mv_swap_a
+
+query BB
+SELECT invalid, invalid_reason IS NULL
+FROM system.materialized_views
+WHERE database = 'test_mv_ddl' AND name = 'mv_replace'
+----
+0 1
+
+query I
+SELECT id FROM mv_replace
+----
+7
 
 statement ok
 DROP MATERIALIZED VIEW mv_replace
 
 statement ok
 DROP TABLE mv_swap_a
+
+statement ok
+DROP TABLE mv_swap_a_new
 
 statement ok
 DROP TABLE mv_swap_b

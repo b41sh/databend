@@ -39,9 +39,9 @@ use databend_common_functions::aggregates::AGGR_REGISTRY;
 use databend_common_license::license::Feature;
 use databend_common_license::license_manager::LicenseManagerSwitch;
 use databend_common_meta_app::schema::MVDefinition;
-use databend_common_meta_app::schema::MVInvalidReason;
 use databend_common_meta_app::schema::TableIdent;
 use databend_common_meta_app::schema::TableInfo;
+use databend_common_meta_app::schema::TableMeta;
 use databend_enterprise_materialized_view::get_materialized_view_handler;
 use databend_storages_common_table_meta::table::ChangeType;
 use databend_storages_common_table_meta::table::OPT_KEY_DATABASE_ID;
@@ -66,6 +66,7 @@ use crate::binder::ScalarBinder;
 use crate::binder::ViewIdent;
 use crate::binder::ddl::materialized_view::find_materialized_view_aggregate;
 use crate::binder::lineage_enabled;
+use crate::check_materialized_view_source;
 use crate::optimizer::ir::SExpr;
 use crate::parse_materialized_view_query;
 use crate::plans::Aggregate;
@@ -73,6 +74,7 @@ use crate::plans::AggregateFunction;
 use crate::plans::BoundColumnRef;
 use crate::plans::EvalScalar;
 use crate::plans::ScalarItem;
+use crate::restore_undropped_materialized_view;
 use crate::validate_materialized_view_source;
 
 /// Result of binding a materialized view reference, including the definition that was
@@ -640,17 +642,6 @@ impl Binder {
             .meta
             .materialized_view_source_table_id()
             .map_err(ErrorCode::from)?;
-        if let Some(reason) = table_meta
-            .get_table_info()
-            .meta
-            .materialized_view_invalid_reason()
-        {
-            return Err(ErrorCode::InvalidMaterializedView(format!(
-                "materialized view {} is invalid: {}; recreate the materialized view",
-                table_meta.name(),
-                reason
-            )));
-        }
         let mv_definition = databend_common_base::runtime::block_on(async {
             let catalog = self.ctx.get_catalog(catalog_name).await?;
             get_materialized_view_handler()
@@ -664,7 +655,23 @@ impl Binder {
                 })
         })?;
 
-        // Resolve the current source by its id.
+        // Resolve the current source by its id, and check the MV against it before binding the
+        // definition: the invalid reason is written after source DDL on a best-effort basis.
+        let mv_id = table_meta.get_id();
+        let mv_meta = &table_meta.get_table_info().meta;
+        let check_source = |source_meta: Option<&TableMeta>| {
+            databend_common_base::runtime::block_on(async {
+                let restored =
+                    restore_undropped_materialized_view(mv_id, mv_meta, source_meta).await;
+                check_materialized_view_source(
+                    mv_id,
+                    table_meta.name(),
+                    restored.as_ref().unwrap_or(mv_meta),
+                    source_meta,
+                )
+                .await
+            })
+        };
         let (source_table, source_database, source_seq, source_snapshot_location) = if let Some((
             source_table,
             source_database,
@@ -679,6 +686,7 @@ impl Binder {
                     source_table.get_id()
                 )));
             }
+            check_source(Some(&source_table.get_table_info().meta))?;
             let source_info = source_table.get_table_info();
             (
                 source_table.clone(),
@@ -691,17 +699,17 @@ impl Binder {
                     .cloned(),
             )
         } else {
+            let source_meta = databend_common_base::runtime::block_on(async {
+                let catalog = self.ctx.get_catalog(catalog_name).await?;
+                catalog.get_table_meta_by_id(source_table_id).await
+            })?;
+            check_source(source_meta.as_ref().map(|meta| &meta.data))?;
+            // The check rejects a missing source.
+            let source_meta = source_meta.ok_or_else(|| {
+                ErrorCode::Internal("materialized view source table meta is missing")
+            })?;
             databend_common_base::runtime::block_on(async {
                 let catalog = self.ctx.get_catalog(catalog_name).await?;
-                let source_meta = catalog
-                    .get_table_meta_by_id(source_table_id)
-                    .await?
-                    .ok_or_else(|| {
-                        ErrorCode::InvalidMaterializedView(format!(
-                            "materialized view {} source table changed: expected table id {} no longer exists",
-                            table_meta.name(), source_table_id
-                        ))
-                    })?;
                 let source_database_id = source_meta
                     .data
                     .options
@@ -752,21 +760,6 @@ impl Binder {
                 _ => error,
             })?
         };
-        // The invalid reason is written after source DDL on a best-effort basis, so a change of a
-        // source column the MV was created against is checked against the source itself, before
-        // the definition is bound against it.
-        if table_meta
-            .get_table_info()
-            .meta
-            .materialized_view_source_schema_changed(&source_table.get_table_info().meta.schema)
-            .map_err(ErrorCode::from)?
-        {
-            return Err(ErrorCode::InvalidMaterializedView(format!(
-                "materialized view {} is invalid: {}; recreate the materialized view",
-                table_meta.name(),
-                MVInvalidReason::SourceSchemaChanged.as_str()
-            )));
-        }
         // Bind the persisted physical definition to validate its source identity and determine
         // whether hybrid reads must merge aggregate states before the logical projection.
         let query = parse_materialized_view_query(

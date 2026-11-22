@@ -118,7 +118,6 @@ pub use materialized_view::MVDefinitionResource;
 pub use materialized_view::MVInfo;
 pub use materialized_view::MVInvalidReason;
 pub use materialized_view::MVSourceBinding;
-pub use materialized_view::MVSourceBindingSnapshot;
 pub use materialized_view::MVSourceColumn;
 pub use materialized_view::MaterializedViewListFilter;
 pub use materialized_view::OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON;

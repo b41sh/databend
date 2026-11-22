@@ -475,7 +475,7 @@ impl CreateTableInterpreter {
                             update_materialized_view_validity(
                                 &mv_ctx,
                                 replaced_table_id,
-                                MVSourceChange::Replaced,
+                                MVSourceChange::Dropped,
                             )
                             .await;
                         }
@@ -659,7 +659,7 @@ impl CreateTableInterpreter {
             update_materialized_view_validity(
                 &self.ctx,
                 replaced_table_id,
-                MVSourceChange::Replaced,
+                MVSourceChange::Dropped,
             )
             .await;
         }
@@ -943,7 +943,7 @@ impl CreateTableInterpreter {
             update_materialized_view_validity(
                 &self.ctx,
                 replaced_table_id,
-                MVSourceChange::Replaced,
+                MVSourceChange::Dropped,
             )
             .await;
         }

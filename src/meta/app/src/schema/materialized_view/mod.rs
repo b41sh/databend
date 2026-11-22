@@ -226,10 +226,9 @@ impl TableMeta {
 /// [`OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MVInvalidReason {
-    /// The source table was dropped. Cleared by UNDROP TABLE.
+    /// The source table was dropped, or replaced by CREATE OR REPLACE TABLE, which drops it.
+    /// Cleared by UNDROP TABLE of it, as in Snowflake.
     SourceDropped,
-    /// The source table was replaced by CREATE OR REPLACE TABLE. Never cleared.
-    SourceReplaced,
     /// The source table was swapped with another by ALTER TABLE ... SWAP WITH. Never cleared.
     SourceSwapped,
     /// A column the MV reads was renamed, dropped, or changed. Never cleared.
@@ -240,7 +239,6 @@ impl MVInvalidReason {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::SourceDropped => "source table was dropped",
-            Self::SourceReplaced => "source table was replaced",
             Self::SourceSwapped => "source table was swapped",
             Self::SourceSchemaChanged => "source table schema was changed",
         }
@@ -249,7 +247,6 @@ impl MVInvalidReason {
     pub fn parse(reason: &str) -> Option<Self> {
         [
             Self::SourceDropped,
-            Self::SourceReplaced,
             Self::SourceSwapped,
             Self::SourceSchemaChanged,
         ]
@@ -257,8 +254,8 @@ impl MVInvalidReason {
         .find(|candidate| candidate.as_str() == reason)
     }
 
-    /// Whether the source can come back as it was when the MV was created: only a dropped table,
-    /// by UNDROP TABLE.
+    /// Whether the source can come back as it was when the MV was created: only a dropped or
+    /// replaced table, by UNDROP TABLE.
     pub const fn restorable(self) -> bool {
         matches!(self, Self::SourceDropped)
     }
@@ -319,12 +316,6 @@ pub struct ListedMaterializedView {
     pub source: ListedMVSource,
 }
 
-/// The valid MVs of one source table, for query rewrite.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct MVSourceBindingSnapshot {
-    pub materialized_views: Vec<MVInfo>,
-}
-
 #[cfg(test)]
 mod tests {
     use databend_common_expression::ComputedExpr;
@@ -345,7 +336,6 @@ mod tests {
     fn test_mv_invalid_reason_round_trip_and_restorable() {
         for reason in [
             MVInvalidReason::SourceDropped,
-            MVInvalidReason::SourceReplaced,
             MVInvalidReason::SourceSwapped,
             MVInvalidReason::SourceSchemaChanged,
         ] {

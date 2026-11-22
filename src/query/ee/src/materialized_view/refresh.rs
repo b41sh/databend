@@ -41,22 +41,19 @@ use databend_common_catalog::table::Table;
 use databend_common_catalog::table_context::TableContextSession;
 use databend_common_exception::ErrorCode;
 use databend_common_exception::Result;
-use databend_common_meta_api::TableApi;
 use databend_common_meta_app::schema::DatabaseType;
 use databend_common_meta_app::schema::MATERIALIZED_VIEW_SOURCE_ROW_ID_COLUMN;
-use databend_common_meta_app::schema::MVInvalidReason;
-use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON;
 use databend_common_meta_app::schema::TableIdent;
 use databend_common_meta_app::schema::TableInfo;
 use databend_common_meta_app::schema::UpsertTableOptionReq;
 use databend_common_sql::MaterializedViewChecker;
 use databend_common_sql::Planner;
+use databend_common_sql::check_materialized_view_source;
 use databend_common_sql::parse_materialized_view_query;
 use databend_common_sql::plans::Plan;
 use databend_common_sql::validate_materialized_view_source;
 use databend_common_storages_fuse::FuseTable;
 use databend_common_storages_fuse::operations::ChangesDesc;
-use databend_common_users::UserApiProvider;
 use databend_enterprise_materialized_view::get_materialized_view_handler;
 use databend_meta_client::types::MatchSeq;
 use databend_query::interpreters::InsertInterpreter;
@@ -76,7 +73,6 @@ use databend_storages_common_table_meta::table::OPT_KEY_MATERIALIZED_VIEW_SOURCE
 use databend_storages_common_table_meta::table::OPT_KEY_SNAPSHOT_LOCATION;
 use databend_storages_common_table_meta::table::StreamMode;
 use log::info;
-use log::warn;
 
 enum RefreshStrategy {
     CheckpointOnly,
@@ -139,16 +135,21 @@ impl<'a> MaterializedViewRefresh<'a> {
         };
 
         let catalog_obj = ctx.get_catalog(catalog).await?;
-        // Validity is an admission check. The reason is written after source DDL on a best-effort
-        // basis, so the source identity and the source columns the MV was created against are
-        // checked below against the source itself. A reason written after these checks changes
-        // the MV TableMeta, so the commit's exact sequence condition fails.
-        if let Some(reason) = mv_meta.materialized_view_invalid_reason() {
-            return Err(ErrorCode::InvalidMaterializedView(format!(
-                "materialized view {}.{} is invalid: {}; recreate the materialized view",
-                database, view_name, reason
-            )));
-        }
+        // Validity is an admission check against the source read by id: the reason is written
+        // after source DDL on a best-effort basis. A dropped reason that UNDROP left behind is
+        // cleared by the handler before this MV TableMeta was read. A reason written after these
+        // checks changes the MV TableMeta, so the commit's exact sequence condition fails.
+        let source_meta = catalog_obj.get_table_meta_by_id(source_table_id).await?;
+        check_materialized_view_source(
+            mv_table.get_id(),
+            &format!("{}.{}", database, view_name),
+            mv_meta,
+            source_meta.as_ref().map(|meta| &meta.data),
+        )
+        .await?;
+        // The check rejects a missing or dropped source.
+        let source_meta = source_meta
+            .ok_or_else(|| ErrorCode::Internal("materialized view source table meta is missing"))?;
         let definition = get_materialized_view_handler()
             .get_mv_definition(catalog_obj.as_ref(), &ctx.get_tenant(), mv_table.get_id())
             .await?
@@ -166,50 +167,6 @@ impl<'a> MaterializedViewRefresh<'a> {
             source_table_id,
         )
         .await?;
-        let source_meta = catalog_obj
-            .get_table_meta_by_id(source_table_id)
-            .await?
-            .ok_or_else(|| {
-                ErrorCode::InvalidMaterializedView(format!(
-                    "materialized view {}.{} source table changed: expected table id {} no longer exists",
-                    database, view_name, source_table_id
-                ))
-            })?;
-        if source_meta.data.drop_on.is_some() {
-            return Err(ErrorCode::UnknownTable(format!(
-                "materialized view {}.{} source table id {} has been dropped",
-                database, view_name, source_table_id
-            )));
-        }
-        if mv_meta
-            .materialized_view_source_schema_changed(&source_meta.data.schema)
-            .map_err(ErrorCode::from)?
-        {
-            // The schema change left the reason out: record it for the readers that show it.
-            if let Err(error) = UserApiProvider::instance()
-                .get_meta_store_client()
-                .upsert_table_option(UpsertTableOptionReq {
-                    table_id: mv_table.get_id(),
-                    seq: MatchSeq::Any,
-                    options: HashMap::from([(
-                        OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON.to_string(),
-                        Some(MVInvalidReason::SourceSchemaChanged.as_str().to_string()),
-                    )]),
-                })
-                .await
-            {
-                warn!(
-                    "failed to mark materialized view {}.{} invalid: {}",
-                    database, view_name, error
-                );
-            }
-            return Err(ErrorCode::InvalidMaterializedView(format!(
-                "materialized view {}.{} is invalid: {}; recreate the materialized view",
-                database,
-                view_name,
-                MVInvalidReason::SourceSchemaChanged.as_str()
-            )));
-        }
         let mut source_seq = source_meta.seq;
         let mut source_snapshot_location = source_meta
             .data

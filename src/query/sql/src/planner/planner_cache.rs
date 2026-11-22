@@ -388,15 +388,14 @@ impl TableRefVisitor {
                     if let Ok(catalog) = self.ctx.get_catalog(&catalog_name).await {
                         let tenant = self.ctx.get_tenant();
                         let source_table_id = table.get_id();
-                        let Ok(snapshot) = catalog
-                            .get_mv_source_binding_snapshot(&tenant, source_table_id)
+                        let Ok(mut materialized_views) = catalog
+                            .list_valid_mvs_by_source_table_id(&tenant, source_table_id)
                             .await
                         else {
                             self.cache_miss = true;
                             return;
                         };
 
-                        let mut materialized_views = snapshot.materialized_views;
                         materialized_views.sort_by_key(|mv| mv.mv_id);
                         // The valid MVs of the source, each with its definition and table
                         // sequence: marking an MV invalid after source DDL drops it from the

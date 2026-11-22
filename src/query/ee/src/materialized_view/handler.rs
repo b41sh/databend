@@ -22,6 +22,7 @@ use databend_common_exception::ErrorCode;
 use databend_common_exception::Result;
 use databend_common_meta_app::schema::MVDefinition;
 use databend_common_meta_app::tenant::Tenant;
+use databend_common_sql::restore_undropped_materialized_view;
 use databend_common_storages_fuse::FuseTable;
 use databend_enterprise_materialized_view::MaterializedViewHandler;
 use databend_enterprise_materialized_view::MaterializedViewHandlerWrapper;
@@ -69,6 +70,26 @@ impl MaterializedViewHandler for RealMaterializedViewHandler {
         let locked_table_id = table.get_id();
         let table_lock = CoordinationManager::create_table_lock(table.get_table_info().clone());
         let lock_guard = table_lock.try_lock(query_ctx.clone(), false).await?;
+
+        // A dropped reason that UNDROP of the source left behind is cleared before the reload
+        // below, so refresh reads, and commits against, the MV TableMeta without it.
+        let mv_meta = &table.get_table_info().meta;
+        if mv_meta.materialized_view_invalid_reason_restorable() {
+            let source_table_id = mv_meta
+                .materialized_view_source_table_id()
+                .map_err(ErrorCode::from)?;
+            let source_meta = query_ctx
+                .get_catalog(catalog)
+                .await?
+                .get_table_meta_by_id(source_table_id)
+                .await?;
+            restore_undropped_materialized_view(
+                locked_table_id,
+                mv_meta,
+                source_meta.as_ref().map(|meta| &meta.data),
+            )
+            .await;
+        }
 
         // Reload after acquiring the lock: the table may have been replaced while lock acquisition
         // was in progress, and refresh must use the endpoint protected by this guard.

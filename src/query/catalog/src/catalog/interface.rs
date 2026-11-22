@@ -75,7 +75,7 @@ use databend_common_meta_app::schema::LockInfo;
 use databend_common_meta_app::schema::LockMeta;
 use databend_common_meta_app::schema::LvtUpdate;
 use databend_common_meta_app::schema::MVDefinition;
-use databend_common_meta_app::schema::MVSourceBindingSnapshot;
+use databend_common_meta_app::schema::MVInfo;
 use databend_common_meta_app::schema::MaterializedViewListFilter;
 use databend_common_meta_app::schema::RenameDatabaseReply;
 use databend_common_meta_app::schema::RenameDatabaseReq;
@@ -238,12 +238,12 @@ pub trait Catalog: DynClone + Send + Sync + Debug {
     ) -> Result<Option<SeqV<MVDefinition>>>;
 
     /// Get the valid MVs of a source table, for query rewrite.
-    async fn get_mv_source_binding_snapshot(
+    async fn list_valid_mvs_by_source_table_id(
         &self,
         _tenant: &Tenant,
         _source_table_id: u64,
-    ) -> Result<MVSourceBindingSnapshot> {
-        Ok(MVSourceBindingSnapshot::default())
+    ) -> Result<Vec<MVInfo>> {
+        Ok(vec![])
     }
 
     /// List materialized views for management and system-table consumers.

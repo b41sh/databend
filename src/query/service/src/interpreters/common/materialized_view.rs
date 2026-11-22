@@ -79,12 +79,11 @@ pub async fn check_policy_target_without_materialized_view(
 /// listed: they leave the MVs alone. Their definitions read the source by name and check its
 /// table id, so they do not bind while the source is elsewhere and bind again once it is back.
 pub enum MVSourceChange<'a> {
-    /// DROP TABLE. Reversible: UNDROP TABLE restores the MVs.
+    /// DROP TABLE, or CREATE OR REPLACE TABLE, which drops the table it replaces. Reversible:
+    /// UNDROP TABLE of it restores the MVs.
     Dropped,
     /// UNDROP TABLE.
     Undropped,
-    /// CREATE OR REPLACE TABLE replaced the table. Final.
-    Replaced,
     /// ALTER TABLE ... SWAP WITH exchanged the table with another. Final.
     Swapped,
     /// A column change from `previous_schema` to `schema`. Final when it reaches a column an MV
@@ -116,7 +115,6 @@ fn mv_option_changes(
             }
             None
         }
-        MVSourceChange::Replaced => Some(MVInvalidReason::SourceReplaced),
         MVSourceChange::Swapped => Some(MVInvalidReason::SourceSwapped),
         MVSourceChange::SchemaChanged {
             previous_schema,

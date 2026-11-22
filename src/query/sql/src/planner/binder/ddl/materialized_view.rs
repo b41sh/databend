@@ -218,10 +218,10 @@ impl Binder {
 
             let catalog = self.ctx.get_catalog(source_entry.catalog()).await?;
             let source_table_id = source_table.get_id();
-            let snapshot = catalog
-                .get_mv_source_binding_snapshot(&tenant, source_table_id)
+            let materialized_views = catalog
+                .list_valid_mvs_by_source_table_id(&tenant, source_table_id)
                 .await?;
-            if snapshot.materialized_views.is_empty() {
+            if materialized_views.is_empty() {
                 continue;
             }
 
@@ -232,8 +232,8 @@ impl Binder {
                 .options
                 .get(OPT_KEY_SNAPSHOT_LOCATION)
                 .cloned();
-            let mut candidates = Vec::with_capacity(snapshot.materialized_views.len());
-            for mv in snapshot.materialized_views {
+            let mut candidates = Vec::with_capacity(materialized_views.len());
+            for mv in materialized_views {
                 if mv
                     .table_meta
                     .data

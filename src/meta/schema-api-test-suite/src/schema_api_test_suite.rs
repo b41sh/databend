@@ -2738,7 +2738,7 @@ impl SchemaApiTestSuite {
             );
         }
 
-        // A new MV against the changed source is valid; the snapshot filters out the stale MV.
+        // A new MV against the changed source is valid; the valid list leaves out the stale MV.
         let current_mv = mt
             .create_table(new_mv_req(
                 "mv_current_source_binding",
@@ -2748,11 +2748,11 @@ impl SchemaApiTestSuite {
                 &definition,
             ))
             .await?;
-        let active_snapshot = mt
-            .get_mv_source_binding_snapshot(&tenant, source_table_id)
+        let valid_mvs = mt
+            .list_valid_mvs_by_source_table_id(&tenant, source_table_id)
             .await?;
-        let [active_mv] = active_snapshot.materialized_views.as_slice() else {
-            panic!("only the valid MV must be in the snapshot");
+        let [active_mv] = valid_mvs.as_slice() else {
+            panic!("only the valid MV must be listed");
         };
         assert_eq!(active_mv.mv_id, current_mv.table_id);
         assert_eq!(

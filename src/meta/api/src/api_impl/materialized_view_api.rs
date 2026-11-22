@@ -33,9 +33,10 @@
 //! may have many MVs, and the DDL must not grow with them or retry on their
 //! REFRESH commits. After the DDL, the interpreter that ran it derives the invalid
 //! reason of each dependent MV from what the DDL did, and sets or clears it through
-//! the ordinary table option API; a failure is only logged. DROP TABLE is undone by
-//! UNDROP TABLE; SWAP, CREATE OR REPLACE, and a change of a column the MV reads are
-//! final. A rename of the source or of its database, and a drop of its database,
+//! the ordinary table option API; a failure is only logged. DROP TABLE, and CREATE
+//! OR REPLACE TABLE, which drops the table it replaces, are undone by UNDROP TABLE;
+//! SWAP and a change of a column the MV reads are final, and are not replaced by a
+//! later reason. A rename of the source or of its database, and a drop of its database,
 //! write no reason.
 //!
 //! Because the reason may be missing, readers do not rely on it alone: they bind
@@ -90,7 +91,6 @@ use databend_common_meta_app::schema::ListedMaterializedView;
 use databend_common_meta_app::schema::MVDefinition;
 use databend_common_meta_app::schema::MVDefinitionIdent;
 use databend_common_meta_app::schema::MVInfo;
-use databend_common_meta_app::schema::MVSourceBindingSnapshot;
 use databend_common_meta_app::schema::MaterializedViewListFilter;
 use databend_common_meta_app::schema::SourceTableMV;
 use databend_common_meta_app::schema::SourceTableMVIdent;
@@ -137,15 +137,15 @@ where
     /// List the valid MVs of a source table, for query rewrite.
     #[logcall::logcall]
     #[fastrace::trace]
-    async fn get_mv_source_binding_snapshot(
+    async fn list_valid_mvs_by_source_table_id(
         &self,
         tenant: &Tenant,
         source_table_id: u64,
-    ) -> Result<MVSourceBindingSnapshot, MetaError> {
+    ) -> Result<Vec<MVInfo>, MetaError> {
         let mut materialized_views =
             list_mvs_by_source_table_id_impl(self, tenant, source_table_id).await?;
         materialized_views.retain(|mv| mv.table_meta.data.is_valid_materialized_view());
-        Ok(MVSourceBindingSnapshot { materialized_views })
+        Ok(materialized_views)
     }
 
     /// List every MV that depends on a source table, including invalid MVs.

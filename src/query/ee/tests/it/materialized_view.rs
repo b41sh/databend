@@ -12,13 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::HashMap;
+
 use databend_common_exception::ErrorCode;
+use databend_common_meta_api::TableApi;
 use databend_common_meta_app::principal::GrantObject;
+use databend_common_meta_app::schema::MVInvalidReason;
+use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON;
 use databend_common_meta_app::schema::RenameTableReq;
 use databend_common_meta_app::schema::TableNameIdent;
+use databend_common_meta_app::schema::UpsertTableOptionReq;
 use databend_common_meta_store::LocalMetaService;
 use databend_common_users::UserApiProvider;
 use databend_enterprise_query::test_kits::context::EESetup;
+use databend_meta_client::types::MatchSeq;
 use databend_meta_runtime::DatabendRuntime;
 use databend_query::sessions::TableContextTableAccess;
 use databend_query::test_kits::TestFixture;
@@ -115,5 +122,129 @@ async fn test_materialized_view_rejects_source_moved_across_databases() -> anyho
         error.code(),
         "{error}"
     );
+    Ok(())
+}
+
+/// Overwrite the invalid reason of MV `mv_id`, as a lost or stale best-effort write after source
+/// DDL leaves it.
+async fn set_mv_invalid_reason(mv_id: u64, reason: Option<MVInvalidReason>) -> anyhow::Result<()> {
+    UserApiProvider::instance()
+        .get_meta_store_client()
+        .upsert_table_option(UpsertTableOptionReq {
+            table_id: mv_id,
+            seq: MatchSeq::Any,
+            options: HashMap::from([(
+                OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON.to_string(),
+                reason.map(|reason| reason.as_str().to_string()),
+            )]),
+        })
+        .await?;
+    Ok(())
+}
+
+async fn mv_invalid_reason(fixture: &TestFixture, mv_id: u64) -> anyhow::Result<Option<String>> {
+    let ctx = fixture.new_query_ctx().await?;
+    let table_meta = ctx
+        .get_default_catalog()?
+        .get_table_meta_by_id(mv_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("materialized view {mv_id} must exist"))?;
+    Ok(table_meta
+        .data
+        .materialized_view_invalid_reason()
+        .map(str::to_string))
+}
+
+/// Reads and REFRESH record the invalid reason when its cause is certain, so a lost write after
+/// source DDL is repaired: a dropped source, an undropped one, and a changed column the MV reads.
+#[tokio::test(flavor = "multi_thread")]
+async fn test_materialized_view_records_certain_invalid_reasons() -> anyhow::Result<()> {
+    let meta = LocalMetaService::new_testing::<DatabendRuntime>("mv-record-reason").await?;
+    let mut setup = EESetup::new();
+    setup.config_mut().meta.endpoints = meta.get_cached_endpoints().await?;
+    let fixture = TestFixture::setup_with_custom(setup).await?;
+    for sql in [
+        "CREATE DATABASE mv_reason",
+        "CREATE TABLE mv_reason.source(a INT, b INT) CHANGE_TRACKING = true",
+        "INSERT INTO mv_reason.source VALUES (1, 10)",
+        "CREATE MATERIALIZED VIEW mv_reason.mv AS SELECT a, b FROM mv_reason.source WHERE a > 0",
+        "REFRESH MATERIALIZED VIEW mv_reason.mv",
+    ] {
+        fixture.execute_command(sql).await?;
+    }
+    let ctx = fixture.new_query_ctx().await?;
+    let mv_id = ctx
+        .get_default_catalog()?
+        .get_table(&ctx.get_tenant(), "mv_reason", "mv")
+        .await?
+        .get_id();
+    let select = "SELECT * FROM mv_reason.mv";
+    let refresh = "REFRESH MATERIALIZED VIEW mv_reason.mv";
+    let dropped = Some(MVInvalidReason::SourceDropped.as_str().to_string());
+    let schema_changed = Some(MVInvalidReason::SourceSchemaChanged.as_str().to_string());
+
+    // DROP TABLE whose reason was lost: a read finds the source dropped and records it.
+    fixture
+        .execute_command("DROP TABLE mv_reason.source")
+        .await?;
+    set_mv_invalid_reason(mv_id, None).await?;
+    let error = fixture.execute_command(select).await.unwrap_err();
+    assert_eq!(
+        ErrorCode::INVALID_MATERIALIZED_VIEW,
+        error.code(),
+        "{error}"
+    );
+    assert_eq!(mv_invalid_reason(&fixture, mv_id).await?, dropped);
+
+    // UNDROP TABLE whose clear was lost: a read finds the source back and clears the reason.
+    fixture
+        .execute_command("UNDROP TABLE mv_reason.source")
+        .await?;
+    assert_eq!(mv_invalid_reason(&fixture, mv_id).await?, None);
+    set_mv_invalid_reason(mv_id, Some(MVInvalidReason::SourceDropped)).await?;
+    fixture.execute_command(select).await?;
+    assert_eq!(mv_invalid_reason(&fixture, mv_id).await?, None);
+
+    // REFRESH clears it as well.
+    set_mv_invalid_reason(mv_id, Some(MVInvalidReason::SourceDropped)).await?;
+    fixture.execute_command(refresh).await?;
+    assert_eq!(mv_invalid_reason(&fixture, mv_id).await?, None);
+
+    // A change of a column the MV reads whose reason was lost: REFRESH and reads record it.
+    fixture
+        .execute_command("ALTER TABLE mv_reason.source MODIFY COLUMN b BIGINT")
+        .await?;
+    assert_eq!(mv_invalid_reason(&fixture, mv_id).await?, schema_changed);
+    set_mv_invalid_reason(mv_id, None).await?;
+    let error = fixture.execute_command(refresh).await.unwrap_err();
+    assert_eq!(
+        ErrorCode::INVALID_MATERIALIZED_VIEW,
+        error.code(),
+        "{error}"
+    );
+    assert_eq!(mv_invalid_reason(&fixture, mv_id).await?, schema_changed);
+    set_mv_invalid_reason(mv_id, None).await?;
+    let error = fixture.execute_command(select).await.unwrap_err();
+    assert_eq!(
+        ErrorCode::INVALID_MATERIALIZED_VIEW,
+        error.code(),
+        "{error}"
+    );
+    assert_eq!(mv_invalid_reason(&fixture, mv_id).await?, schema_changed);
+
+    // The schema reason is final: DROP and UNDROP of the source do not replace or clear it.
+    fixture
+        .execute_command("DROP TABLE mv_reason.source")
+        .await?;
+    fixture
+        .execute_command("UNDROP TABLE mv_reason.source")
+        .await?;
+    let error = fixture.execute_command(select).await.unwrap_err();
+    assert_eq!(
+        ErrorCode::INVALID_MATERIALIZED_VIEW,
+        error.code(),
+        "{error}"
+    );
+    assert_eq!(mv_invalid_reason(&fixture, mv_id).await?, schema_changed);
     Ok(())
 }
