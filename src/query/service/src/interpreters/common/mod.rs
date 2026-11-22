@@ -45,7 +45,7 @@ pub use materialized_view::MVSourceChange;
 pub use materialized_view::check_maintenance_target;
 pub use materialized_view::check_materialized_view_license;
 pub use materialized_view::check_policy_target_without_materialized_view;
-pub use materialized_view::reconcile_materialized_views;
+pub use materialized_view::update_materialized_view_validity;
 pub use notification::get_notification_client_config;
 pub use query_log::InterpreterQueryLog;
 pub use stream::build_update_stream_reqs;

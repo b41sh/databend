@@ -56,8 +56,7 @@ message MVSourceBinding {
   uint64 ver = 100;
   uint64 min_reader_ver = 101;
 
-  // Was `uint64 bound_source_generation`, written by v181 and no longer used. The edge no longer
-  // carries a source generation: validity is checked against the source itself.
+  // Was `uint64 bound_source_generation`, written by v181 and no longer read or written.
   reserved 1;
   reserved "bound_source_generation";
 }

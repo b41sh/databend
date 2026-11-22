@@ -75,6 +75,8 @@
 //!
 //! GC source txn:
 //!     delete SourceTableMVIdent(tenant, source_id, *)
+//!     delete __fd_materialized_view_source_binding_version/<tenant>/<source_id>,
+//!         written by older versions
 //! ```
 
 use std::collections::BTreeSet;

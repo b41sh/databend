@@ -165,7 +165,7 @@ fn mv_option_changes(
 /// options on its latest `TableMeta`, so a concurrent REFRESH commit is kept. A failure is
 /// logged and does not fail the DDL: MV readers and REFRESH check the source identity and
 /// schema themselves.
-pub async fn reconcile_materialized_views(
+pub async fn update_materialized_view_validity(
     ctx: &QueryContext,
     source_table_id: u64,
     change: MVSourceChange<'_>,

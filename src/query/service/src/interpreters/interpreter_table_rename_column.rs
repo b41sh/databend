@@ -31,10 +31,10 @@ use databend_storages_common_table_meta::table::OPT_KEY_PARTITION_BY;
 use crate::interpreters::Interpreter;
 use crate::interpreters::common::MVSourceChange;
 use crate::interpreters::common::check_referenced_computed_columns;
-use crate::interpreters::common::reconcile_materialized_views;
 use crate::interpreters::common::rename_column_in_cluster_key;
 use crate::interpreters::common::rename_column_in_comma_separated_ident;
 use crate::interpreters::common::rename_column_in_ttl;
+use crate::interpreters::common::update_materialized_view_validity;
 use crate::interpreters::interpreter_table_add_column::commit_table_meta;
 use crate::interpreters::interpreter_table_create::is_valid_column;
 use crate::pipelines::PipelineBuildResult;
@@ -189,7 +189,7 @@ impl Interpreter for RenameTableColumnInterpreter {
             )
             .await?;
             if is_mv_source {
-                reconcile_materialized_views(
+                update_materialized_view_validity(
                     &self.ctx,
                     table.get_id(),
                     MVSourceChange::SchemaChanged {

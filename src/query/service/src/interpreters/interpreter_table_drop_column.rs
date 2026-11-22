@@ -35,8 +35,8 @@ use crate::interpreters::Interpreter;
 use crate::interpreters::common::MVSourceChange;
 use crate::interpreters::common::check_referenced_computed_columns;
 use crate::interpreters::common::cluster_key_referenced_columns;
-use crate::interpreters::common::reconcile_materialized_views;
 use crate::interpreters::common::ttl_referenced_columns;
+use crate::interpreters::common::update_materialized_view_validity;
 use crate::interpreters::interpreter_table_add_column::commit_table_meta;
 use crate::pipelines::PipelineBuildResult;
 use crate::sessions::QueryContext;
@@ -215,7 +215,7 @@ impl Interpreter for DropTableColumnInterpreter {
             )
             .await?;
             if is_mv_source {
-                reconcile_materialized_views(
+                update_materialized_view_validity(
                     &self.ctx,
                     table.get_id(),
                     MVSourceChange::SchemaChanged {

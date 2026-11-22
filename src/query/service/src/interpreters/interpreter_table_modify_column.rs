@@ -94,9 +94,9 @@ use crate::interpreters::common::MVSourceChange;
 use crate::interpreters::common::check_policy_target_without_materialized_view;
 use crate::interpreters::common::check_referenced_computed_columns;
 use crate::interpreters::common::cluster_key_referenced_columns;
-use crate::interpreters::common::reconcile_materialized_views;
 use crate::interpreters::common::stored_computed_column_references;
 use crate::interpreters::common::ttl_referenced_columns;
+use crate::interpreters::common::update_materialized_view_validity;
 use crate::interpreters::interpreter_table_add_column::commit_table_meta;
 use crate::interpreters::interpreter_table_add_column::update_table_meta;
 use crate::meta_service_error;
@@ -960,7 +960,7 @@ impl Interpreter for ModifyTableColumnInterpreter {
 
             let table_meta = table.get_table_info().meta.clone();
             // A change of a column type or computed expression may reach a column the MVs of
-            // the table read: reconcile them after it is committed. Masking policies cannot be
+            // the table read: update their validity after it is committed. Masking policies cannot be
             // set on an MV source, and comments do not change the columns.
             let mv_source = (!matches!(
                 self.plan.action,
@@ -1020,7 +1020,7 @@ impl Interpreter for ModifyTableColumnInterpreter {
                 let database = self.plan.database.clone();
                 let table = self.plan.table.clone();
                 if build_res.main_pipeline.is_empty() {
-                    reconcile_modified_source(
+                    update_validity_after_column_change(
                         &ctx,
                         catalog,
                         &database,
@@ -1036,7 +1036,7 @@ impl Interpreter for ModifyTableColumnInterpreter {
                         .set_on_finished(move |info: &ExecutionInfo| {
                             if info.res.is_ok() {
                                 GlobalIORuntime::instance().block_on(async move {
-                                    reconcile_modified_source(
+                                    update_validity_after_column_change(
                                         &ctx,
                                         catalog,
                                         &database,
@@ -1057,9 +1057,9 @@ impl Interpreter for ModifyTableColumnInterpreter {
     }
 }
 
-/// Reconcile the MVs of table `source_table_id` after a column change. The actions build the new
+/// Update the validity of the MVs of table `source_table_id` after a column change. The actions build the new
 /// schema in several ways, so it is read back from the committed table.
-async fn reconcile_modified_source(
+async fn update_validity_after_column_change(
     ctx: &QueryContext,
     catalog: Arc<dyn Catalog>,
     database: &str,
@@ -1077,7 +1077,7 @@ async fn reconcile_modified_source(
             return;
         }
     };
-    reconcile_materialized_views(ctx, source_table_id, MVSourceChange::SchemaChanged {
+    update_materialized_view_validity(ctx, source_table_id, MVSourceChange::SchemaChanged {
         previous_schema,
         schema: &table.schema(),
     })

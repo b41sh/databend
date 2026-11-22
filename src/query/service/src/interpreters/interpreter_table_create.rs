@@ -91,7 +91,6 @@ use log::info;
 use crate::interpreters::InsertInterpreter;
 use crate::interpreters::Interpreter;
 use crate::interpreters::common::MVSourceChange;
-use crate::interpreters::common::reconcile_materialized_views;
 use crate::interpreters::common::table_option_validation::is_valid_analyze_count_min_sketch_error_rate;
 use crate::interpreters::common::table_option_validation::is_valid_analyze_frequency_columns;
 use crate::interpreters::common::table_option_validation::is_valid_analyze_histogram_algorithm;
@@ -114,6 +113,7 @@ use crate::interpreters::common::table_option_validation::is_valid_recluster_dep
 use crate::interpreters::common::table_option_validation::is_valid_row_per_block;
 use crate::interpreters::common::table_option_validation::is_valid_s3_storage_class;
 use crate::interpreters::common::table_option_validation::is_valid_virtual_column_layout_options;
+use crate::interpreters::common::update_materialized_view_validity;
 use crate::interpreters::hook::vacuum_hook::hook_clear_m_cte_temp_table;
 use crate::interpreters::hook::vacuum_hook::hook_disk_temp_dir;
 use crate::interpreters::hook::vacuum_hook::hook_vacuum_temp_files;
@@ -449,7 +449,7 @@ impl CreateTableInterpreter {
         if !external_catalog {
             // The table CREATE OR REPLACE replaces is the one its MVs read.
             let replaced_table_id = prev_table_id.filter(|_| temp_prefix.is_none());
-            let reconcile_ctx = self.ctx.clone();
+            let mv_ctx = self.ctx.clone();
             pipeline.main_pipeline.lift_on_finished(move |info: &ExecutionInfo| {
                 let qualified_table_name = format!("{}.{}", db_name, table_name);
 
@@ -472,8 +472,8 @@ impl CreateTableInterpreter {
                         };
                         catalog.commit_table_meta(req).await?;
                         if let Some(replaced_table_id) = replaced_table_id {
-                            reconcile_materialized_views(
-                                &reconcile_ctx,
+                            update_materialized_view_validity(
+                                &mv_ctx,
                                 replaced_table_id,
                                 MVSourceChange::Replaced,
                             )
@@ -656,8 +656,12 @@ impl CreateTableInterpreter {
         if let Some(replaced_table_id) = reply.prev_table_id
             && !catalog.is_external()
         {
-            reconcile_materialized_views(&self.ctx, replaced_table_id, MVSourceChange::Replaced)
-                .await;
+            update_materialized_view_validity(
+                &self.ctx,
+                replaced_table_id,
+                MVSourceChange::Replaced,
+            )
+            .await;
         }
         if let Some(anchor_location) = staged_table_meta.options.get(OPT_KEY_SNAPSHOT_LOCATION) {
             // The target was built before dictionary paths were replaced. Use the
@@ -936,8 +940,12 @@ impl CreateTableInterpreter {
             return Err(e);
         }
         if let Some(replaced_table_id) = replaced_table_id {
-            reconcile_materialized_views(&self.ctx, replaced_table_id, MVSourceChange::Replaced)
-                .await;
+            update_materialized_view_validity(
+                &self.ctx,
+                replaced_table_id,
+                MVSourceChange::Replaced,
+            )
+            .await;
         }
 
         Ok(PipelineBuildResult::create())

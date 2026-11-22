@@ -2580,7 +2580,7 @@ impl SchemaApiTestSuite {
                 renamed.source.database_name.as_deref(),
                 Some(renamed_db_name.as_str())
             );
-            // Source DDL leaves the MV alone: the query layer reconciles it afterwards.
+            // Source DDL leaves the MV alone: the query layer updates its validity afterwards.
             assert_eq!(
                 renamed
                     .mv
@@ -2815,7 +2815,7 @@ impl SchemaApiTestSuite {
             replacement
         };
 
-        // Source lifecycle DDL leaves the MV alone: the query layer reconciles it afterwards.
+        // Source lifecycle DDL leaves the MV alone: the query layer updates its validity afterwards.
         {
             let drop_source = DropTableByIdReq {
                 if_exists: false,
@@ -2921,6 +2921,16 @@ impl SchemaApiTestSuite {
             ));
             assert_eq!(mt.get_pb(&source_ident).await?.unwrap(), source_before);
 
+            // An older version recorded an MV binding generation per source; source GC deletes
+            // it without decoding it.
+            let legacy_version_key = format!(
+                "__fd_materialized_view_source_binding_version/{}/{}",
+                tenant.tenant_name(),
+                replacement_source_table_id
+            );
+            mt.upsert_kv(UpsertKV::update(&legacy_version_key, b"legacy"))
+                .await?;
+
             mt.gc_drop_tables(GcDroppedTableReq {
                 tenant: tenant.clone(),
                 catalog: "default".to_string(),
@@ -2932,6 +2942,7 @@ impl SchemaApiTestSuite {
             })
             .await?;
             assert!(mt.get_pb(&relationship_ident).await?.is_none());
+            assert!(mt.get_kv(&legacy_version_key).await?.is_none());
 
             let orphan = mt
                 .list_materialized_views(&tenant, &MaterializedViewListFilter {
