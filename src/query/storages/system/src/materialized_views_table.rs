@@ -48,6 +48,11 @@ use databend_common_meta_app::tenant::Tenant;
 use databend_common_storages_fuse::TableContext;
 use databend_common_users::TablePrivilegeTarget;
 use databend_common_users::filter_tables_by_privilege;
+use databend_storages_common_table_meta::table::MATERIALIZED_VIEW_DROPPED_SOURCE_DATABASE_REASON;
+use databend_storages_common_table_meta::table::MATERIALIZED_VIEW_INVALID_SOURCE_DATABASE_REASON;
+use databend_storages_common_table_meta::table::MATERIALIZED_VIEW_INVALID_SOURCE_REASON;
+use databend_storages_common_table_meta::table::OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME;
+use databend_storages_common_table_meta::table::OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME;
 
 use crate::table::AsyncOneBlockSystemTable;
 use crate::table::AsyncSystemTable;
@@ -237,6 +242,49 @@ fn extract_filters(
     }))
 }
 
+fn source_lifecycle_invalid_reason(
+    table_meta: &TableMeta,
+    current_source_database: Option<&str>,
+    current_source_name: Option<&str>,
+    source_is_active: bool,
+    source_database_dropped: bool,
+) -> Option<&'static str> {
+    let expected_source_name = table_meta
+        .options
+        .get(OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME)?;
+    // A dropped database also makes the source inactive; report the more specific cause.
+    if source_database_dropped {
+        return Some(MATERIALIZED_VIEW_DROPPED_SOURCE_DATABASE_REASON);
+    }
+    if !source_is_active || current_source_name != Some(expected_source_name.as_str()) {
+        return Some(MATERIALIZED_VIEW_INVALID_SOURCE_REASON);
+    }
+
+    let expected_source_database = table_meta
+        .options
+        .get(OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME)?;
+    (current_source_database != Some(expected_source_database.as_str()))
+        .then_some(MATERIALIZED_VIEW_INVALID_SOURCE_DATABASE_REASON)
+}
+
+/// Whether the listed MV is invalid, and why. The reason recorded in its options comes first.
+/// Without one, the reason is derived from what became of the source: these states are not
+/// recorded, as the definition reads the source by name and binds again once it is back.
+fn listed_materialized_view_status(item: &ListedMaterializedView) -> (bool, Option<String>) {
+    let table_meta = &item.mv.table_meta.data;
+    if let Some(reason) = table_meta.materialized_view_invalid_reason() {
+        return (true, Some(reason.to_string()));
+    }
+    let reason = source_lifecycle_invalid_reason(
+        table_meta,
+        item.source.database_name.as_deref(),
+        item.source.table_name.as_deref(),
+        item.source.is_active,
+        item.source.database_dropped,
+    );
+    (reason.is_some(), reason.map(str::to_string))
+}
+
 fn build_block(listed: Vec<ListedMaterializedView>, catalog_name: &str) -> DataBlock {
     let capacity = listed.len();
     let mut created_on = Vec::with_capacity(capacity);
@@ -258,6 +306,7 @@ fn build_block(listed: Vec<ListedMaterializedView>, catalog_name: &str) -> DataB
     let mut texts = Vec::with_capacity(capacity);
 
     for item in listed {
+        let (invalid_flag, invalid_reason) = listed_materialized_view_status(&item);
         let table_meta = &item.mv.table_meta.data;
         let definition = &item.mv.definition.data;
         let mut create_sql = format!(
@@ -291,12 +340,8 @@ fn build_block(listed: Vec<ListedMaterializedView>, catalog_name: &str) -> DataB
         num_rows.push(table_meta.statistics.number_of_rows);
         data_size.push(table_meta.statistics.data_bytes);
         data_compressed_size.push(table_meta.statistics.compressed_data_bytes);
-        invalid.push(!table_meta.is_valid_materialized_view());
-        invalid_reasons.push(
-            table_meta
-                .materialized_view_invalid_reason()
-                .map(str::to_string),
-        );
+        invalid.push(invalid_flag);
+        invalid_reasons.push(invalid_reason);
         comments.push(table_meta.comment.clone());
         texts.push(create_sql);
     }
@@ -320,4 +365,104 @@ fn build_block(listed: Vec<ListedMaterializedView>, catalog_name: &str) -> DataB
         StringType::from_data(comments),
         StringType::from_data(texts),
     ])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_source_lifecycle_invalid_reason() {
+        let mut table_meta = TableMeta::default();
+
+        // Legacy MVs without the source-name option do not get lifecycle validation.
+        assert_eq!(
+            source_lifecycle_invalid_reason(
+                &table_meta,
+                Some("database"),
+                Some("renamed"),
+                false,
+                false
+            ),
+            None
+        );
+
+        table_meta.options.insert(
+            OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_NAME.to_string(),
+            "source".to_string(),
+        );
+        assert_eq!(
+            source_lifecycle_invalid_reason(
+                &table_meta,
+                Some("database"),
+                Some("source"),
+                true,
+                false
+            ),
+            None
+        );
+        assert_eq!(
+            source_lifecycle_invalid_reason(
+                &table_meta,
+                Some("database"),
+                Some("renamed"),
+                true,
+                false
+            ),
+            Some(MATERIALIZED_VIEW_INVALID_SOURCE_REASON)
+        );
+        assert_eq!(
+            source_lifecycle_invalid_reason(
+                &table_meta,
+                Some("database"),
+                Some("source"),
+                false,
+                false
+            ),
+            Some(MATERIALIZED_VIEW_INVALID_SOURCE_REASON)
+        );
+        assert_eq!(
+            source_lifecycle_invalid_reason(&table_meta, Some("database"), None, false, false),
+            Some(MATERIALIZED_VIEW_INVALID_SOURCE_REASON)
+        );
+
+        table_meta.options.insert(
+            OPT_KEY_MATERIALIZED_VIEW_SOURCE_DATABASE_NAME.to_string(),
+            "database".to_string(),
+        );
+        assert_eq!(
+            source_lifecycle_invalid_reason(
+                &table_meta,
+                Some("database"),
+                Some("source"),
+                true,
+                false
+            ),
+            None
+        );
+        assert_eq!(
+            source_lifecycle_invalid_reason(
+                &table_meta,
+                Some("renamed_database"),
+                Some("source"),
+                true,
+                false,
+            ),
+            Some(MATERIALIZED_VIEW_INVALID_SOURCE_DATABASE_REASON)
+        );
+        assert_eq!(
+            source_lifecycle_invalid_reason(&table_meta, None, Some("source"), true, false),
+            Some(MATERIALIZED_VIEW_INVALID_SOURCE_DATABASE_REASON)
+        );
+        assert_eq!(
+            source_lifecycle_invalid_reason(
+                &table_meta,
+                Some("database"),
+                Some("source"),
+                false,
+                true
+            ),
+            Some(MATERIALIZED_VIEW_DROPPED_SOURCE_DATABASE_REASON)
+        );
+    }
 }

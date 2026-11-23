@@ -296,9 +296,6 @@ pub(crate) async fn construct_drop_table_txn_operations(
         )));
     }
 
-    // The MVs depending on this table are not touched here: the query layer sets their invalid
-    // reason after the drop, on a best-effort basis.
-
     // There must NOT be concurrent txn(b) that list-then-delete tables:
     // Otherwise, (b) may not delete all of the tables, if this txn(a) is operating on some table.
     // We guarantee there is no `(b)` so we do not have to assert db seq.

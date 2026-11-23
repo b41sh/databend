@@ -136,9 +136,9 @@ impl<'a> MaterializedViewRefresh<'a> {
 
         let catalog_obj = ctx.get_catalog(catalog).await?;
         // Validity is an admission check against the source read by id: the reason is written
-        // after source DDL on a best-effort basis. A dropped reason that UNDROP left behind is
-        // cleared by the handler before this MV TableMeta was read. A reason written after these
-        // checks changes the MV TableMeta, so the commit's exact sequence condition fails.
+        // after source DDL on a best-effort basis, and a dropped source is not recorded. A reason
+        // written after these checks changes the MV TableMeta, so the commit's exact sequence
+        // condition fails.
         let source_meta = catalog_obj.get_table_meta_by_id(source_table_id).await?;
         check_materialized_view_source(
             mv_table.get_id(),

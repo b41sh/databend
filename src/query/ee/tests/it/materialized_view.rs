@@ -17,7 +17,8 @@ use std::collections::HashMap;
 use databend_common_exception::ErrorCode;
 use databend_common_meta_api::TableApi;
 use databend_common_meta_app::principal::GrantObject;
-use databend_common_meta_app::schema::MVInvalidReason;
+use databend_common_meta_app::schema::MATERIALIZED_VIEW_SOURCE_DROPPED_REASON;
+use databend_common_meta_app::schema::MATERIALIZED_VIEW_SOURCE_SCHEMA_CHANGED_REASON;
 use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON;
 use databend_common_meta_app::schema::RenameTableReq;
 use databend_common_meta_app::schema::TableNameIdent;
@@ -127,7 +128,7 @@ async fn test_materialized_view_rejects_source_moved_across_databases() -> anyho
 
 /// Overwrite the invalid reason of MV `mv_id`, as a lost or stale best-effort write after source
 /// DDL leaves it.
-async fn set_mv_invalid_reason(mv_id: u64, reason: Option<MVInvalidReason>) -> anyhow::Result<()> {
+async fn set_mv_invalid_reason(mv_id: u64, reason: Option<&str>) -> anyhow::Result<()> {
     UserApiProvider::instance()
         .get_meta_store_client()
         .upsert_table_option(UpsertTableOptionReq {
@@ -135,7 +136,7 @@ async fn set_mv_invalid_reason(mv_id: u64, reason: Option<MVInvalidReason>) -> a
             seq: MatchSeq::Any,
             options: HashMap::from([(
                 OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON.to_string(),
-                reason.map(|reason| reason.as_str().to_string()),
+                reason.map(str::to_string),
             )]),
         })
         .await?;
@@ -155,8 +156,8 @@ async fn mv_invalid_reason(fixture: &TestFixture, mv_id: u64) -> anyhow::Result<
         .map(str::to_string))
 }
 
-/// Reads and REFRESH record the invalid reason when its cause is certain, so a lost write after
-/// source DDL is repaired: a dropped source, an undropped one, and a changed column the MV reads.
+/// A dropped source is rejected without a recorded reason, and a changed column the MV reads is
+/// recorded by reads and REFRESH when the write after the DDL was lost.
 #[tokio::test(flavor = "multi_thread")]
 async fn test_materialized_view_records_certain_invalid_reasons() -> anyhow::Result<()> {
     let meta = LocalMetaService::new_testing::<DatabendRuntime>("mv-record-reason").await?;
@@ -180,33 +181,32 @@ async fn test_materialized_view_records_certain_invalid_reasons() -> anyhow::Res
         .get_id();
     let select = "SELECT * FROM mv_reason.mv";
     let refresh = "REFRESH MATERIALIZED VIEW mv_reason.mv";
-    let dropped = Some(MVInvalidReason::SourceDropped.as_str().to_string());
-    let schema_changed = Some(MVInvalidReason::SourceSchemaChanged.as_str().to_string());
+    let schema_changed = Some(MATERIALIZED_VIEW_SOURCE_SCHEMA_CHANGED_REASON.to_string());
 
-    // DROP TABLE whose reason was lost: a read finds the source dropped and records it.
+    // DROP TABLE records no reason: reads and REFRESH find the source dropped, and the MV is
+    // usable again after UNDROP TABLE.
     fixture
         .execute_command("DROP TABLE mv_reason.source")
         .await?;
-    set_mv_invalid_reason(mv_id, None).await?;
-    let error = fixture.execute_command(select).await.unwrap_err();
-    assert_eq!(
-        ErrorCode::INVALID_MATERIALIZED_VIEW,
-        error.code(),
-        "{error}"
-    );
-    assert_eq!(mv_invalid_reason(&fixture, mv_id).await?, dropped);
-
-    // UNDROP TABLE whose clear was lost: a read finds the source back and clears the reason.
+    for sql in [select, refresh] {
+        let error = fixture.execute_command(sql).await.unwrap_err();
+        assert_eq!(
+            ErrorCode::INVALID_MATERIALIZED_VIEW,
+            error.code(),
+            "{error}"
+        );
+        assert!(
+            error
+                .message()
+                .contains(MATERIALIZED_VIEW_SOURCE_DROPPED_REASON),
+            "{error}"
+        );
+    }
+    assert_eq!(mv_invalid_reason(&fixture, mv_id).await?, None);
     fixture
         .execute_command("UNDROP TABLE mv_reason.source")
         .await?;
-    assert_eq!(mv_invalid_reason(&fixture, mv_id).await?, None);
-    set_mv_invalid_reason(mv_id, Some(MVInvalidReason::SourceDropped)).await?;
     fixture.execute_command(select).await?;
-    assert_eq!(mv_invalid_reason(&fixture, mv_id).await?, None);
-
-    // REFRESH clears it as well.
-    set_mv_invalid_reason(mv_id, Some(MVInvalidReason::SourceDropped)).await?;
     fixture.execute_command(refresh).await?;
     assert_eq!(mv_invalid_reason(&fixture, mv_id).await?, None);
 

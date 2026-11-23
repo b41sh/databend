@@ -74,7 +74,6 @@ use crate::plans::AggregateFunction;
 use crate::plans::BoundColumnRef;
 use crate::plans::EvalScalar;
 use crate::plans::ScalarItem;
-use crate::restore_undropped_materialized_view;
 use crate::validate_materialized_view_source;
 
 /// Result of binding a materialized view reference, including the definition that was
@@ -660,17 +659,12 @@ impl Binder {
         let mv_id = table_meta.get_id();
         let mv_meta = &table_meta.get_table_info().meta;
         let check_source = |source_meta: Option<&TableMeta>| {
-            databend_common_base::runtime::block_on(async {
-                let restored =
-                    restore_undropped_materialized_view(mv_id, mv_meta, source_meta).await;
-                check_materialized_view_source(
-                    mv_id,
-                    table_meta.name(),
-                    restored.as_ref().unwrap_or(mv_meta),
-                    source_meta,
-                )
-                .await
-            })
+            databend_common_base::runtime::block_on(check_materialized_view_source(
+                mv_id,
+                table_meta.name(),
+                mv_meta,
+                source_meta,
+            ))
         };
         let (source_table, source_database, source_seq, source_snapshot_location) = if let Some((
             source_table,

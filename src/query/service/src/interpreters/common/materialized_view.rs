@@ -23,7 +23,8 @@ use databend_common_license::license::Feature;
 use databend_common_license::license_manager::LicenseManagerSwitch;
 use databend_common_meta_api::MaterializedViewApi;
 use databend_common_meta_api::TableApi;
-use databend_common_meta_app::schema::MVInvalidReason;
+use databend_common_meta_app::schema::MATERIALIZED_VIEW_SOURCE_SCHEMA_CHANGED_REASON;
+use databend_common_meta_app::schema::MATERIALIZED_VIEW_SOURCE_SWAPPED_REASON;
 use databend_common_meta_app::schema::MVSourceColumn;
 use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON;
 use databend_common_meta_app::schema::OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS;
@@ -73,17 +74,13 @@ pub async fn check_policy_target_without_materialized_view(
 }
 
 /// What a source DDL did to a table, as the interpreter that ran it knows it. The invalid reasons
-/// of the materialized views of the table follow from it.
+/// of the materialized views of the table follow from it; both are final.
 ///
-/// A rename of the table or of its database, and a drop or undrop of its database, are not
-/// listed: they leave the MVs alone. Their definitions read the source by name and check its
-/// table id, so they do not bind while the source is elsewhere and bind again once it is back.
+/// A drop, undrop, or rename of the table or of its database, and CREATE OR REPLACE, which drops
+/// the table it replaces, are not listed: they leave the MVs alone. Readers read the source by
+/// id and bind the definition by name, so the MVs are rejected while the source is dropped or
+/// elsewhere, and usable again once it is back.
 pub enum MVSourceChange<'a> {
-    /// DROP TABLE, or CREATE OR REPLACE TABLE, which drops the table it replaces. Reversible:
-    /// UNDROP TABLE of it restores the MVs.
-    Dropped,
-    /// UNDROP TABLE.
-    Undropped,
     /// ALTER TABLE ... SWAP WITH exchanged the table with another. Final.
     Swapped,
     /// A column change from `previous_schema` to `schema`. Final when it reaches a column an MV
@@ -96,26 +93,18 @@ pub enum MVSourceChange<'a> {
 
 /// The options to change on the MV with `table_meta` after `change`: the invalid reason, and,
 /// for an MV of an older version that records no source columns, all the columns of the schema
-/// before a column change. A final reason, or an unknown one, is kept.
+/// before a column change. Every reason is final: an MV that has one is left alone.
 fn mv_option_changes(
     mv_id: u64,
     table_meta: &TableMeta,
     change: &MVSourceChange,
 ) -> HashMap<String, Option<String>> {
     let mut changes = HashMap::new();
-    let current = table_meta.materialized_view_invalid_reason();
-    if current.is_some() && !table_meta.materialized_view_invalid_reason_restorable() {
+    if !table_meta.is_valid_materialized_view() {
         return changes;
     }
     let reason = match change {
-        MVSourceChange::Dropped => Some(MVInvalidReason::SourceDropped),
-        MVSourceChange::Undropped => {
-            if current.is_some() {
-                changes.insert(OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON.to_string(), None);
-            }
-            None
-        }
-        MVSourceChange::Swapped => Some(MVInvalidReason::SourceSwapped),
+        MVSourceChange::Swapped => Some(MATERIALIZED_VIEW_SOURCE_SWAPPED_REASON),
         MVSourceChange::SchemaChanged {
             previous_schema,
             schema,
@@ -138,22 +127,20 @@ fn mv_option_changes(
                     true
                 }
             };
-            changed.then_some(MVInvalidReason::SourceSchemaChanged)
+            changed.then_some(MATERIALIZED_VIEW_SOURCE_SCHEMA_CHANGED_REASON)
         }
     };
-    if let Some(reason) = reason
-        && current != Some(reason.as_str())
-    {
+    if let Some(reason) = reason {
         changes.insert(
             OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON.to_string(),
-            Some(reason.as_str().to_string()),
+            Some(reason.to_string()),
         );
     }
     changes
 }
 
-/// Best effort, after a DDL of table `source_table_id` that `change` describes: set or clear the
-/// invalid reason of its materialized views, and record the source columns of those created by
+/// Best effort, after a DDL of table `source_table_id` that `change` describes: set the invalid
+/// reason of its materialized views, and record the source columns of those created by
 /// an older version from the schema before a column change. No MV of an older version was
 /// invalidated by a schema change of its source, so those are the columns it was created
 /// against, or extend them by ADD COLUMN.

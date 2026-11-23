@@ -54,6 +54,16 @@ pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_TABLE_SEQ: &str = "materialized_view_
 pub const OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON: &str = "materialized_view_invalid_reason";
 /// The source columns the materialized view was created against, as JSON.
 pub const OPT_KEY_MATERIALIZED_VIEW_SOURCE_COLUMNS: &str = "materialized_view_source_columns";
+/// Reason shown by `system.materialized_views`, when the MV records none, if the source table
+/// bound by CREATE no longer has the same name or is no longer active.
+pub const MATERIALIZED_VIEW_INVALID_SOURCE_REASON: &str =
+    "source table was dropped, renamed, or replaced";
+/// Reason shown by `system.materialized_views` when the database name persisted in the MV
+/// definition no longer resolves.
+pub const MATERIALIZED_VIEW_INVALID_SOURCE_DATABASE_REASON: &str = "source database was renamed";
+/// Reason shown by `system.materialized_views` when the source table's current database is
+/// dropped.
+pub const MATERIALIZED_VIEW_DROPPED_SOURCE_DATABASE_REASON: &str = "source database was dropped";
 pub const OPT_KEY_MATERIALIZED_VIEW_AGGREGATE_COMPACTION_DELTA_BLOCKS: &str =
     "materialized_view_aggregate_compaction_delta_blocks";
 pub const OPT_KEY_SNAPSHOT_LOCATION_FIXED_FLAG: &str = "snapshot_location_fixed";

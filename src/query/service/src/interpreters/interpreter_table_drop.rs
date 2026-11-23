@@ -31,9 +31,7 @@ use databend_common_users::UserApiProvider;
 use databend_storages_common_table_meta::table::OPT_KEY_TEMP_PREFIX;
 
 use crate::interpreters::Interpreter;
-use crate::interpreters::common::MVSourceChange;
 use crate::interpreters::common::log_lineage_object_deletion;
-use crate::interpreters::common::update_materialized_view_validity;
 use crate::pipelines::PipelineBuildResult;
 use crate::sessions::QueryContext;
 use crate::sessions::TableContextTableAccess;
@@ -151,10 +149,6 @@ impl Interpreter for DropTableInterpreter {
                 .await?;
             if delete_lineage {
                 log_lineage_object_deletion(&self.ctx, table_id);
-            }
-            if !is_temp && !catalog.is_external() {
-                update_materialized_view_validity(&self.ctx, table_id, MVSourceChange::Dropped)
-                    .await;
             }
 
             if !is_temp && !catalog.is_external() {

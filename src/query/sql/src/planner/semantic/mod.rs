@@ -39,7 +39,6 @@ pub use materialized_view_rewriter::check_materialized_view_source_without_polic
 pub use materialized_view_rewriter::parse_materialized_view_query;
 pub use materialized_view_rewriter::validate_materialized_view_source;
 pub use materialized_view_validity::check_materialized_view_source;
-pub use materialized_view_validity::restore_undropped_materialized_view;
 pub use name_resolution::IdentifierNormalizer;
 pub use name_resolution::NameResolutionContext;
 pub use name_resolution::NameResolutionSuggest;

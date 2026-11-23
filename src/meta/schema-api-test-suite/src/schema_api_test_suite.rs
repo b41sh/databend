@@ -129,8 +129,8 @@ use databend_common_meta_app::schema::LockKey;
 use databend_common_meta_app::schema::LockMeta;
 use databend_common_meta_app::schema::LockType;
 use databend_common_meta_app::schema::MATERIALIZED_VIEW_ENGINE;
+use databend_common_meta_app::schema::MATERIALIZED_VIEW_SOURCE_SCHEMA_CHANGED_REASON;
 use databend_common_meta_app::schema::MVDefinition;
-use databend_common_meta_app::schema::MVInvalidReason;
 use databend_common_meta_app::schema::MarkedDeletedIndexType;
 use databend_common_meta_app::schema::MaterializedViewListFilter;
 use databend_common_meta_app::schema::OPT_KEY_CLONE_GROUP_ID;
@@ -2728,13 +2728,13 @@ impl SchemaApiTestSuite {
                 seq: MatchSeq::Any,
                 options: HashMap::from([(
                     OPT_KEY_MATERIALIZED_VIEW_INVALID_REASON.to_string(),
-                    Some(MVInvalidReason::SourceSchemaChanged.as_str().to_string()),
+                    Some(MATERIALIZED_VIEW_SOURCE_SCHEMA_CHANGED_REASON.to_string()),
                 )]),
             })
             .await?;
             assert_eq!(
                 mv_invalid_reason(mt, mv_id).await?.as_deref(),
-                Some(MVInvalidReason::SourceSchemaChanged.as_str())
+                Some(MATERIALIZED_VIEW_SOURCE_SCHEMA_CHANGED_REASON)
             );
         }
 

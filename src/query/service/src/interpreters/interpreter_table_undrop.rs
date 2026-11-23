@@ -20,8 +20,6 @@ use databend_common_meta_app::schema::is_materialized_view_engine;
 use databend_common_sql::plans::UndropTablePlan;
 
 use crate::interpreters::Interpreter;
-use crate::interpreters::common::MVSourceChange;
-use crate::interpreters::common::update_materialized_view_validity;
 use crate::pipelines::PipelineBuildResult;
 use crate::sessions::QueryContext;
 use crate::sessions::TableContextTableAccess;
@@ -67,17 +65,6 @@ impl Interpreter for UndropTableInterpreter {
                 )));
             }
             catalog.undrop_table(self.plan.clone().into()).await?;
-            // UNDROP restores the last table of the name, the one the MVs bound to it read.
-            if let Some(table) = history.last()
-                && !catalog.is_external()
-            {
-                update_materialized_view_validity(
-                    &self.ctx,
-                    table.get_id(),
-                    MVSourceChange::Undropped,
-                )
-                .await;
-            }
 
             Ok(PipelineBuildResult::create())
         })

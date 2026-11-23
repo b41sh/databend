@@ -904,16 +904,17 @@ SELECT id FROM mv_dst_db.cross_mv ORDER BY id
 statement ok
 USE test_mv_ddl
 
-# A dropped source database leaves the MV unmarked: its definition no longer binds.
+# A dropped source database records no reason in the MV: its definition no longer binds, and
+# system.materialized_views derives the reason from the source.
 statement ok
 DROP DATABASE mv_src_db
 
-query TBB
-SELECT source_database, invalid, invalid_reason IS NULL
+query TBT
+SELECT source_database, invalid, invalid_reason
 FROM system.materialized_views
 WHERE database = 'mv_dst_db' AND name = 'cross_mv'
 ----
-mv_src_db 0 1
+mv_src_db 1 source database was dropped
 
 # The persisted definition still names the dropped database; reads and refreshes both report it
 # as an invalid materialized view.
@@ -1033,8 +1034,9 @@ UNDROP TABLE test_mv
 statement error 1302
 DROP MATERIALIZED VIEW mv_base_t
 
-# A source rename leaves the MV unmarked: its definition reads the source by the name bound by
-# CREATE, so it does not bind until the source is renamed back.
+# A source rename records no reason in the MV: its definition reads the source by the name bound
+# by CREATE, so it does not bind until the source is renamed back. system.materialized_views
+# derives the reason from the source name.
 statement ok
 create table replaced_source (id int) change_tracking = true
 
@@ -1050,12 +1052,12 @@ refresh materialized view replaced_mv
 statement ok
 alter table replaced_source rename to renamed_replaced_source
 
-query TBB
-select source_table, invalid, invalid_reason is null
+query TBT
+select source_table, invalid, invalid_reason
 from system.materialized_views
 where database = 'test_mv_ddl' and name = 'replaced_mv'
 ----
-renamed_replaced_source 0 1
+renamed_replaced_source 1 source table was dropped, renamed, or replaced
 
 statement error 2328
 select * from replaced_mv
@@ -1063,12 +1065,12 @@ select * from replaced_mv
 statement error 2328
 refresh materialized view replaced_mv
 
-query BB
-select invalid, invalid_reason is null
+query BT
+select invalid, invalid_reason
 from system.materialized_views
 where database = 'test_mv_ddl' and name = 'replaced_mv'
 ----
-0 1
+1 source table was dropped, renamed, or replaced
 
 # Restoring the original source identity makes the MV current again.
 statement ok
@@ -1103,12 +1105,12 @@ statement ok
 create table replaced_source (replacement_id int) change_tracking = true
 
 # The name now leads to another table, which the table-id check rejects.
-query TBB
-select source_table, invalid, invalid_reason is null
+query TBT
+select source_table, invalid, invalid_reason
 from system.materialized_views
 where database = 'test_mv_ddl' and name = 'replaced_mv'
 ----
-renamed_replaced_source 0 1
+renamed_replaced_source 1 source table was dropped, renamed, or replaced
 
 statement error 2328
 select * from replaced_mv
@@ -1125,7 +1127,8 @@ drop table replaced_source
 statement ok
 drop table renamed_replaced_source
 
-# DROP TABLE marks the MV; UNDROP TABLE restores it.
+# DROP TABLE records no reason in the MV: reads find the source dropped, system.materialized_views
+# derives the reason, and UNDROP TABLE makes the MV usable again.
 statement ok
 create table dropped_source (id int) change_tracking = true
 
@@ -1146,7 +1149,7 @@ select source_table, invalid, invalid_reason
 from system.materialized_views
 where database = 'test_mv_ddl' and name = 'dropped_mv'
 ----
-dropped_source 1 source table was dropped
+dropped_source 1 source table was dropped, renamed, or replaced
 
 statement error 2328
 select * from dropped_mv
@@ -1159,9 +1162,9 @@ select invalid, invalid_reason
 from system.materialized_views
 where database = 'test_mv_ddl' and name = 'dropped_mv'
 ----
-1 source table was dropped
+1 source table was dropped, renamed, or replaced
 
-# UNDROP restores the same table ID/name and clears the reason.
+# UNDROP restores the same table ID/name.
 statement ok
 undrop table dropped_source
 
@@ -1194,6 +1197,13 @@ refresh materialized view case_rename_mv
 statement ok
 alter table CaseSource rename to casesource
 
+query TBT
+select source_table, invalid, invalid_reason
+from system.materialized_views
+where database = 'test_mv_ddl' and name = 'case_rename_mv'
+----
+casesource 1 source table was dropped, renamed, or replaced
+
 statement error 2328
 select * from case_rename_mv
 
@@ -1215,7 +1225,8 @@ statement ok
 set unquoted_ident_case_sensitive = 0
 
 # A database rename preserves table IDs, but the MV reads the source by the database name captured
-# by CREATE: the rename leaves it unmarked, and it binds again once the database is renamed back.
+# by CREATE: the rename records no reason in it, and it binds again once the database is renamed
+# back. system.materialized_views derives the reason from the source database name.
 statement ok
 create database mv_database_rename
 
@@ -1235,12 +1246,12 @@ refresh materialized view mv_database_rename.mv
 statement ok
 alter database mv_database_rename rename to mv_database_renamed
 
-query TTBB
-select source_database, source_table, invalid, invalid_reason is null
+query TTBT
+select source_database, source_table, invalid, invalid_reason
 from system.materialized_views
 where database = 'mv_database_renamed' and name = 'mv'
 ----
-mv_database_renamed source 0 1
+mv_database_renamed source 1 source database was renamed
 
 statement error 2328
 select * from mv_database_renamed.mv
@@ -1468,7 +1479,7 @@ SELECT invalid, invalid_reason
 FROM system.materialized_views
 WHERE database = 'test_mv_ddl' AND name = 'mv_replace'
 ----
-1 source table was dropped
+1 source table was dropped, renamed, or replaced
 
 statement error 2328
 SELECT * FROM mv_replace

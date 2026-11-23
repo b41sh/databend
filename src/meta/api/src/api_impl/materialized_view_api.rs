@@ -31,13 +31,13 @@
 //! Whether an MV is valid is recorded in its `TableMeta` options, on a best-effort
 //! basis. Source DDL does not touch MV metadata in its own transaction: a source
 //! may have many MVs, and the DDL must not grow with them or retry on their
-//! REFRESH commits. After the DDL, the interpreter that ran it derives the invalid
-//! reason of each dependent MV from what the DDL did, and sets or clears it through
-//! the ordinary table option API; a failure is only logged. DROP TABLE, and CREATE
-//! OR REPLACE TABLE, which drops the table it replaces, are undone by UNDROP TABLE;
-//! SWAP and a change of a column the MV reads are final, and are not replaced by a
-//! later reason. A rename of the source or of its database, and a drop of its database,
-//! write no reason.
+//! REFRESH commits. After a SWAP of the source, or a change of a column the MV
+//! reads, the interpreter that ran it sets the invalid reason of each dependent MV
+//! through the ordinary table option API; a failure is only logged. Both reasons are
+//! final. A drop, undrop, or rename of the source or of its database, and CREATE OR
+//! REPLACE TABLE, which drops the table it replaces, write no reason: readers find
+//! a dropped source from its `drop_on`, and a moved one from binding the definition
+//! by name, and accept the MV again once the source is back.
 //!
 //! Because the reason may be missing, readers do not rely on it alone: they bind
 //! the definition by the source name and check the source table id, and compare
@@ -45,40 +45,6 @@
 //! An MV created by an older version has no recorded columns; the query layer
 //! records all the source columns, from the schema before the DDL, at the first
 //! column change of its source.
-//!
-//! The metadata operations are:
-//!
-//! ```text
-//! CREATE MV txn:
-//!     assert the source TableMeta exists and is not dropped
-//!     put TableId(new_mv_id) = new_mv_table_meta
-//!     put MVDefinitionIdent(tenant, new_mv_id) = definition
-//!     put SourceTableMVIdent(tenant, source_id, new_mv_id)
-//!
-//! REPLACE MV txn:
-//!     mark TableId(old_mv_id) dropped
-//!     delete MVDefinitionIdent(tenant, old_mv_id)
-//!     delete SourceTableMVIdent(tenant, old_source_id, old_mv_id)
-//!     append the CREATE MV operations for new_mv_id
-//!
-//! DROP MV txn:
-//!     mark TableId(mv_id) dropped
-//!     delete MVDefinitionIdent(tenant, mv_id)
-//!     delete SourceTableMVIdent(tenant, source_id, mv_id)
-//!
-//! Source DDL (DROP, UNDROP, RENAME, SWAP, REPLACE of a table or database, and
-//! column changes) commits without MV operations.
-//!
-//! GC MV txn:
-//!     delete MVDefinitionIdent(tenant, mv_id)
-//!     delete SourceTableMVIdent(tenant, source_id, mv_id)
-//!     delete the ordinary table metadata
-//!
-//! GC source txn:
-//!     delete SourceTableMVIdent(tenant, source_id, *)
-//!     delete __fd_materialized_view_source_binding_version/<tenant>/<source_id>,
-//!         written by older versions
-//! ```
 
 use std::collections::BTreeSet;
 use std::collections::HashMap;
